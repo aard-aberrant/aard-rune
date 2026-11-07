@@ -1,0 +1,203 @@
+-- The info pane (require("panes.info")), tt++ modules/info.tin. Several things want
+-- the 4-line pane but only one can have it: each sets its text with
+--   info.set(name, prio, text)   -- text nil = nothing to show
+-- and the one with the lowest prio wins. The pane is only redrawn when the
+-- winner's text changes, so a provider may call set as often as it likes.
+-- Priorities: alert_crit 20, alert_warn 25, quest 50, campaign 60,
+-- account 90 (leave gaps).
+-- Alerts: info.alert("crit"|"warn", secs, TITLE, text) flashes the pane
+-- (black on red, with a beep / black on yellow) for secs seconds - counted only while it
+-- is on the pane, so a crit covering a warn doesn't eat the warn's time. A
+-- second alert with the same title replaces the text of the first. Within a
+-- level they play in turn. The 1 s timer runs only while one is up.
+-- info.alert_clear(TITLE) takes one off.
+-- Account is the fallback (account.tin): gold, worth, QP, TP, trains, HR/DR
+-- and any stat but int under STAT_MIN, from GMCP char.worth / char.stats.
+
+local util = require("core.util")
+local game = require("core.game")       -- char.worth, char.stats (account)
+local layout = require("core.layout")   -- the pane's width
+
+local info = {}
+local HR_MIN, DR_MIN, STAT_MIN = 1600, 2000, 600   -- conf/equipment.tin
+
+local prov = {}         -- name -> { prio, text }
+
+local function refresh()
+  local best
+  for _, p in pairs(prov) do
+    if p.text and (not best or p.prio < best.prio) then best = p end
+  end
+  local text = best and best.text or ""
+  util.pane("info", text)
+  return best
+end
+
+function info.set(name, prio, text)
+  local p = prov[name]
+  if p then p.prio, p.text = prio, text else prov[name] = { prio = prio, text = text } end
+  refresh()   -- returns nothing: an alias may end with "return info.set(...)",
+end           -- and an alias's return value is run as a command
+
+-- A target's view, shared by quest and campaign: the first line as given,
+-- then area (cyan), room (blue, or `gone` in red instead), mob (magenta).
+-- Missing ones are left out
+local C = { area = "\27[36m", room = "\27[34m", mob = "\27[35m", gone = "\27[31m" }
+function info.target_rows(first, area, room, mob, gone)
+  local rows = { first }
+  if area then rows[#rows + 1] = C.area .. area end
+  if gone then rows[#rows + 1] = C.gone .. gone
+  elseif room then rows[#rows + 1] = C.room .. room end
+  if mob then rows[#rows + 1] = C.mob .. mob end
+  return table.concat(rows, "\27[0m\n") .. "\27[0m"
+end
+
+-- Alerts ----------------------------------------------------------------
+
+-- Flashing, a second each: black text (24-bit - plain 30 shows grey) on
+-- red, then red text; on yellow, then yellow text for a warn
+local LEVEL = {
+  crit = { prio = 20, on = "\27[0;38;2;0;0;0;41m", off = "\27[0;31m" },
+  warn = { prio = 25, on = "\27[0;38;2;0;0;0;43m", off = "\27[0;33m" },
+}
+local queue = { crit = {}, warn = {} }   -- level -> list of { title, text, left }
+local ticking = false
+
+-- An alert's lines fill the pane's width, so the background is a block
+local function alert_text(lvl, a)
+  local w = layout.left_w()
+  local function pad(s) return #s < w and s .. string.rep(" ", w - #s) or s:sub(1, w) end
+  local col = os.time() % 2 == 0 and LEVEL[lvl].on or LEVEL[lvl].off
+  local body = util.wrap(a.text, w)
+  local rows = { a.title }
+  if #body < 3 then rows[2] = "" end
+  for i = 1, math.min(#body, 3) do rows[#rows + 1] = body[i] end
+  for i, r in ipairs(rows) do rows[i] = col .. pad(r) .. "\27[0m" end
+  return table.concat(rows, "\n")
+end
+
+local function draw_alerts()
+  for lvl, q in pairs(queue) do
+    info.set("alert_" .. lvl, LEVEL[lvl].prio, q[1] and alert_text(lvl, q[1]) or nil)
+  end
+end
+
+local function tick()
+  local best = refresh()
+  -- count down only the alert on the pane
+  for lvl, q in pairs(queue) do
+    if q[1] and best == prov["alert_" .. lvl] then
+      q[1].left = q[1].left - 1
+      if q[1].left <= 0 then table.remove(q, 1) end
+    end
+  end
+  draw_alerts()
+  if queue.crit[1] or queue.warn[1] then
+    rune.timer.after(1, tick)
+  else
+    ticking = false
+  end
+end
+
+function info.alert(lvl, secs, title, text)
+  local q = queue[lvl]
+  for _, a in ipairs(q) do
+    if a.title == title then a.text = text; draw_alerts(); return end
+  end
+  q[#q + 1] = { title = title, text = text, left = secs }
+  if lvl == "crit" then util.beep() end
+  draw_alerts()
+  if not ticking then
+    ticking = true
+    rune.timer.after(1, tick)
+  end
+end
+
+function info.alert_clear(title)
+  for _, q in pairs(queue) do
+    for i, a in ipairs(q) do
+      if a.title == title then table.remove(q, i); draw_alerts(); return true end
+    end
+  end
+  return false
+end
+
+-- Account (the fallback) ------------------------------------------------
+
+local function short(n)
+  if n >= 1000000 then return string.format("%.1fM", math.floor(n / 100000) / 10) end
+  if n >= 1000 then return math.floor(n / 1000) .. "K" end
+  return tostring(n)
+end
+
+local function commas(n)
+  local s = tostring(n)
+  local k
+  repeat s, k = s:gsub("^(%d+)(%d%d%d)", "%1,%2") until k == 0
+  return s
+end
+
+local LABEL, VALUE, RED = "\27[0m", "\27[36m", "\27[31m"
+
+local function account()
+  local w, s = game.worth, game.stats
+  local gold, bank = w and tonumber(w.gold), w and tonumber(w.bank)
+  if not (gold and bank) then return info.set("account", 90, nil) end
+  local function f(label, v, width)
+    v = tostring(v)
+    return LABEL .. label .. " " .. VALUE .. (width and v .. string.rep(" ", width - #v) or v)
+  end
+  local rows = {
+    f("Gold", short(gold), 9) .. f("Worth", short(gold + bank)),
+    f("QP", commas(tonumber(w.qp) or 0), 11) .. f("TP", w.tp or 0, 4) .. f("TRN", w.trains or "--"),
+  }
+  local hr, dr = s and tonumber(s.hr), s and tonumber(s.dr)
+  if hr and dr then
+    rows[3] = LABEL .. "HR " .. (hr < HR_MIN and RED or VALUE) .. string.format("%-11s", hr)
+      .. LABEL .. "DR " .. (dr < DR_MIN and RED or VALUE) .. dr
+  end
+  local low = {}
+  for _, k in ipairs({ "str", "wis", "con", "dex", "luck" }) do
+    local v = s and tonumber(s[k])
+    if v and v < STAT_MIN then low[#low + 1] = (k == "luck" and "LCK" or k:upper()) .. " " .. v end
+  end
+  if #low > 0 then rows[#rows + 1] = RED .. table.concat(low, "  ") end
+  info.set("account", 90, table.concat(rows, "\27[0m\n") .. "\27[0m")
+end
+
+for _, pkg in ipairs({ "char.worth", "char.stats" }) do
+  rune.gmcp.on(pkg, account, { name = "info_" .. pkg })
+end
+
+-- infomsg ----------------------------------------------------------------
+-- infomsg [-t secs] text: your own text on the pane, priority 40 - over
+-- quest, campaign and account, under the alerts. | starts a new line (4 at
+-- most, each cut at the pane's width). -t: gone after that many seconds. Bare: cleared
+
+local msg_gen = 0
+
+function info.msg(text, secs)
+  msg_gen = msg_gen + 1
+  if not text then return info.set("msg", 40, nil) end
+  local rows = {}
+  for l in (text .. "|"):gmatch("(.-)|") do
+    if #rows < 4 then rows[#rows + 1] = l:sub(1, layout.left_w()) end
+  end
+  info.set("msg", 40, table.concat(rows, "\n"))
+  if secs then
+    local g = msg_gen
+    rune.timer.after(secs, function() if g == msg_gen then info.msg(nil) end end)
+  end
+end
+
+rune.alias.exact("infomsg", function(args)
+  local text = util.trim(args)
+  if text == "" then return info.msg(nil) end
+  local secs, rest = text:match("^%-t%s+(%d+)%s+(.+)$")
+  if text:match("^%-t") and not secs then
+    return util.warn("[info] infomsg [-t seconds] [text] - | starts a new line.")
+  end
+  info.msg(rest or text, tonumber(secs))
+end)
+
+return info
