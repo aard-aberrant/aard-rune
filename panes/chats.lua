@@ -7,12 +7,14 @@ local game = require("core.game")   -- at login
 -- game stop sending channels and tells as text (tt++ modules/gmcp.tin sent
 -- it at every connect - the game doesn't keep it). Sent at each login and
 -- /reload (game.on_login). Its reply, "## GMCP Channels Only On.", is
--- hidden - it only ever answers this
-game.on_login(function() rune.gmcp.send("gmcpchannels on") end)
-rune.trigger.regex("^## GMCP Channels Only On", function(_, ctx)
-  util.eat_blanks(ctx.line:clean())
-  return false
-end, { name = "chats_gchan_reply" })
+-- hidden, by a trigger that exists only until it comes (util.await)
+game.on_login(function()
+  util.await("starts", "## GMCP Channels Only On", function(_, ctx)
+    util.eat_blanks(ctx.line:clean())
+    return false
+  end, "chats_gchan_reply")
+  rune.gmcp.send("gmcpchannels on")
+end)
 
 -- Each channel message, from GMCP comm.channel: mob speech (mobsay) to the
 -- main output, where mob programs' speech belongs; everything else to the
@@ -38,6 +40,19 @@ rune.trigger.regex("^\\*[A-Z][A-Za-z]+ .*[.!?]$", function(_, ctx)
   util.eat_blanks(clean)
   return false
 end, { name = "remote_social" })
+
+-- finger's reply has a blank line between every two lines (tt++
+-- modules/general.tin). The reply is one block, from its header
+-- ("----------------- Player : Bamboo (Online) -----------------", tt++'s
+-- log) to a line of dashes: a span hides it as it comes and shows it again
+-- without the blank lines, all at once at its end. Typed or by f, the same.
+-- The header is matched from its leading dashes, so it costs what an
+-- anchored pattern does. No closing line within 40: shown at that point
+rune.trigger.regex("^-+ Player : ", function(_, ctx)
+  for _, l in ipairs(ctx.lines) do
+    if not util.blank(l:clean()) then rune.echo(l:raw()) end
+  end
+end, { name = "chats_finger", gag = true, span = { to = "^-+$", max = 40 } })
 
 -- Scrolling the chats pane. PgUp/PgDn and Ctrl+Home/Ctrl+End scroll the
 -- main output (Rune's defaults); the same keys with Shift scroll chats.

@@ -17,8 +17,11 @@ end
 --              info.set); a pane never requires a feature
 --   gear/      eq, invmon
 --   nav/       mapper, travel, minimap (the map's pane), moons
---   targets/   target, and quest and campaign, which set it
+--   targets/   target, and quest and campaign, which set it; doubles
 --   fight/     combat, autocast, heal, hunt, dps, rheal, pup
+--   host/      spup (hosting spellups)
+--   areas/     loader (areas/<zone>.lua while you're in the zone: geniewish,
+--              knossos ...) - a script may require anything above
 -- data/ is settings and game data, map/ the map, tools/ the converters.
 -- This file only sets Rune up and lists the features
 local util = require("core.util")
@@ -79,6 +82,7 @@ require("nav.moons")         -- the 3MN light, moons, weather notices hidden
 require("targets.target")    -- the target: target / t, gm
 require("targets.quest")     -- qx
 require("targets.campaign")  -- cn
+require("targets.doubles")   -- 2XP / 2QP lights, double
 require("fight.combat")      -- k, kk, aa
 require("fight.autocast")    -- ac, the AC light
 require("fight.heal")        -- h: incomplete healing, held for the gap between kills
@@ -86,6 +90,8 @@ require("fight.hunt")        -- autohunt, hqq
 require("fight.dps")         -- the DPS meter
 require("fight.rheal")       -- rh, sleep, the regen ring on waking
 require("fight.pup")         -- pup: powerup pace
+require("host.spup")         -- spup, spn, spq: hosting spellups
+require("areas.loader")      -- areas/<zone>.lua, only while you're in that zone
 
 -- /reload starts every table above empty, and the game only sends char.*
 -- and group when something changes - ask for both now so the bar and the

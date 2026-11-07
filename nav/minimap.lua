@@ -2,9 +2,9 @@
 -- "tags map" on, the game sends its own ASCII map with every room, between
 -- <MAPSTART> and <MAPEND>
 -- (modules/map.tin does the same in tt++). The lines in between are hidden
--- from the main output and kept, colours and all; the catch-all that takes
--- them is only enabled between the two markers, so it costs nothing on other
--- lines. At <MAPEND> the pane is redrawn whole:
+-- from the main output and kept, colours and all, by one Rune span
+-- trigger (nothing looks at other lines). At <MAPEND> the pane is redrawn
+-- whole:
 --   zone | vnum (GMCP room.info, from game.room), in yellow
 --   the room name: every line before the first whitespace-only one (the
 --     game wraps a long name onto a second line, then sends blank lines)
@@ -33,7 +33,6 @@ local MAP_ME = "\27[38;2;0;255;0m●\27[0m"
 
 local map_buf = {}   -- { raw = ..., clean = ... } for each line of the block
 local show_next = false   -- the next block answers a map you typed: show it
-local showing = false     -- this block shows in the main output too
 
 local function blank(line) return util.blank(line.clean) end
 
@@ -185,27 +184,22 @@ local function map_layout()
   util.pane("minimap", table.concat(out, "\n"))
 end
 
-local map_line = rune.trigger.starts("", function(_, ctx)
-  local clean = ctx.line:clean()
-  if clean ~= "<MAPSTART>" and clean ~= "<MAPEND>" then
-    map_buf[#map_buf + 1] = { raw = ctx.line:raw(), clean = clean }
-  end
-  if not showing then return false end
-end, { name = "aard_map_line", priority = 60 })
-map_line:disable()
-
-rune.trigger.exact("<MAPSTART>", function()
+-- The block is one Rune span, <MAPSTART> to <MAPEND>, all of it hidden
+-- (gag): the action runs once at <MAPEND> with its lines. A block that
+-- answers a typed map is echoed to the main output as well
+rune.trigger.exact("<MAPSTART>", function(_, ctx)
+  local lines = ctx.lines
   map_buf = {}
-  showing, show_next = show_next, false
-  map_line:enable()
-  return false
-end, { name = "aard_map_start", priority = 10 })
-
-rune.trigger.exact("<MAPEND>", function()
-  map_line:disable()
+  for i = 2, #lines do
+    local clean = lines[i]:clean()
+    if clean ~= "<MAPEND>" then map_buf[#map_buf + 1] = { raw = lines[i]:raw(), clean = clean } end
+  end
+  if show_next then
+    show_next = false
+    for _, l in ipairs(map_buf) do rune.echo(l.raw) end
+  end
   map_layout()
-  return false
-end, { name = "aard_map_end", priority = 10 })
+end, { name = "aard_map", priority = 10, gag = true, span = { to = "^<MAPEND>$", max = 120 } })
 
 -- The header and note come from GMCP room.info, which can arrive after the
 -- map block: drawn again then, so they never show the room you just left

@@ -8,7 +8,14 @@
 -- Amazon Nation" - matched to a zone in data/areas.lua). The mob dying, or
 -- the quest ending, drops the target - only if qx set it.
 -- Also the quest's view on the info pane (row, below), QST on the status
--- pane, and qc.
+-- pane, qc, and tt++'s line for each quest event (comm.quest action):
+--   start    [Quest Requested]: Target=a rogue. Room=Hall. Area=The Amazon Nation.
+--   comp     [Quest Completed] [Qp: 34] 412 secs [Bonus: 2 prac, 1 train, 1 tp]
+--   timeout  {-=Quest Timed Out=-}
+--   fail     {-=Quest Failed=-}
+--   ready    {-=Quest Time=-}, with the terminal bell
+-- comp's time is from the quest's start, kept in rune.store so a /reload
+-- doesn't lose it.
 
 local util = require("core.util")
 local status = require("panes.status")   -- QST, in a row-1 slot
@@ -19,7 +26,8 @@ local travel = require("nav.travel")   -- qx goes; an area's zone from its name
 local warn = util.warn
 
 local q   -- { targ, room, area, ends, killed } while on a quest
-local gen = 0   -- bumped per quest, so an old minute timer stops
+local START_KEY = "quest_start"   -- os.time() the quest began
+local tick = util.slot()   -- the info row's minute redraw
 
 -- The info pane (panes/info.lua), priority 50: time left (red under 5 minutes, or
 -- "killed, return to QM"), area, room, mob. Redrawn each minute
@@ -36,11 +44,11 @@ local function row()
   info.set("quest", 50, info.target_rows(first, q.area, q.room, q.targ))
 end
 
-local function minutely(g)
-  if g ~= gen or not q or q.killed then return end
+local function minutely()
+  if not q or q.killed then return end
   row()
   local wait = (q.ends - os.time()) % 60
-  rune.timer.after(wait > 0 and wait or 60, function() minutely(g) end)
+  tick.start(wait > 0 and wait or 60, minutely)
 end
 
 -- QST (tt++ quest.tin), status row 1: minutes until you can quest again
@@ -94,15 +102,46 @@ rune.gmcp.on("comm.tick", function()
   if not qst.state then rune.gmcp.send("request quest") end
 end, { name = "quest_tick" })
 
+-- The event lines (tt++ quest.tin, its colours: red brackets and numbers,
+-- yellow words, white labels)
+local R, Y, W, X = "\27[31m", "\27[33m", "\27[37m", "\27[0m"
+local function banner(text) rune.echo(W .. "{-=" .. R .. text .. W .. "=-}" .. X) end
+
+local function started(d)
+  rune.echo(Y .. "[" .. R .. "Quest Requested" .. Y .. "]" .. X .. ": "
+    .. Y .. "Target" .. X .. "=" .. R .. (d.targ or "?") .. X .. ". "
+    .. Y .. "Room" .. X .. "=" .. R .. (d.room or "?") .. X .. ". "
+    .. Y .. "Area" .. X .. "=" .. R .. (d.area or "?") .. X .. ".")
+end
+
+local function completed(d)
+  local ok, start = pcall(rune.store.get, START_KEY)
+  local secs = ok and tonumber(start) and (os.time() - start) or nil
+  local bonus = {}
+  for _, k in ipairs({ { "pracs", "prac" }, { "trains", "train" }, { "tp", "tp" } }) do
+    local n = tonumber(d[k[1]]) or 0
+    if n ~= 0 then bonus[#bonus + 1] = R .. n .. " " .. k[2] end
+  end
+  rune.echo(R .. "[" .. Y .. "Quest Completed" .. R .. "] " .. Y .. "[" .. W .. "Qp: " .. R .. (d.totqp or "?")
+    .. Y .. "]" .. X .. (secs and (" " .. secs .. " secs") or "")
+    .. (#bonus > 0 and (" " .. Y .. "[" .. W .. "Bonus: " .. table.concat(bonus, W .. ", ") .. Y .. "]" .. X) or ""))
+end
+
 rune.gmcp.on("comm.quest", function(d)
   if type(d) ~= "table" then return end
   qst_update(d)
   local a = d.action
+  if a == "start" then pcall(rune.store.set, START_KEY, os.time()) end
+  if a == "start" then started(d)
+  elseif a == "comp" then completed(d)
+  elseif a == "timeout" then banner("Quest Timed Out")
+  elseif a == "fail" then banner("Quest Failed")
+  elseif a == "ready" then banner("Quest Time"); util.beep() end
+  if a == "comp" or a == "fail" or a == "timeout" then pcall(rune.store.delete, START_KEY) end
   if a == "start" or (a == "status" and (d.targ or "") ~= "" and d.targ ~= "killed") then
-    gen = gen + 1
     q = { targ = d.targ, room = d.room, area = d.area,
           ends = os.time() + (tonumber(d.timer) or 0) * 60 }
-    minutely(gen)
+    minutely()
     return
   end
   if a == "killed" or (a == "status" and d.target == "killed") then
@@ -138,8 +177,8 @@ end)
 -- is hidden, then the blank line(s) after it (the one before stays as the
 -- break). Off again after 10 s whatever came
 local qc_closes = nil   -- nil: not hiding; else {/eqdata} lines still to come
-local qc_line
-qc_line = rune.trigger.starts("", function(_, ctx)
+local qc_line = util.group(true)   -- one catch-all, only while qc runs
+qc_line.add("starts", "", function(_, ctx)
   local clean = ctx.line:clean()
   if not qc_closes then
     if clean == "{eqdata}" then qc_closes = 2; return false end
@@ -148,23 +187,19 @@ qc_line = rune.trigger.starts("", function(_, ctx)
   if clean == "{/eqdata}" then
     qc_closes = qc_closes - 1
     if qc_closes == 0 then
-      qc_line:disable()
+      qc_line.set(false)
       qc_closes = nil
       util.eat_blanks(clean)
     end
   end
   return false
 end, { name = "quest_qc_quiet", priority = 1 })
-qc_line:disable()
 
-local qc_gen = 0
+local qc_timeout = util.slot()
 rune.alias.exact("qc", function()
-  qc_closes, qc_gen = nil, qc_gen + 1
-  local g = qc_gen
-  qc_line:enable()
-  rune.timer.after(10, function()
-    if g == qc_gen then qc_line:disable(); qc_closes = nil end
-  end)
+  qc_closes = nil
+  qc_line.set(true)
+  qc_timeout.start(10, function() qc_line.set(false); qc_closes = nil end)
   rune.send_raw("home\nquest complete\neqdata\ngulp\neqdata")
 end)
 

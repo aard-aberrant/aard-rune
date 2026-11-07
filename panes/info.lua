@@ -174,10 +174,10 @@ end
 -- quest, campaign and account, under the alerts. | starts a new line (4 at
 -- most, each cut at the pane's width). -t: gone after that many seconds. Bare: cleared
 
-local msg_gen = 0
+local msg_clear = util.slot()   -- an infomsg's time up
 
 function info.msg(text, secs)
-  msg_gen = msg_gen + 1
+  msg_clear.stop()
   if not text then return info.set("msg", 40, nil) end
   local rows = {}
   for l in (text .. "|"):gmatch("(.-)|") do
@@ -185,8 +185,7 @@ function info.msg(text, secs)
   end
   info.set("msg", 40, table.concat(rows, "\n"))
   if secs then
-    local g = msg_gen
-    rune.timer.after(secs, function() if g == msg_gen then info.msg(nil) end end)
+    msg_clear.start(secs, function() info.msg(nil) end)
   end
 end
 

@@ -56,8 +56,28 @@ T.labels = load_data("labels")
 T.cfg.portals = T.cfg.portals or {}
 -- An area's full name (as GMCP and the game give it), lowercased -> zone
 local zone_by_name = {}
+-- Zones that share one full name are one area to qx and the target (soh and
+-- sohtwo are both "The School of Horror": GMCP and the quest give only the
+-- name). Full name, lowercased -> its zones, for names with more than one
+local zones_by_name = {}
 for zone, a in pairs(T.areas) do
-  if a.name then zone_by_name[a.name:lower()] = zone end
+  if a.name then
+    local k = a.name:lower()
+    zone_by_name[k] = zone
+    zones_by_name[k] = zones_by_name[k] or {}
+    table.insert(zones_by_name[k], zone)
+  end
+end
+-- The zones of `zone`'s area: itself and any sharing its name
+local function area_zones(zone)
+  local a = T.areas[zone]
+  return a and a.name and zones_by_name[a.name:lower()] or { zone }
+end
+-- Whether two zones are the same area (the same zone, or the same name)
+function T.same_area(z1, z2)
+  if z1 == z2 then return true end
+  local a, b = T.areas[z1 or ""], T.areas[z2 or ""]
+  return a ~= nil and b ~= nil and a.name ~= nil and a.name == b.name
 end
 T.cfg.home_cmds = T.cfg.home_cmds or { "home" }
 
@@ -341,7 +361,7 @@ end
 -- map is wrong; if not, an earlier step failed (a mob, a closed door) and the
 -- later moves ran from the wrong room.
 rune.gmcp.on("room.wrongdir", function(d)
-  if not tags.walking() then return end
+  if not tags.walking() or tags.walk_owner() then return end   -- not ours: its owner reports it
   tags.walk_stopped()   -- print the room the walk stopped in, if it was hidden
   local bad = bad_step()
   plan = nil
@@ -632,18 +652,21 @@ end
 -- hidden eqdata refreshes what's worn. The game answers in order, so the
 -- chores' output is everything between the {/roomchars} tag that ends
 -- home's room and the {/eqdata} tag that ends eqdata's reply - found by
--- the tags, not the replies' wording. No room (home refused): nothing is
--- hidden but eqdata. It ends at {/eqdata}; 10 s if that never comes
-local quiet_line
-local quiet = { hiding = false, gen = 0 }
-quiet_line = rune.trigger.starts("", function(_, ctx)
+-- the tags, not the replies' wording. Already home: no room, but "You are
+-- already in your home!" (seen live 2026-11-07), shown, then the same. No
+-- room otherwise (home refused): nothing is hidden but eqdata. It ends at {/eqdata}; 10 s if that never comes
+local quiet_line = util.group(true)   -- one catch-all, only while it's needed
+local quiet = { hiding = false, timer = util.slot() }
+quiet_line.add("starts", "", function(_, ctx)
   local clean = ctx.line:clean()
   if clean:find("^{/eqdata}") then
-    quiet_line:disable()
+    quiet_line.set(false)
     return   -- gear/eq.lua hides it, and the blank after
   end
   if not quiet.hiding then
-    if clean == "{/roomchars}" then quiet.hiding, quiet.first = true, true end
+    if clean == "{/roomchars}" or clean == "You are already in your home!" then
+      quiet.hiding, quiet.first = true, true
+    end
     return
   end
   -- The blank line that follows a room shows, as when you walk in
@@ -653,15 +676,13 @@ quiet_line = rune.trigger.starts("", function(_, ctx)
   end
   return false
 end, { name = "travel_home_quiet", priority = 1 })
-quiet_line:disable()
 
 local function home_routine()
-  quiet.hiding, quiet.gen = false, quiet.gen + 1
-  local g = quiet.gen
-  quiet_line:enable()
-  rune.timer.after(10, function() if g == quiet.gen then quiet_line:disable() end end)
+  quiet.hiding = false
+  quiet_line.set(true)
+  quiet.timer.start(10, function() quiet_line.set(false) end)
   rune.send_raw(table.concat(T.cfg.home_cmds, "\n"))
-  if not eq.check_worn() then quiet_line:disable() end   -- no {/eqdata} coming: hide nothing
+  if not eq.check_worn() then quiet_line.set(false) end   -- no {/eqdata} coming: hide nothing
 end
 
 -- To one of `zones`, the nearest (a picker if several reach): one zone's
@@ -706,8 +727,23 @@ rune.alias.exact("g", function(args)
 end)
 
 -- To an area by zone, as g <area> does (for qx, targets/quest.lua)
+-- An area of several zones (area_zones) is reached at its nearest room in
+-- any of them - a portal into one of them ends the route there
 function T.go_area(zone)
-  go_zones({ zone }, (T.areas[zone] or {}).kw or zone, area_label(zone))
+  local rt = (T.areas[zone] or {}).kw or zone
+  local zones = area_zones(zone)
+  if #zones == 1 then return go_zones({ zone }, rt, area_label(zone)) end
+  local is, rooms = set_of(zones), {}
+  for v, r in pairs(M.rooms) do
+    if is[r.area] then rooms[v] = true end
+  end
+  try_limited(zone, function()
+    choose("g", { { text = area_label(zone), desc = "area " .. zone, set = rooms, what = "area " .. zone } },
+      function()
+        warn("[travel] no route to " .. area_label(zone) .. " on the map - going home and using runto.")
+        rune.send_raw("home\ndown\nrt " .. rt)
+      end)
+  end)
 end
 
 -- The zone of an area's full name ("The Amazon Nation"), as GMCP gives it
@@ -731,13 +767,13 @@ end)
 function T.go_room(zone, room, what)
   local set = {}
   for v, r in pairs(M.rooms) do
-    if r.area == zone and plain_name(r):lower() == room:lower() then set[v] = true end
+    if T.same_area(r.area, zone) and plain_name(r):lower() == room:lower() then set[v] = true end
   end
   if next(set) == nil then
     return warn("[travel] no room named \"" .. room .. "\" in " .. area_label(zone) .. " on the map.")
   end
   local r = M.here and M.rooms[M.here]
-  T.go_nearest(set, what, r and r.area == zone and "first" or nil)
+  T.go_nearest(set, what, r and T.same_area(r.area, zone) and "first" or nil)
 end
 
 -- One where question at a time: T.where(kw, cb) sends "where <kw>" and
@@ -746,14 +782,15 @@ end
 -- the blank line(s) after it - callers say what came of it
 local where_asked, where_cb = 0, nil
 local where_got    -- the answer line, held until {/where} closes the reply
-local where_gen = 0
-local where_line
+local where_timeout = util.slot()   -- 5 s after a where is sent
+local where_line = util.group(true)   -- one catch-all, only inside a reply
 
 -- The reply is over: the blank line(s) after it hidden, cb told. The answer
 -- goes out only now - cb may ask the next where at once, and this reply's
 -- {/where} must not be taken for that one's
 local function where_done(clean)
-  where_line:disable()
+  where_timeout.stop()
+  where_line.set(false)
   util.eat_blanks(clean)
   where_asked = 0
   local line, cb = where_got, where_cb
@@ -770,7 +807,7 @@ end
 
 -- The reply's lines after its {where} tag, up to {/where} - all hidden.
 -- On only for those few lines (5 s at most)
-where_line = rune.trigger.starts("", function(_, ctx)
+where_line.add("starts", "", function(_, ctx)
   local clean = ctx.line:clean()
   if clean:find("^{where}") then return end   -- the tag line that turned it on
   if clean:find("^{/where}") then where_done(clean); return false end
@@ -778,7 +815,6 @@ where_line = rune.trigger.starts("", function(_, ctx)
   if clean:find("{/where}", 1, true) then where_done(clean) end
   return false
 end, { name = "travel_where_line", priority = 5 })
-where_line:disable()
 
 -- Before core/tags.lua cuts the tag out. Only within 5 s of asking. The answer
 -- may come on the tag's line, the closing tag too
@@ -786,18 +822,16 @@ tags.on("where", function(rest, ctx)
   if os.time() - where_asked > 5 then return end
   where_got = not util.blank(rest) and rest or nil
   if rest:find("{/where}", 1, true) then where_done(ctx.line:clean()); return false end
-  where_line:enable()
+  where_line.set(true)
   if where_got then return false end   -- else core/tags.lua hides the bare tag
 end)
 
 function T.where(kw, cb)
   where_asked, where_cb, where_got = os.time(), cb, nil
-  where_gen = where_gen + 1
-  local g = where_gen
   -- No reply in 5 s: cb hears so (else a waiting check would wait forever)
-  rune.timer.after(5, function()
-    if g ~= where_gen or where_asked == 0 then return end
-    where_line:disable()
+  where_timeout.start(5, function()
+    if where_asked == 0 then return end
+    where_line.set(false)
     where_asked, where_got = 0, nil
     cb(nil, "no where reply from the game.")
   end)

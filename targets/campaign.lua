@@ -55,28 +55,26 @@ local notes_until = 0 -- a hidden reply's notes are hidden until then
 local reply_until = 0 -- a typed cp command's reply is read until then
 local on_cp = false   -- on a campaign: the kill's triggers are on
 local REPLY_WAIT = 120   -- tt++'s: the game answers only once a fight is over
-local reply_trig, live_trig = {}, {}
+-- Both groups exist only while on (util.group)
+local reply_trig, live_trig = util.group(), util.group()
 
-local function set(list, on)
-  for _, t in ipairs(list) do if on then t:enable() else t:disable() end end
-end
+local function set(group, on) group.set(on) end
 
 -- Each group on or off, as things stand now
-local sync_gen = 0
+local resync = util.slot()   -- the reply window's end
 local function sync()
   local now = os.time()
   local until_ = math.max(notes_until, reply_until)
   set(reply_trig, #queue > 0 or reading or hiding or now <= until_)
   set(live_trig, on_cp)
   if #queue == 0 and now <= until_ then   -- off again once the window ends
-    sync_gen = sync_gen + 1
-    local g = sync_gen
-    rune.timer.after(until_ - now + 1, function() if g == sync_gen then sync() end end)
+    resync.start(until_ - now + 1, sync)
   end
 end
 
 -- A reply's first line: is it ours?
 local function reply_starts() hiding = table.remove(queue, 1) == true end
+util.hider(function() return hiding end)
 
 local function hide(ctx)
   util.eat_blanks(ctx.line:clean())
@@ -92,7 +90,7 @@ end
 -- The info pane ----------------------------------------------------------
 
 local CYAN, RED = "\27[36m", "\27[31m"
-local gen = 0
+local tick = util.slot()   -- the info row's minute redraw
 
 local function row()
   -- Nothing until cn has picked a mob: a cp check alone (after cp request,
@@ -111,15 +109,15 @@ end
 -- The room comes later than cn: targets/target.lua's check finds it
 target.on_change(function(t) if cur and (not t or t.src == "campaign") then row() end end)
 
-local function minutely(g)
-  if g ~= gen or not ends then return end
+local function minutely()
+  if not ends then return end
   row()
-  rune.timer.after(60 - os.time() % 60, function() minutely(g) end)
+  tick.start(60 - os.time() % 60, minutely)
 end
 
 local function reset()
   list, ends, cur, cur_dead, skipped, on_cp = {}, nil, nil, false, {}, false
-  gen = gen + 1
+  tick.stop()
   target.clear("campaign")
   row()
 end
@@ -164,9 +162,9 @@ local function place_all()
 end
 
 local function reply(pat, fn, name, mode)
-  reply_trig[#reply_trig + 1] = rune.trigger[mode or "regex"](pat, fn, { name = name })
+  reply_trig.add(mode or "regex", pat, fn, { name = name })
 end
-local function live(pat, fn, name) live_trig[#live_trig + 1] = rune.trigger.regex(pat, fn, { name = name }) end
+local function live(pat, fn, name) live_trig.add("regex", pat, fn, { name = name }) end
 
 reply("^You still have to kill (?:\\* )?(.+) \\((.+)\\)$", function(m, ctx)
   if not reading then list, reading, on_cp = {}, true, true; reply_starts() end
@@ -189,8 +187,7 @@ reply("^You have (\\d+) days?, (\\d+) hours? and (\\d+) minutes? left to finish 
     elseif cur and not cur_dead then
       cur.n = count(cur.mob)
     end
-    gen = gen + 1
-    minutely(gen)
+    minutely()
     if hiding then
       hiding, notes_until = false, os.time() + 2   -- the notes that follow
       sync()

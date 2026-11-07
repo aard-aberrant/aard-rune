@@ -47,25 +47,17 @@ local blank = util.blank
 
 -- The description often ends with a blank line of its own, and the game
 -- sends another after {/rdesc}: with {/rdesc} hidden they would show as a
--- double blank. So the description's last line is noted, and when it was
--- blank, the blank after {/rdesc} is hidden. Both catch-alls are only on
--- for those few lines
-local desc_last_blank = false
-
-local desc_watch = rune.trigger.starts("", function(_, ctx)
-  local clean = ctx.line:clean()
-  if clean ~= "{/rdesc}" then desc_last_blank = blank(clean) end
-end, { name = "tags_desc_watch", priority = 90 })
-desc_watch:disable()
-
-local eat_blank
-eat_blank = rune.trigger.starts("", function(_, ctx)
-  local clean = ctx.line:clean()
-  if clean == "{/rdesc}" then return end   -- the line that turned it on
-  eat_blank:disable()
-  if blank(clean) then return false end
-end, { name = "tags_eat_blank", priority = 5 })
-eat_blank:disable()
+-- double blank. So when the description's last line was blank, the blank
+-- after {/rdesc} is hidden. The description is a Rune span (not hidden):
+-- its action runs once, at {/rdesc}, with the block's lines - nothing
+-- looks at the lines in between
+rune.trigger.exact("{rdesc}", function(_, ctx)
+  local lines = ctx.lines
+  local last = #lines >= 3 and lines[#lines - 1]
+  if last and blank(last:clean()) and lines[#lines]:clean() == "{/rdesc}" then
+    util.eat_blanks("{/rdesc}")
+  end
+end, { name = "tags_desc", priority = 90, span = { to = "^\\{/rdesc\\}$", max = 100 } })
 
 -- Walks ------------------------------------------------------------------
 -- A walk sends every step at once (nav/travel.lua), so the game shows every
@@ -75,7 +67,9 @@ eat_blank:disable()
 -- follows each room (a hidden line still reaches later triggers). A step
 -- is one room (a portal or home step too); a count that's off only means
 -- one room more or less shows.
--- The room being hidden is kept. If the walk stops short - a wrong exit
+-- The hider (a catch-all) exists only while a walk runs - added by
+-- hide_rooms, removed when the walk ends - and between hidden rooms it lets
+-- lines through. The room being hidden is kept. If the walk stops short - a wrong exit
 -- (tags.walk_stopped, from nav/travel.lua), a fight, a closed door - it's
 -- printed after all: at once for a wrong exit, else 5 s after the last
 -- room came in. No look is sent.
@@ -84,16 +78,17 @@ eat_blank:disable()
 -- blank line(s) after each.
 local rooms_left = 0   -- rooms of the walk still to come
 local held = {}        -- the last hidden room's lines, as they would show
+local hiding = false   -- inside a hidden room: {rname} to the blank after {/roomchars}
 local in_map = false   -- inside a hidden room's map block
 local eating = false   -- after {/roomchars}: hide one blank line
-local gen = 0          -- bumped by every hidden room, for the 5 s watchdog
+local watch            -- the 5 s watchdog's timer
 
-local room_line
-room_line = rune.trigger.starts("", function(_, ctx)
+local room_line = util.group(true)
+room_line.add("starts", "", function(_, ctx)
+  if not hiding then return end
   local clean = ctx.line:clean()
   if eating then
-    eating = false
-    room_line:disable()
+    eating, hiding = false, false
     if blank(clean) then return false end
     return
   end
@@ -111,7 +106,6 @@ room_line = rune.trigger.starts("", function(_, ctx)
   if not (tag and TAGS[tag]) then held[#held + 1] = ctx.line:raw() end
   return false
 end, { name = "tags_room_hide", priority = 95 })   -- after the tag rewrites
-room_line:disable()
 
 -- Print the held room - the walk stopped in it. Doubled blank lines are
 -- squeezed (the hidden blank after {/rdesc} was kept too)
@@ -129,12 +123,19 @@ end
 -- wrong-exit message is only for a walk
 function tags.walking() return rooms_left > 0 end
 
--- Stop hiding: the catch-all goes off whatever state it was in. A hidden
--- room whose {/roomchars} never came (a walk cut short, a fight in the
--- block) left it on, hiding every line after it - your own echo too
+-- Who started the walk: nil for nav/travel.lua's own (g, speedwalks), else
+-- the owner given to hide_rooms ("maze": areas/partroxis.lua) - travel's
+-- wrong-exit message leaves those walks to their owner
+local owner
+function tags.walk_owner() return rooms_left > 0 and owner or nil end
+
+-- Stop hiding: the walk is over - the catch-all goes, whatever state it
+-- was in. A hidden room whose {/roomchars} never came (a walk cut short, a
+-- fight in the block) would otherwise hide every line after it
 local function stop_hiding()
-  room_line:disable()
-  in_map, eating = false, false
+  room_line.set(false)
+  hiding, in_map, eating = false, false, false
+  if watch then watch:cancel(); watch = nil end
 end
 
 function tags.walk_stopped()
@@ -145,15 +146,13 @@ function tags.walk_stopped()
 end
 
 local function watchdog()
-  gen = gen + 1
-  local mine = gen
-  rune.timer.after(5, function()
-    if mine == gen then tags.walk_stopped() end
-  end)
+  if watch then watch:cancel() end
+  watch = rune.timer.after(5, function() watch = nil; tags.walk_stopped() end)
 end
 
-function tags.hide_rooms(n)
-  rooms_left, held = n, {}
+function tags.hide_rooms(n, who)
+  rooms_left, held, owner = n, {}, who
+  room_line.set(true)
   watchdog()
 end
 
@@ -162,8 +161,7 @@ end
 local function room_starts(name_raw)
   if rooms_left > 1 then
     rooms_left = rooms_left - 1
-    held, in_map, eating = { name_raw }, false, false
-    room_line:enable()
+    held, hiding, in_map, eating = { name_raw }, true, false, false
     watchdog()
     return true
   end
@@ -184,13 +182,6 @@ rune.trigger.regex("^\\{(/?[a-z]+(?: [a-z]+)?)\\}(.*)$", function(m, ctx)
   end
   local kind = TAGS[tag]
   if not kind then return end
-  if tag == "rdesc" then
-    desc_last_blank = false
-    desc_watch:enable()
-  elseif tag == "/rdesc" then
-    desc_watch:disable()
-    if desc_last_blank then eat_blank:enable() end
-  end
   -- A failed cast's {sfail} has a blank line after it, which would show as
   -- a double blank (tt++ affects.tin, seen live): hidden with it
   if tag == "sfail" then util.eat_blanks(ctx.line:clean()); return false end

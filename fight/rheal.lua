@@ -29,7 +29,8 @@ local WAKE_RING = "flux"     -- put on when what it replaced isn't known
 local KEY = "rheal_removed"
 
 local state = "idle"         -- idle, ring, heal, sleep
-local gen = 0                -- per run, so old timers stop
+local loop                   -- the 1 s timer while rh runs
+local wake = util.slot()     -- a second after the tick, asleep: wake
 local pending                -- a cast out: { at, hp, mana }
 local next_at = 0            -- no cast before this
 local cost                   -- mana the last cast took
@@ -88,7 +89,9 @@ end
 local last_state             -- GMCP state at the last char.status
 
 local function stop()
-  state, pending, gen = "idle", nil, gen + 1
+  state, pending = "idle", nil
+  if loop then loop:cancel(); loop = nil end
+  wake.stop()
 end
 
 local function fail(why)
@@ -108,9 +111,7 @@ local function cast()
   rune.send_raw("cast 'incomplete healing'")
 end
 
-local function second(g)
-  if g ~= gen or state == "idle" then return end
-  rune.timer.after(1, function() second(g) end)
+local function second()
   if state ~= "heal" then return end
   if game.state == 8 then return fail("you're fighting") end
   local now = os.time()
@@ -143,9 +144,8 @@ end, { name = "rheal_vitals" })
 -- Asleep at the tick: a second for its heal to count, then wake
 rune.gmcp.on("comm.tick", function()
   if state ~= "sleep" then return end
-  local g = gen
-  rune.timer.after(1, function()
-    if g ~= gen or state ~= "sleep" then return end
+  wake.start(1, function()
+    if state ~= "sleep" then return end
     last_state = nil   -- rh's own wake - not "you woke up" below
     rune.send_raw("wake")
     if hp_pct() > 95 then return finish() end
@@ -173,13 +173,13 @@ rune.alias.exact("rh", function(args)
   if game.state == 8 then return warn("[rh] you're fighting - not starting.") end
   stop()
   state = "ring"
-  local g = gen
   regen_on(function(ok)
-    if g ~= gen then return end
+    if state ~= "ring" then return end   -- rh stop meanwhile
     if not ok then return fail("couldn't put on the regen ring") end
     state = "heal"
     say("[rh] healing to above 95%. rh stop to end.")
-    second(g)
+    loop = rune.timer.every(1, second)
+    second()
   end)
 end)
 

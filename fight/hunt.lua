@@ -34,9 +34,9 @@ local mode       -- nil, "auto" or "trick"
 local mob        -- autohunt: what's hunted; hqq: the keyword
 local n = 1      -- hqq: the number being tried
 local waiting = false   -- autohunt: a hunt owed once the fight ends
-local trig = {}
-
-local function on(yes) for _, t in ipairs(trig) do if yes then t:enable() else t:disable() end end end
+-- The reply triggers exist only while a hunt runs (util.group)
+local replies = util.group()
+local on = replies.set
 
 local function stop(why)
   if not mode then return end
@@ -72,8 +72,10 @@ local function found(how)
   target.set({ kw = kw, src = "manual" })
 end
 
+local count = 0
 local function add(pat, fn, mode)
-  trig[#trig + 1] = rune.trigger[mode or "regex"](pat, fn, { name = "hunt_" .. #trig })
+  replies.add(mode or "regex", pat, fn, { name = "hunt_" .. count })
+  count = count + 1
 end
 
 add("^You are confident that .+ passed through here, heading (\\w+)\\.", function(m) direction(m[1]) end)
@@ -98,7 +100,6 @@ end)
 add("^Not while you are fighting!$", function()
   if mode == "auto" then waiting = true end
 end)
-on(false)
 
 -- The fight is over: the hunt it held up
 rune.gmcp.on("char.status", function()
