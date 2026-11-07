@@ -267,39 +267,18 @@ end, { name = "affects_draw" })
 --   {recoveries affected}
 --   65,Create Totem,312           id,name,secs (tt++'s guess, from slist)
 --   {/recoveries}
--- The row triggers are only on inside the reply. Ours is hidden: every line
--- from the first tag to the last, then the blank line(s) after it.
+-- Each block is a Rune span from its tag to its closing tag, hidden as it
+-- comes: its action reads the rows at the end, then shows the block again
+-- if the reply was typed. A block whose closing tag never came (cut at
+-- `max` lines) shows again too, so no other line is lost with it.
 -- The game answers commands in order, and a reply can come long after the
 -- send - one asked for during a spellup waits behind every spell of it. So
 -- no timeout: each slist affected sent is queued (hidden: ours; shown: a
--- typed one), and each reply takes the first. Only the hiding inside a
--- reply has a safety, 10 s after its first tag.
+-- typed one), and each reply takes the first.
 
 local queue = {}       -- per slist affected not answered yet: true = hide
-local quiet = false    -- the reply being read is ours
-local block            -- "spells" or "recov" while reading
-local spell_row, recov_row, hide_all
-local on_spell, on_recov   -- the row handlers, below
-
--- The row readers exist only inside their block - added at its tag,
--- removed at its end: a disabled trigger is still matched on every line
--- (core/util.lua's note)
-local function row_off()
-  if spell_row then spell_row:remove(); spell_row = nil end
-  if recov_row then recov_row:remove(); recov_row = nil end
-end
-local function row_on(kind)
-  row_off()
-  local fn = kind == "spells" and on_spell or on_recov
-  local t = rune.trigger.starts("", function(_, ctx) fn(ctx.line:clean()) end,
-    { name = kind == "spells" and "affects_slist_spell" or "affects_slist_recov_row" })
-  if kind == "spells" then spell_row = t else recov_row = t end
-end
-
-local function block_off()
-  block = nil
-  row_off()
-end
+local quiet = false    -- the reply being read is ours (from its first block to its second)
+util.hider(function() return queue[1] == true or quiet end)
 
 local function resync()
   queue[#queue + 1] = true
@@ -315,26 +294,11 @@ local function resync_soon(sn)
   soon.start(1, resync)
 end
 
-hide_all = util.group(true)   -- one catch-all, only inside our own reply
-hide_all.add("starts", "", function() return false end,
-  { name = "affects_slist_hide", priority = 2 })
-
-local open_timeout = util.slot()   -- 10 s after a block's first tag
-tags.on("spellheaders affected", function(rest)
-  if rest ~= "" then return end
-  up = {}
-  block = "spells"
-  row_on("spells")
-  changed()
-  quiet = table.remove(queue, 1) == true
-  open_timeout.start(10, function()
-    if block then quiet = false; hide_all.set(false); block_off() end
-  end)
-  if quiet then hide_all.set(true); return false end
-end)
+local function show(lines) for _, l in ipairs(lines) do rune.echo(l:raw()) end end
+local function closed(lines, tag) return lines[#lines]:clean() == tag end
 
 -- sn,name,target,secs,learned,recovery,type - the name may hold commas
-function on_spell(c)
+local function on_spell(c)
   local sn, name, target, secs, _, _, kind = c:match("^(%d+),(.*),(%d+),(%-?%d+),(%-?%d+),(%-?%d+),(%d+)$")
   if not sn then return end
   sn, secs = tonumber(sn), tonumber(secs)
@@ -342,37 +306,29 @@ function on_spell(c)
   up[sn] = secs > 0 and os.time() + secs or 0
 end
 
-tags.on("/spellheaders", function()
-  if block == "spells" then block_off() end
-end)
+rune.trigger.exact("{spellheaders affected}", function(_, ctx)
+  local lines = ctx.lines
+  quiet = table.remove(queue, 1) == true
+  up = {}
+  for i = 2, #lines do on_spell(lines[i]:clean()) end
+  changed()
+  if not (quiet and closed(lines, "{/spellheaders}")) then show(lines) end
+end, { name = "affects_slist_spells", gag = true, span = { to = "^\\{/spellheaders\\}$", max = 300 } })
 
-tags.on("recoveries affected", function()
-  block = "recov"
-  row_on("recov")
-  -- every recovery still running is listed: Create Totem is ready unless
-  -- its row comes
+-- Every recovery still running is listed: Create Totem is ready unless its
+-- row (id,name,secs) comes
+rune.trigger.exact("{recoveries affected}", function(_, ctx)
+  local lines = ctx.lines
   totem.rec_end, totem.ready = 0, true
-end)
-
-function on_recov(c)
-  local sn, secs = c:match("^(%d+),.*,(%d+)$")
-  if tonumber(sn) == 65 then
-    totem.rec_end, totem.ready = os.time() + tonumber(secs), false
+  for i = 2, #lines do
+    local sn, secs = lines[i]:clean():match("^(%d+),.*,(%d+)$")
+    if tonumber(sn) == 65 then totem.rec_end, totem.ready = os.time() + tonumber(secs), false end
   end
-end
-
-tags.on("/recoveries", function(_, ctx)
-  if block ~= "recov" then return end
-  block_off()
   seen = true
   changed()
-  if quiet then
-    quiet = false
-    hide_all.set(false)
-    util.eat_blanks(ctx.line:clean())
-    return false
-  end
-end)
+  if quiet and closed(lines, "{/recoveries}") then util.eat_blanks("{/recoveries}") else show(lines) end
+  quiet = false
+end, { name = "affects_slist_recov", gag = true, span = { to = "^\\{/recoveries\\}$", max = 50 } })
 
 -- The tags ----------------------------------------------------------------
 -- (core/tags.lua hides them)

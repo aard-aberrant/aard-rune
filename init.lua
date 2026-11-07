@@ -10,14 +10,14 @@ end
 -- above it in this list, with a note on why (Lua's require: each runs once,
 -- and /reload starts a fresh Lua state), and returns its table when others
 -- use it:
---   core/      util, game (GMCP state), layout, tags, aliases, login -
+--   core/      util, game (GMCP state), layout, tags, aliases, login, history -
 --              core/layout, core/game and core/util require nothing of ours
 --   panes/     status, group, chats, info, affects, and timer (which
 --              shows in info). Features plug into the panes (status's slots,
 --              info.set); a pane never requires a feature
 --   gear/      eq, invmon
---   nav/       mapper, travel, minimap (the map's pane), moons
---   targets/   target, and quest and campaign, which set it; doubles
+--   nav/       mapper, travel, minimap (the map's pane), moons, repop
+--   targets/   target, and quest and campaign, which set it; doubles, soh
 --   fight/     combat, autocast, heal, hunt, dps, rheal, pup
 --   host/      spup (hosting spellups)
 --   areas/     loader (areas/<zone>.lua while you're in the zone: geniewish,
@@ -66,6 +66,7 @@ end, { name = "jump_on_input" })
 -- The features, by folder. Each requires what it uses, so the order
 -- doesn't matter
 require("core.login")        -- answers the login prompts from .env
+require("core.history")      -- command history kept in history.txt across restarts
 require("core.tags")         -- the game's tag lines, hidden or cut out
 require("core.aliases")      -- one-line aliases: su, sq, qs, gh ...
 require("panes.group")       -- the group pane
@@ -79,10 +80,12 @@ require("nav.minimap")       -- the minimap pane, from the game's map tag
 require("nav.mapper")        -- map/aard.map, kept current from GMCP room.info
 require("nav.travel")        -- routes and g, ga, find, label
 require("nav.moons")         -- the 3MN light, moons, weather notices hidden
+require("nav.repop")         -- the POP light, pop
 require("targets.target")    -- the target: target / t, gm
 require("targets.quest")     -- qx
 require("targets.campaign")  -- cn
 require("targets.doubles")   -- 2XP / 2QP lights, double
+require("targets.soh")       -- soh: School of Horror mob keywords
 require("fight.combat")      -- k, kk, aa
 require("fight.autocast")    -- ac, the AC light
 require("fight.heal")        -- h: incomplete healing, held for the gap between kills

@@ -3,8 +3,8 @@
 -- pane, not a bar, redrawn whole on every change (util.pane - only written
 -- when the text differs), and each second.
 --   row 1: TCK, [row1 slots: QST (targets/quest.lua)], TNL LVL ALN,
---          [row1_end slots: 3MN (nav/moons.lua), 2XP 2QP (targets/doubles.lua)]
---          - later POP; REC (Rune's /log) at the right end
+--          [row1_end slots: POP (nav/repop.lua), 3MN (nav/moons.lua), 2XP 2QP
+--          (targets/doubles.lua)]; REC (Rune's /log) at the right end
 --   row 2: HP MN MV, [row2 slots: AC (fight/autocast.lua)], Enemy (its health),
 --          [row2_end slots: DPS (fight/dps.lua)] on the left - later PUP; your
 --          state, or the enemy's name in red while fighting, on the right
@@ -63,7 +63,7 @@ end
 --   TNL  experience to the next level, red under 300   (char.status)
 --   LVL  your level, left out at 201 and up            (char.status)
 --   ALN  alignment, red under -875, green over 875     (char.status)
--- Not yet: POP (repop), ALN's lock colour
+-- Not yet: ALN's lock colour
 
 function status.field(label, value, width, style)
   return label .. " " .. (style or rune.style.cyan)(string.format("%-" .. width .. "s", tostring(value)))

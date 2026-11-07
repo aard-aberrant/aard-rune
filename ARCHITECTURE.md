@@ -32,11 +32,11 @@ game, not just a connection, uses `game.on_login(fn)`. It runs at the first
 ## Folders and layering
 
 ```
-core/     util  game  layout  tags  aliases  login
+core/     util  game  layout  tags  aliases  login  history
 panes/    status  group  chats  info  affects  timer
 gear/     eq  invmon
-nav/      mapper  travel  minimap  moons
-targets/  target  quest  campaign
+nav/      mapper  travel  minimap  moons  repop
+targets/  target  quest  campaign  doubles  soh
 fight/    combat  autocast  heal  hunt  dps  rheal  pup
 host/     spup (hosting spellups)
 areas/    loader  + one script per zone (geniewish, knossos, partroxis)
@@ -98,14 +98,16 @@ From Rune's source (`lua/matcher.go`) and benchmarks of this config
   every line through Lua. Instead:
   - **a block is a Rune span** (`opts.span = { to = ..., max = ... }`, with
     `gag = true` to hide it): one literal header trigger, and its action runs
-    once with `ctx.lines`. The minimap block and the room description are spans;
+    once with `ctx.lines`. The minimap block, the room description, finger's
+    reply and slist's two blocks are spans. A gagged span whose reply was typed,
+    or whose closing line never came, shows its lines again in its action;
   - `util.group()` holds a declared set of triggers and adds or removes them
-    with `set(on)` (hunt, campaign, the totem, the slist and home-routine
+    with `set(on)` (hunt, campaign, the totem, the home-routine
     hiders, the walk's room hider, the blank-line eater);
   - `util.await(kind, pattern, fn, name, secs)` waits for one reply to
     something just sent (Rune's `once`), then goes (heal's refusal, the login
     config replies);
-  - readers built inline do the same (spup, the partroxis exits, eqdata and slist rows).
+  - readers built inline do the same (spup, the partroxis exits, eqdata rows).
 - **Adding or removing a trigger rebuilds the matcher,** so a trigger toggled
   every combat round (autocast's) stays registered and disabled.
 - **Timers are cancelled, not outlived.** `rune.timer.after` returns a handle with

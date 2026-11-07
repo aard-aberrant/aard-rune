@@ -24,7 +24,7 @@ return {
     [72]  = { good = true,  label = "SHLD", important = true },
     [552] = { good = true,  label = "GFOC", only = { "Shaman" } },
     [518] = { good = true,  label = "GREV", only = { "Shaman" } },
-    [53]  = { good = true,  label = "HAST" },
+    [120] = { good = true,  label = "HGTN", important = true },   -- heighten senses (a skill)
     [66]  = { good = false, label = "POIS" },
     [65]  = { good = false, label = "DISE", also = { "green death" } },
     [29]  = { good = false, label = "CURS" },

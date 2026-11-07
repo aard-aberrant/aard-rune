@@ -22,6 +22,7 @@ local status = require("panes.status")   -- QST, in a row-1 slot
 local info = require("panes.info")       -- the quest's rows
 local target = require("targets.target")   -- qx sets it, a kill or the end drops it
 local travel = require("nav.travel")   -- qx goes; an area's zone from its name
+local soh = require("targets.soh")     -- a School of Horror mob's keyword, on its row
 
 local warn = util.warn
 
@@ -41,7 +42,7 @@ local function row()
     local left = math.max(0, math.ceil((q.ends - os.time()) / 60))
     first = (left < 5 and RED or CYAN) .. left .. "m left"
   end
-  info.set("quest", 50, info.target_rows(first, q.area, q.room, q.targ))
+  info.set("quest", 50, info.target_rows(first, q.area, q.room, soh.label(q.targ, travel.zone_of(q.area))))
 end
 
 local function minutely()
@@ -56,8 +57,12 @@ end
 -- time is running out); "--" until known - asked for at load and each tick.
 -- From comm.quest: "status" is the reply to "request quest" - on a quest
 -- (its target alive - targ - or dead - target = "killed"), ready, or a
--- wait in minutes
-local qst = { state = nil, ready_at = 0, warn = false }   -- nil, "wait", "ready", "active"
+-- wait in minutes. The wait comes in whole minutes, so one number is only
+-- good to a minute (seen live: the game was ready while QST still showed
+-- 1). So during a wait "request quest" goes out each tick (GMCP, nothing
+-- shows): when the answer drops (3 to 2), a minute has just turned, and the
+-- countdown is reset from it - good to a tick. The game's "ready" wins
+local qst = { state = nil, ready_at = 0, warn = false, last = nil }   -- state: nil, "wait", "ready", "active"
 local QST_RD = "\27[30;42mRD\27[0m"              -- black on green
 local QST_AC = "\27[38;2;255;204;170mAC\27[0m"   -- peach
 
@@ -73,11 +78,16 @@ table.insert(status.row1, function()
 end)
 
 local function qst_update(d)
-  local function wait(m)
+  local function wait(m, polled)
     m = tonumber(m) or 0
     qst.warn = false
-    if m <= 0 then qst.state = "ready"
-    else qst.state, qst.ready_at = "wait", os.time() + m * 60 end
+    if m <= 0 then qst.state, qst.last = "ready", nil; return end
+    local at = os.time() + m * 60
+    -- No drop since the last answer: it can only bring the estimate forward
+    if polled and qst.state == "wait" and not (qst.last and m < qst.last) then
+      at = math.min(at, qst.ready_at)
+    end
+    qst.state, qst.ready_at, qst.last = "wait", at, m
   end
   local a = d.action
   if a == "start" then
@@ -86,20 +96,22 @@ local function qst_update(d)
     qst.warn = true
   elseif a == "timeout" or a == "fail" or a == "comp" then
     wait(d.wait)
+  elseif a == "ready" then   -- the game's word wins over our countdown (seen live: it came at 1)
+    wait(0)
   elseif a == "status" then
     if ((d.targ or "") ~= "" and d.targ ~= "killed") or d.target == "killed" then
       qst.state = "active"
     elseif d.status == "ready" then
       wait(0)
     elseif d.wait then
-      wait(d.wait)
+      wait(d.wait, true)
     end
   end
   status.draw()
 end
 
 rune.gmcp.on("comm.tick", function()
-  if not qst.state then rune.gmcp.send("request quest") end
+  if not qst.state or qst.state == "wait" then rune.gmcp.send("request quest") end
 end, { name = "quest_tick" })
 
 -- The event lines (tt++ quest.tin, its colours: red brackets and numbers,

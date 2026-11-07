@@ -6,7 +6,7 @@
 -- flashes it black on red for FLASH seconds, with a beep (info.alert crit, title
 -- TIMER). Nothing
 -- shows while it counts down. A running timer survives /reload (rune.store).
--- Not ported: timer repop (needs repop.tin).
+-- Not ported: timer repop (not wanted, 2026-11-07).
 
 local util = require("core.util")
 local info = require("panes.info")   -- the alert

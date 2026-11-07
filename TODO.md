@@ -13,6 +13,12 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
   (24-bit colour works through tmux). Shown as the game sends it (it keeps your # fixed itself);
   name = lines before the first blank one, colour carried across lines; note max 2 lines
 - Mouse wheel scrolling (main output only)
+- No main-pane jump while lines are hidden (2026-11-07): Rune shows a half line (a packet ending
+  mid-line) as a temporary row before output triggers see it; util_hide_partial (a prompt
+  trigger) holds it back while a hider is on. qc / quest complete no longer flickers
+- Campaign (2026-11-07): an area holding a Dead mob goes last in cn's order (its Dead ones
+  last in it), (DEAD) in red on the info pane; a room name several areas share opens a
+  picker of them (nearest first), walks to the chosen area's entrance, a second cn to the room
 
 ## To check
 
@@ -73,8 +79,13 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
 - [x] Remote socials (init.lua) - confirmed live: "*Name smiles at you." to chats, blanks after
       hidden. Local socials stay in main: no marker or GMCP to tell them from other text
 - [x] Affects pane - see below
-- [ ] Status row 1: POP (repop.tin), 2XP / 2QP (doubles.tin), ALN lock colour. 3MN done (nav/moons.lua,
-      offline-tested 2026-11-07; needs a live check: rise/fall, the quiet weather at login and home)
+- [ ] Status row 1: ALN lock colour still to do. 3MN done (nav/moons.lua,
+      offline-tested 2026-11-07; needs a live check: rise/fall, the quiet weather at login and home).
+      2XP / 2QP done (targets/doubles.lua). POP done (nav/repop.lua, offline-tested 2026-11-07; live:
+      grey estimate after sense life, exact after a repop + sense life, pop's comparison lines).
+      timer repop: not wanted (2026-11-07)
+- [ ] QST (targets/quest.lua, 2026-11-07): RD at the game's ready; during a wait a GMCP request quest
+      each tick, the countdown reset when the minutes drop - live: QST reaches RD with the game's message
       (align.tin). TCK QST TNL LVL ALN done (offline-tested) - QST's warning is red, not flashing
 - [x] Status row 2: Enemy, DPS (fight/dps.lua), AC (fight/autocast.lua). PUP left off the bar by
       choice (2026-11-07): `pup` reports it (fight/pup.lua, offline-tested). The right side is cut to fit
