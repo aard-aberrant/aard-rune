@@ -33,7 +33,7 @@ local say, warn, trim = util.say, util.warn, util.trim
 local on = false
 local cmd, hit        -- ac cast's command and hit word, or nil for pattack's
 local pending = false
-local gen = 0         -- bumped at every send and clear, for the 6 s timeout
+local timeout = util.slot()   -- 6 s after a send: give up waiting for its line
 
 -- The command and hit word in use
 local function attack()
@@ -44,17 +44,15 @@ end
 local result
 
 local function clear()
-  pending, gen = false, gen + 1
+  pending = false
+  timeout.stop()
   result:disable()
 end
 
 local function mark()
-  pending, gen = true, gen + 1
+  pending = true
   result:enable()
-  local g = gen
-  rune.timer.after(6, function()
-    if g == gen and pending then clear() end
-  end)
+  timeout.start(6, function() if pending then clear() end end)
 end
 
 result = rune.trigger.regex(

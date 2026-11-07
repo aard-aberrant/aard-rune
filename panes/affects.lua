@@ -279,10 +279,26 @@ local queue = {}       -- per slist affected not answered yet: true = hide
 local quiet = false    -- the reply being read is ours
 local block            -- "spells" or "recov" while reading
 local spell_row, recov_row, hide_all
+local on_spell, on_recov   -- the row handlers, below
+
+-- The row readers exist only inside their block - added at its tag,
+-- removed at its end: a disabled trigger is still matched on every line
+-- (core/util.lua's note)
+local function row_off()
+  if spell_row then spell_row:remove(); spell_row = nil end
+  if recov_row then recov_row:remove(); recov_row = nil end
+end
+local function row_on(kind)
+  row_off()
+  local fn = kind == "spells" and on_spell or on_recov
+  local t = rune.trigger.starts("", function(_, ctx) fn(ctx.line:clean()) end,
+    { name = kind == "spells" and "affects_slist_spell" or "affects_slist_recov_row" })
+  if kind == "spells" then spell_row = t else recov_row = t end
+end
 
 local function block_off()
   block = nil
-  spell_row:disable(); recov_row:disable()
+  row_off()
 end
 
 local function resync()
@@ -292,42 +308,39 @@ end
 
 -- A spell number not seen: ask once, a second after the last such tag, so
 -- a spellup of new spells costs one query
-local soon_gen = 0
+local soon = util.slot()
 local function resync_soon(sn)
   if asked[sn] then return end
   asked[sn] = true
-  soon_gen = soon_gen + 1
-  local g = soon_gen
-  rune.timer.after(1, function() if g == soon_gen then resync() end end)
+  soon.start(1, resync)
 end
 
-hide_all = rune.trigger.starts("", function() return false end,
+hide_all = util.group(true)   -- one catch-all, only inside our own reply
+hide_all.add("starts", "", function() return false end,
   { name = "affects_slist_hide", priority = 2 })
-hide_all:disable()
 
-local open_gen = 0
+local open_timeout = util.slot()   -- 10 s after a block's first tag
 tags.on("spellheaders affected", function(rest)
   if rest ~= "" then return end
   up = {}
   block = "spells"
-  spell_row:enable()
+  row_on("spells")
   changed()
   quiet = table.remove(queue, 1) == true
-  open_gen = open_gen + 1
-  local g = open_gen
-  rune.timer.after(10, function()
-    if g == open_gen and block then quiet = false; hide_all:disable(); block_off() end
+  open_timeout.start(10, function()
+    if block then quiet = false; hide_all.set(false); block_off() end
   end)
-  if quiet then hide_all:enable(); return false end
+  if quiet then hide_all.set(true); return false end
 end)
 
 -- sn,name,target,secs,learned,recovery,type - the name may hold commas
-spell_row = rune.trigger.regex("^(\\d+),(.*),(\\d+),(-?\\d+),(-?\\d+),(-?\\d+),(\\d+)$", function(m)
-  local sn, secs = tonumber(m[1]), tonumber(m[4])
-  spell[sn] = { name = m[2]:lower(), target = tonumber(m[3]), type = tonumber(m[7]) }
+function on_spell(c)
+  local sn, name, target, secs, _, _, kind = c:match("^(%d+),(.*),(%d+),(%-?%d+),(%-?%d+),(%-?%d+),(%d+)$")
+  if not sn then return end
+  sn, secs = tonumber(sn), tonumber(secs)
+  spell[sn] = { name = name:lower(), target = tonumber(target), type = tonumber(kind) }
   up[sn] = secs > 0 and os.time() + secs or 0
-end, { name = "affects_slist_spell" })
-spell_row:disable()
+end
 
 tags.on("/spellheaders", function()
   if block == "spells" then block_off() end
@@ -335,18 +348,18 @@ end)
 
 tags.on("recoveries affected", function()
   block = "recov"
-  recov_row:enable()
+  row_on("recov")
   -- every recovery still running is listed: Create Totem is ready unless
   -- its row comes
   totem.rec_end, totem.ready = 0, true
 end)
 
-recov_row = rune.trigger.regex("^(\\d+),(.*),(\\d+)$", function(m)
-  if tonumber(m[1]) == 65 then
-    totem.rec_end, totem.ready = os.time() + tonumber(m[3]), false
+function on_recov(c)
+  local sn, secs = c:match("^(%d+),.*,(%d+)$")
+  if tonumber(sn) == 65 then
+    totem.rec_end, totem.ready = os.time() + tonumber(secs), false
   end
-end, { name = "affects_slist_recov_row" })
-recov_row:disable()
+end
 
 tags.on("/recoveries", function(_, ctx)
   if block ~= "recov" then return end
@@ -355,7 +368,7 @@ tags.on("/recoveries", function(_, ctx)
   changed()
   if quiet then
     quiet = false
-    hide_all:disable()
+    hide_all.set(false)
     util.eat_blanks(ctx.line:clean())
     return false
   end
@@ -396,22 +409,22 @@ end)
 -- The totem (Shaman) ------------------------------------------------------
 -- Game text - no tag covers it. Placing one asks a hidden "totem", whose
 -- reply (tt++ log):
---   Totem Name ... Expires                                    (header)
+--   Area         Room   ...   Totem Name      Expires         (header)
 --   ------------ -----------------------------------          (rule)
 --   Wyrm         Center of the Council   Bear Totem   04:02  (the row)
 -- or "You don't currently have a totem." Only those lines are hidden, and
 -- the blank after the last; a typed totem is read the same way and shows.
 
 local totem_quiet = false   -- the reply being read is ours
+util.hider(function() return totem_quiet end)
 local totem_q = {}          -- per totem sent, not answered yet: true = hide
-local totem_trig = {}       -- on for a Shaman
-local reply_trig = {}       -- on only while a totem reply is expected
-local reply_gen = 0
+-- Both exist only while on (util.group)
+local totem_trig = util.group()   -- on for a Shaman
+local reply_trig = util.group()   -- on only while a totem reply is expected
+local reply_timeout = util.slot()   -- 60 s after the last totem sent
 
-local function set(list, on)
-  for _, t in ipairs(list) do if on then t:enable() else t:disable() end end
-end
-local function totem_on(on) set(totem_trig, on) end
+local function set(group, on) group.set(on) end
+local function totem_on(on) totem_trig.set(on) end
 
 -- Send totem and read its reply: hidden (ours) or shown (typed). Queued
 -- like slist above - it may wait behind other commands. A reply that never
@@ -419,12 +432,10 @@ local function totem_on(on) set(totem_trig, on) end
 local function totem_send(hidden)
   totem_q[#totem_q + 1] = hidden
   totem_quiet = totem_q[1]
-  reply_gen = reply_gen + 1
-  local g = reply_gen
   set(reply_trig, true)
   rune.send_raw("totem")
-  rune.timer.after(60, function()
-    if g == reply_gen and totem_q[1] ~= nil then
+  reply_timeout.start(60, function()
+    if totem_q[1] ~= nil then
       totem_q, totem_quiet = {}, false
       set(reply_trig, false)
     end
@@ -442,18 +453,18 @@ local function totem_done(ctx)
   return false
 end
 
-totem_trig[#totem_trig + 1] = rune.trigger.regex("You place an? (\\w+) totem in the room\\.", function(m)
+totem_trig.add("regex", "You place an? (\\w+) totem in the room\\.", function(m)
   totem.type, totem.area, totem.ends, totem.none, totem.ready = m[1], "", 0, false, false
   changed()
   totem_query()
 end, { name = "affects_totem_placed" })
 
-totem_trig[#totem_trig + 1] = rune.trigger.regex("^Your totem has expired\\.", function()
+totem_trig.add("regex", "^Your totem has expired\\.", function()
   totem.type, totem.area, totem.ends = nil, "", 0
   changed()
 end, { name = "affects_totem_expired" })
 
-totem_trig[#totem_trig + 1] = rune.trigger.regex(
+totem_trig.add("regex", 
   "You are still recovering your Create Totem abilities \\((\\d+):(\\d+)\\)", function(m)
   totem.rec_end, totem.ready = os.time() + tonumber(m[1]) * 60 + tonumber(m[2]), false
   changed()
@@ -462,11 +473,11 @@ end, { name = "affects_totem_recovering" })
 -- Literal matches checked in Lua: as regexes these cost 1-1.3 us a line
 -- (see core/util.lua's note on triggers)
 local function head() if totem_quiet then return false end end
-reply_trig[#reply_trig + 1] = rune.trigger.starts("Totem Name", head, { name = "affects_totem_head" })
-reply_trig[#reply_trig + 1] = rune.trigger.starts("------------ -----------------------------------", head,
+reply_trig.add("contains", "Totem Name", head, { name = "affects_totem_head" })
+reply_trig.add("contains", "------------ -----------------------------------", head,
   { name = "affects_totem_rule" })
 
-reply_trig[#reply_trig + 1] = rune.trigger.contains(" Totem ", function(_, ctx)
+reply_trig.add("contains", " Totem ", function(_, ctx)
   local kind, a, b, c = ctx.line:clean():match("(%w+) Totem%s+(%d+):(%d+):?(%d*)%s*$")
   if not kind then return end
   a, b, c = tonumber(a), tonumber(b), tonumber(c)
@@ -477,14 +488,12 @@ reply_trig[#reply_trig + 1] = rune.trigger.contains(" Totem ", function(_, ctx)
   return totem_done(ctx)
 end, { name = "affects_totem_row" })
 
-reply_trig[#reply_trig + 1] = rune.trigger.regex("^You don't currently have a totem\\.", function(_, ctx)
+reply_trig.add("regex", "^You don't currently have a totem\\.", function(_, ctx)
   totem.type, totem.area, totem.ends, totem.none = nil, "", 0, true
   changed()
   return totem_done(ctx)
 end, { name = "affects_totem_none" })
 
-totem_on(false)
-set(reply_trig, false)
 
 rune.alias.exact("totem", function() totem_send(false) end)
 

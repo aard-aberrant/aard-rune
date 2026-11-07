@@ -13,12 +13,16 @@ local shown = {}
 -- Triggers, from Rune's source (lua/core/50_triggers.lua, matcher.go) and
 -- benchmarks of this config (2026-11-06): every registered trigger is
 -- matched in Go against every line, DISABLED ONES TOO - enabled is checked
--- only after a match. So: a catch-all is starts("") (a string compare; a
--- regex ".*" costs ~0.5 us more a line); a pattern that can't be anchored
--- with a literal start (^.+, (\w+) ..., an alternation) is contains/starts
--- plus a check in Lua - those ran 600-1300 ns a line, anchored ones 10-90.
--- Removing and re-adding instead of disabling rebuilds the matcher (~32
--- us+): worth it only for triggers off for more than ~50 lines at a time.
+-- only after a match, and a line with any match at all goes through the Lua
+-- dispatch (a line with none, and no open span, skips Lua). So no catch-all
+-- stays registered: a block is a span (rune.trigger opts.span, e.g. the
+-- minimap), and a reader exists only while it's needed (util.group,
+-- util.await, util.eat_blanks below). A catch-all is starts("") (a regex
+-- ".*" costs ~0.5 us more a line); a pattern that can't be anchored with a
+-- literal start (^.+, (\w+) ..., an alternation) is contains/starts plus a
+-- check in Lua - those ran 600-1300 ns a line, anchored ones 10-90. Adding
+-- or removing a trigger rebuilds the matcher, so one toggled every round
+-- (autocast's) stays registered, disabled.
 
 function util.pane(name, text)
   if shown[name] == text then return end
@@ -39,18 +43,113 @@ function util.strip(s) return (s:gsub("\27%[[%d;\\]*m", "")) end
 -- Nothing but spaces
 function util.blank(s) return s:match("^%s*$") ~= nil end
 
+-- Half a line, hidden while something hides lines. When a packet ends
+-- mid-line, Rune shows that half at once, as a temporary row at the foot of
+-- the main pane, before any output trigger sees it (session.go: the partial
+-- line goes to the prompt overlay, and only "prompt" triggers see it). The
+-- whole line then replaces it - and if a hider hides that line, the row
+-- comes and goes: the main pane jumps a row and back. So while any hider
+-- is on, the half line isn't shown (it shows when complete, if it isn't
+-- hidden - so a hider on too long only delays a half line, never loses it). A confirmed prompt (GA/EOR) is never touched. The prompt pass
+-- sees only those half lines and prompts, never ordinary lines, so this one
+-- stays registered. util.hider(fn): fn() is true while its owner hides lines
+local hiders = {}
+function util.hider(fn) hiders[#hiders + 1] = fn end
+rune.trigger.starts("", function(_, ctx)
+  if ctx.confirmed then return end
+  for _, on in ipairs(hiders) do
+    if on() then return false end
+  end
+end, { name = "util_hide_partial", on = "prompt" })
+
+-- Triggers that exist only while on: declared once, added by set(true),
+-- removed by set(false) - in place of enable/disable, since a disabled
+-- trigger is still matched on every line, and any match at all (disabled
+-- too) sends the line through Rune's Lua dispatch. Only for groups that are
+-- off for long stretches: each add or remove rebuilds the matcher.
+--   local g = util.group(hides)   hides: true for a group that hides lines
+--   g.add(kind, pattern, fn, opts)   kind: regex, exact, starts, contains
+--   g.set(on)    g.is_on()
+function util.group(hides)
+  local specs, live = {}, nil
+  local g = {}
+  local function make(s) return rune.trigger[s[1]](s[2], s[3], s[4]) end
+  function g.add(kind, pattern, fn, opts)
+    local s = { kind, pattern, fn, opts }
+    specs[#specs + 1] = s
+    if live then live[#live + 1] = make(s) end
+  end
+  function g.set(on)
+    if on and not live then
+      live = {}
+      for i, s in ipairs(specs) do live[i] = make(s) end
+    elseif not on and live then
+      for _, t in ipairs(live) do t:remove() end
+      live = nil
+    end
+  end
+  function g.is_on() return live ~= nil end
+  if hides then util.hider(g.is_on) end
+  return g
+end
+
 -- Hide the blank line(s) the game sends after a line a trigger has just
 -- hidden (tt++ ||gag_line). `clean` is that line's text, so the eater skips
--- it if it sees it. Off again at the first line that isn't blank
-local eat_skip, eater
-eater = rune.trigger.starts("", function(_, ctx)
+-- it if it sees it (it can, when the eater was on already). Off again at
+-- the first line that isn't blank. The eater exists only while it's eating
+local eat_skip
+local eater = util.group(true)
+eater.add("starts", "", function(_, ctx)
   local clean = ctx.line:clean()
   if clean == eat_skip then eat_skip = nil; return end
   if util.blank(clean) then return false end
-  eater:disable()
+  eater.set(false)
 end, { name = "util_eat_blanks", priority = 5 })
-eater:disable()
-function util.eat_blanks(clean) eat_skip = clean; eater:enable() end
+function util.eat_blanks(clean) eat_skip = clean; eater.set(true) end
+
+-- A timer slot: start(secs, fn) cancels the slot's waiting timer (Rune's
+-- timer handles) and starts a new one, stop() cancels it - in place of a
+-- generation counter that every stale timer had to check
+--   local t = util.slot()
+--   t.start(secs, fn)    t.stop()    t.running()
+function util.slot()
+  local h
+  local s = {}
+  function s.start(secs, fn)
+    if h then h:cancel() end
+    local mine
+    mine = rune.timer.after(secs, function()
+      if h == mine then h = nil end
+      fn()
+    end)
+    h = mine
+  end
+  function s.stop() if h then h:cancel(); h = nil end end
+  function s.running() return h ~= nil end
+  return s
+end
+
+-- A one-off reply: a rune.trigger[kind] (exact, starts, contains) on
+-- pattern that exists only until its first match (Rune's once) or `secs`
+-- (default 10) - for a reply to something just sent. fn(m, ctx) is the
+-- trigger's function, its return value the trigger's. A second call with
+-- the same name replaces a waiting one
+local awaiting = {}   -- name -> { trigger, timer }
+function util.await(kind, pattern, fn, name, secs)
+  local old = awaiting[name]
+  if old then old[1]:remove(); old[2]:cancel() end
+  local w
+  w = {
+    rune.trigger[kind](pattern, function(m, ctx)
+      if awaiting[name] == w then awaiting[name] = nil; w[2]:cancel() end
+      return fn(m, ctx)
+    end, { name = name, once = true }),
+    rune.timer.after(secs or 10, function()
+      if awaiting[name] == w then awaiting[name] = nil; w[1]:remove() end
+    end),
+  }
+  awaiting[name] = w
+end
 
 -- Plain text word-wrapped to lines of at most w characters; a word longer
 -- than w is cut

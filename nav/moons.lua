@@ -280,15 +280,15 @@ for _, pkg in ipairs({ "room.info", "char.status" }) do
 end
 
 -- Login: weather messages on (noweather off - its "## Setting ..." reply is
--- hidden), a reading owed, one asked for at once
+-- hidden, by a trigger that exists only until it comes, or 10 s), a
+-- reading owed, one asked for at once
 game.on_login(function()
+  util.await("exact", "## Setting noweather to off.", function(_, ctx) return hide(ctx) end, "moons_cfg_reply")
   rune.gmcp.send("config noweather off")
   owed = true
   ask_at = 0
   ask()
 end)
-rune.trigger.regex("^## Setting noweather to (on|off)\\.$", function(_, ctx) return hide(ctx) end,
-  { name = "moons_cfg_reply" })
 
 -- Ticks, rises, falls, reboots --------------------------------------------
 

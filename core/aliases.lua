@@ -20,6 +20,7 @@ local A = {
   ll     = "rlook %1 %2 %3;map",
   donate = "gdonate %0",
   tend   = "uncurse;wear beacon",
+  f      = "finger %0",
 }
 
 local aliases = {}

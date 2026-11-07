@@ -49,33 +49,41 @@ end
 
 local on_rows        -- callback waiting for the reply: on_rows(worn), worn =
                      -- id -> { name, loc }
-local gen = 0        -- per eqwear, so an old timer leaves a new one alone
+local no_reply = util.slot()   -- 10 s after eqdata is sent
 local worn           -- id -> true, filling
-local row_line
+local row_line       -- the row reader: exists only inside a reply
 
 local function hide(ctx) util.eat_blanks(ctx.line:clean()); return false end
+
+-- A row: id,flags,name,level,type,unique,wearloc,... - the name may hold
+-- commas, so it runs up to the first four numbers after it. Added at
+-- {eqdata}, removed at {/eqdata} (or the timeout): a disabled trigger is
+-- still matched on every line (core/util.lua's note)
+util.hider(function() return row_line ~= nil end)
+local function row_off() if row_line then row_line:remove(); row_line = nil end end
+local function row_on()
+  row_off()
+  row_line = rune.trigger.starts("", function(_, ctx)
+    local id, rest = ctx.line:clean():match("^(%d+),(.*)$")
+    if not id then return end
+    local name, loc = (rest .. ","):match("^[^,]*,(.-),%-?%d+,%-?%d+,%-?%d+,(%-?%d+),")
+    worn[id] = { name = name and util.trim((name:gsub("@x%d%d?%d?", ""):gsub("@.", ""))),
+                 loc = tonumber(loc) }
+    return false
+  end, { name = "eq_row", priority = 5 })
+end
 
 tags.on("eqdata", function(rest, ctx)
   if not on_rows or rest ~= "" then return end
   worn = {}
-  row_line:enable()
+  row_on()
   return hide(ctx)
 end)
 
--- A row: id,flags,name,level,type,unique,wearloc,... - the name may hold
--- commas, so it runs up to the first four numbers after it
-row_line = rune.trigger.regex("^(\\d+),(.*)$", function(m)
-  local rest = m[2] .. ","
-  local name, loc = rest:match("^[^,]*,(.-),%-?%d+,%-?%d+,%-?%d+,(%-?%d+),")
-  worn[m[1]] = { name = name and util.trim((name:gsub("@x%d%d?%d?", ""):gsub("@.", ""))),
-                 loc = tonumber(loc) }
-  return false
-end, { name = "eq_row", priority = 5 })
-row_line:disable()
 
 tags.on("/eqdata", function(rest, ctx)
   if not on_rows or rest ~= "" then return end
-  row_line:disable()
+  row_off()
   local cb = on_rows
   on_rows = nil
   cb(worn)
@@ -85,11 +93,9 @@ end)
 -- Ask for eqdata, hidden; cb(worn) with the reply. false if one is out
 local function eqdata(cb, what)
   if on_rows then warn("[eq] " .. what .. ": still waiting for eqdata."); return false end
-  gen = gen + 1
-  local g = gen
   on_rows = cb
-  rune.timer.after(10, function()   -- no reply
-    if g == gen and on_rows then on_rows = nil; row_line:disable(); warn("[eq] " .. what .. ": no eqdata reply.") end
+  no_reply.start(10, function()
+    if on_rows then on_rows = nil; row_off(); warn("[eq] " .. what .. ": no eqdata reply.") end
   end)
   rune.send_raw("eqdata")
   return true
@@ -350,5 +356,14 @@ local function check_worn()   -- false if an eqdata was already out
 end
 
 game.on_login(check_worn)
+
+-- Beating the idle logout (tt++ modules/afk.tin sent board all): at the
+-- game's idle warning, a hidden eqdata - any command resets the idle clock,
+-- and this one's reply is hidden already. The line, "Your eyes glaze over.",
+-- isn't in the tt++ logs: the wording is from a gossip tip ("just trigger
+-- "Your eyes glaze over." to look or score") and others going idle in the
+-- room ("X's eyes glaze over and he appears to be somewhere else."). tt++
+-- matched it anywhere; anchored here, so a channel quoting it can't set it off
+rune.trigger.starts("Your eyes glaze over.", function() check_worn() end, { name = "afk_glaze" })
 
 return { bag = EQBAG, check_worn = check_worn }

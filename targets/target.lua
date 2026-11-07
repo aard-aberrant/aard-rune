@@ -73,7 +73,7 @@ local function check()
     if not room then
       -- Not found: said only in its own area - while the area is unknown
       -- the check runs in every area you enter
-      if t.zone == zone then warn("[target] " .. label(t) .. ": where can't find it in this area.") end
+      if travel.same_area(t.zone, zone) then warn("[target] " .. label(t) .. ": where can't find it in this area.") end
       return
     end
     local news = { "in " .. room }   -- where it is now, as where says
@@ -107,7 +107,7 @@ rune.timer.every(1, function()
   local zone = game.room.zone
   if zone == "" then return end
   pending = false
-  if cur.zone and cur.zone ~= zone then return end   -- not its area
+  if cur.zone and not travel.same_area(cur.zone, zone) then return end   -- not its area
   check()
 end, { name = "target_check" })
 
@@ -115,7 +115,7 @@ function target.go()
   local t = cur
   if not t then return warn("[target] no target - target <kw>, gm <mob> or qx.") end
   local here = game.room.zone
-  if t.zone and t.zone ~= here then return travel.go_area(t.zone) end
+  if t.zone and not travel.same_area(t.zone, here) then return travel.go_area(t.zone) end
   if t.room then return travel.go_room(t.zone or here, t.room, "target " .. label(t)) end
   -- No room: ask where, once it's free
   if checking or travel.where_busy() then

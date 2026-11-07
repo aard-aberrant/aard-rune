@@ -116,6 +116,8 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
 - g sendhian: "get gvozd portalbag" first; on "You get ..." holds and enters it, else (2 s,
   none left) the usual route. Limited-use portals: zone instead of vnum in data/portals.lua.
 - gm: the where reply's room is matched by name in the area you asked from (nearest wins)
+- qx to soh (confirmed live 2026-11-07): one step, the soh portal, ending in 30765 (sohtwo) - zones
+  sharing a full name (soh/sohtwo) are one area (travel.same_area), so no "enter unknown"
 
 ## Report upstream (Rune)
 
@@ -166,6 +168,12 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
       indexed; g <area> and qx share go_zones; campaign's hidden cp check queued, not timed
 - [ ] Later (user, 2026-11-06): a comprehensive debugging / logging mechanism, and a
       benchmarking one - shared by every module, replacing one-off traces like the old ac trace
+      Rune's own `go test ./lua -bench TriggerDispatch` (github.com/mmcdole/rune) measured the
+      trigger cost (2026-11-06); in-game timing should cover route search, map load, pane redraws.
+- [ ] Moons (nav/moons.lua), kept as the full tt++ port for now (2026-11-07) - revisit with the
+      benchmarks: the simple version (rise/fall + ticks only, ~120 lines; up to ~22 min to know all
+      three after login), or carrying the phases across a logout (saved at disconnect, moved on by
+      the time away / tick length, checked by one weather - unverified that ticks are steady enough)
 - [x] g tanra (2026-11-06): the map's Portal Chamber (28357) e exit pointed at 181, really the
       weather observatory - removed with map unlink e, route fine since. Added: mf (route shown, not
       walked), a failed walk names the first step that went wrong, map unlink / map exit (nav/mapper.lua),
@@ -175,3 +183,15 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
 - [ ] autohunt / autohuntoff / hqq / hqof (fight/hunt.lua, offline-tested): tt++ hunt.tin; hunt replies are
       game text, triggers on only while one runs; a fight pauses autohunt until char.status says
       it's over; hqq's find becomes the target (N.mob). Not ported: huntmaster before hqq
+- [ ] Area scripts (areas/loader.lua, offline-tested): loaded on entering the zone, removed on leaving;
+      areascripts. geniewish (ftl wff wfa mini), knossos. partroxis (2026-11-07, offline-tested): maze
+      navigator (mazerun/mazenext/..., speedrun back after a wrong exit, rooms hidden) and graxkeys.
+      Check live: the exits reply's end line, a fight mid-run, the dwarf's room (5830 a guess).
+      Next: blackclaw (breath grid, rr/rrs) + always-loaded bcc / bcc find
+- [ ] spup / spn / spq (host/spup.lua, offline-tested 2026-11-07): tt++ spuphost.tin. Test mode on at every
+      load - spup test off to really gossip. Check live: the gossip toggle's
+      hint line, the sitting check on a wrapped "is / sitting here." entry
+- [ ] 2XP / 2QP (targets/doubles.lua, offline-tested 2026-11-07): tt++ doubles.tin; hidden double at login.
+      Check live: the double reply's QP lines and its "not running" lines (tt++ guessed them), whether
+      INFO lines come as text or the GMCP info channel (both read)
+- [ ] REC at status row 1's right end (panes/status.lua): flashes while Rune's /log is open

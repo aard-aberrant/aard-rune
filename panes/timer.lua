@@ -16,7 +16,7 @@ local say, warn = util.say, util.warn
 local FLASH = 10
 local KEY = "timer"
 local t       -- { ends, msg } while counting down
-local gen = 0
+local due = util.slot()   -- the countdown's end
 
 local function store(v)
   if v then pcall(rune.store.set, KEY, v) else pcall(rune.store.delete, KEY) end
@@ -27,8 +27,8 @@ local function mmss(secs)
   return m > 0 and (m .. "m" .. s .. "s") or (s .. "s")
 end
 
-local function fire(g)
-  if g ~= gen or not t then return end
+local function fire()
+  if not t then return end
   local msg = t.msg
   t = nil
   store(false)
@@ -37,11 +37,9 @@ local function fire(g)
 end
 
 local function start(ends, msg)
-  gen = gen + 1
   t = { ends = ends, msg = msg }
   store({ ends = ends, msg = msg })
-  local g = gen
-  rune.timer.after(math.max(0, ends - os.time()), function() fire(g) end)
+  due.start(math.max(0, ends - os.time()), fire)
 end
 
 rune.alias.exact("timer", function(args)
@@ -52,7 +50,8 @@ rune.alias.exact("timer", function(args)
   end
   if text == "clear" then
     if not t and not info.alert_clear("TIMER") then return say("[timer] none running.") end
-    gen, t = gen + 1, nil
+    due.stop()
+    t = nil
     store(false)
     info.alert_clear("TIMER")
     return say("[timer] cleared.")

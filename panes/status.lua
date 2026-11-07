@@ -3,7 +3,8 @@
 -- pane, not a bar, redrawn whole on every change (util.pane - only written
 -- when the text differs), and each second.
 --   row 1: TCK, [row1 slots: QST (targets/quest.lua)], TNL LVL ALN,
---          [row1_end slots: 3MN (nav/moons.lua)] - later POP 2XP 2QP
+--          [row1_end slots: 3MN (nav/moons.lua), 2XP 2QP (targets/doubles.lua)]
+--          - later POP; REC (Rune's /log) at the right end
 --   row 2: HP MN MV, [row2 slots: AC (fight/autocast.lua)], Enemy (its health),
 --          [row2_end slots: DPS (fight/dps.lua)] on the left - later PUP; your
 --          state, or the enemy's name in red while fighting, on the right
@@ -62,7 +63,7 @@ end
 --   TNL  experience to the next level, red under 300   (char.status)
 --   LVL  your level, left out at 201 and up            (char.status)
 --   ALN  alignment, red under -875, green over 875     (char.status)
--- Not yet: POP (repop), 3MN (moons), 2XP/2QP (doubles), ALN's lock colour
+-- Not yet: POP (repop), ALN's lock colour
 
 function status.field(label, value, width, style)
   return label .. " " .. (style or rune.style.cyan)(string.format("%-" .. width .. "s", tostring(value)))
@@ -100,8 +101,18 @@ end
 
 local SCROLLED = " SCROLLED - Ctrl+End "
 
+-- REC at row 1's right end (tt++ ticking.tin): Rune's /log open - it flashes
+-- each second, black on red, then bright red (the terminal's blink didn't
+-- show in tt++); dim when not logging. rune.log.status() is the open log's
+-- path or nil
+local function rec()
+  if not rune.log.status() then return rune.style.gray("REC") end
+  if os.time() % 2 == 0 then return "\27[30;41mREC\27[0m" end
+  return "\27[38;2;255;0;0mREC\27[0m"
+end
+
 function status.draw()
-  local row1 = status_row1()
+  local row1 = spread(status_row1(), rec(), layout.RIGHT_W)
   local left = meter("HP", game.hp, game.maxhp) .. " "
     .. meter("MN", game.mana, game.maxmana) .. " "
     .. meter("MV", game.moves, game.maxmoves)
