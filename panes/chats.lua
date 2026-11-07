@@ -2,6 +2,41 @@
 -- and its scroll keys.
 local util = require("core.util")
 local game = require("core.game")   -- at login
+local layout = require("core.layout")   -- the pane's height (what the restore fills)
+
+-- The log: every line the pane gets is appended to chats.log, with its date
+-- ("2026-11-07<TAB>14:03 (Group) ..."), kept for good (tt++'s
+-- log/Aardwolf-chats) - colour codes and all (less -R reads them). Rune
+-- empties the pane when it quits, so at start its last RESTORE lines (a
+-- paneful) are written back; a /reload keeps the pane (only Lua restarts),
+-- so not then (rune.session lasts until Rune quits). Only the file's end is read
+local LOG = rune.config_dir .. "/chats.log"
+local RESTORE = layout.CHATS_H
+
+local function chat(text)
+  text = text:gsub("\n", " ")
+  rune.pane.write("chats", text)
+  local fh = io.open(LOG, "a")
+  if fh then fh:write(os.date("%Y-%m-%d"), "\t", text, "\n"); fh:close() end
+end
+
+if not rune.session.get("chats_restored") then
+  rune.session.set("chats_restored", "1")
+  local ok, err = pcall(function()
+    local fh = io.open(LOG, "r")
+    if not fh then return end
+    local size = fh:seek("end")
+    fh:seek("set", math.max(0, size - RESTORE * 400))
+    local lines = {}
+    for l in fh:lines() do lines[#lines + 1] = l end
+    fh:close()
+    if size > RESTORE * 400 then table.remove(lines, 1) end   -- the cut first line
+    for i = math.max(1, #lines - RESTORE + 1), #lines do
+      rune.pane.write("chats", (lines[i]:gsub("^[^\t]*\t", "")))
+    end
+  end)
+  if not ok then util.err("[chats] can't read " .. LOG .. ": " .. tostring(err)) end
+end
 
 -- Channels over GMCP only: the GMCP message "gmcpchannels on" makes the
 -- game stop sending channels and tells as text (tt++ modules/gmcp.tin sent
@@ -24,7 +59,7 @@ rune.gmcp.on("comm.channel", function(d)
   if d.chan == "mobsay" then
     rune.echo(d.msg)
   else
-    rune.pane.write("chats", rune.style.gray(os.date("%H:%M")) .. " " .. d.msg)
+    chat(rune.style.gray(os.date("%H:%M")) .. " " .. d.msg)
   end
 end, { name = "aard_channel" })
 
@@ -36,7 +71,7 @@ end, { name = "aard_channel" })
 rune.trigger.regex("^\\*[A-Z][A-Za-z]+ .*[.!?]$", function(_, ctx)
   local clean = ctx.line:clean()
   if clean:find("  ", 1, true) then return end
-  rune.pane.write("chats", rune.style.gray(os.date("%H:%M")) .. " " .. ctx.line:raw())
+  chat(rune.style.gray(os.date("%H:%M")) .. " " .. ctx.line:raw())
   util.eat_blanks(clean)
   return false
 end, { name = "remote_social" })
@@ -55,8 +90,16 @@ rune.trigger.regex("^-+ Player : ", function(_, ctx)
 end, { name = "chats_finger", gag = true, span = { to = "^-+$", max = 40 } })
 
 -- Scrolling the chats pane. PgUp/PgDn and Ctrl+Home/Ctrl+End scroll the
--- main output (Rune's defaults); the same keys with Shift scroll chats.
--- Shift+End goes back to live tailing.
-rune.bind("shift+pgup", function() rune.pane.scroll_up("chats", 10) end)
-rune.bind("shift+pgdown", function() rune.pane.scroll_down("chats", 10) end)
-rune.bind("shift+end", function() rune.pane.scroll_to_bottom("chats") end)
+-- main output (Rune's defaults); the same keys with Alt scroll chats, and
+-- Alt+End goes back to live tailing. Shift too - but most terminals keep
+-- Shift+PgUp for their own scrollback (Shift didn't scroll chats live
+-- 2026-11-07 - the terminal, presumably). The mouse wheel scrolls only the main output: Rune sends
+-- every wheel tick there, wherever the pointer is (ui/tui/model.go)
+local function up() rune.pane.scroll_up("chats", 10) end
+local function down() rune.pane.scroll_down("chats", 10) end
+local function live() rune.pane.scroll_to_bottom("chats") end
+for _, mod in ipairs({ "alt", "shift" }) do
+  rune.bind(mod .. "+pgup", up)
+  rune.bind(mod .. "+pgdown", down)
+  rune.bind(mod .. "+end", live)
+end

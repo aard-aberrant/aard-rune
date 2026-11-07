@@ -9,14 +9,17 @@
 --   You have D days, H hours and M minutes left to finish this campaign.
 -- Area-based: every live mob's place is an area in data/areas.lua. Else
 -- room-based: the room's area comes from the map, when only one area has a
--- room of that name.
+-- room of that name; when several do, cn opens a picker of them (nearest
+-- first) and walks to the entrance of the one you choose - a second cn
+-- goes on to the room, as qx does.
 -- Kills come in any order: "Congratulations, that was one of your CAMPAIGN
 -- mobs!" sends a hidden cp check, and the fresh list replaces the old - the
 -- current mob is dead when fewer of its name are left. Then the target is
 -- cleared and the pane says so; cn takes the next.
---   cn        the current campaign mob, else the next: this area's first,
---             then areas with only live mobs, then mixed ones, Dead
---             ones, and mobs whose area can't be told last
+--   cn        the current campaign mob, else the next (pick, below): areas
+--             with no Dead mob first, an area holding one last (its Dead
+--             ones last in it). A Dead target shows (DEAD) in red on the
+--             info pane until a cp check lists it alive
 --   cn next   skip the current one for the next
 -- The info pane (panes/info.lua), priority 60, from the first cn on: time left
 -- and mobs left, area, room, mob. On load a hidden cp check rebuilds the
@@ -40,6 +43,7 @@ local game = require("core.game")       -- the area you're in (cn's order)
 local info = require("panes.info")       -- the campaign's rows
 local target = require("targets.target")   -- cn sets it, a kill drops it
 local travel = require("nav.travel")   -- areas, zone_of, the map's room names
+local soh = require("targets.soh")     -- a School of Horror mob's keyword, on its row
 
 local say, warn = util.say, util.warn
 
@@ -102,7 +106,23 @@ local function row()
   local first = CYAN .. #list .. " left, " .. time
   local t = target.get()
   local room = cur.room or (t and t.src == "campaign" and t.room) or nil
-  info.set("campaign", 60, info.target_rows(first, cur.area_name, room, cur.mob,
+  -- The area's line counts the campaign mobs still in it (the target's
+  -- included, Dead ones too), when there's more than one
+  local area = cur.area_name
+  if area and cur.zone then
+    local n = 0
+    for _, e in ipairs(list) do if e.zone == cur.zone then n = n + 1 end end
+    if n > 1 then area = area .. " (" .. n .. " left)" end
+  end
+  -- Listed Dead (not repopped yet) in the last cp check: (DEAD) after its name
+  local mob = soh.label(cur.mob, cur.zone)
+  for _, e in ipairs(list) do
+    if e.mob == cur.mob and e.place == cur.place then
+      if e.dead then mob = mob .. " " .. RED .. "(DEAD)" end
+      break
+    end
+  end
+  info.set("campaign", 60, info.target_rows(first, area, room, mob,
     cur_dead and "killed - cn for next"))
 end
 
@@ -266,26 +286,25 @@ sync()
 
 -- cn --------------------------------------------------------------------
 
--- The next entry: this area's live mobs, then its Dead ones, then areas
--- with only live mobs, mixed areas (live first), then Dead-only areas -
--- each in cp check order. Then mobs whose area is unknown, and last the
--- ones cn next skipped
+-- The next entry: areas with no Dead mob first - the one you're in, then
+-- the rest in cp check order; then mobs placed only by a room name several
+-- areas share (cn opens a picker of them); then areas holding a Dead mob
+-- (yours first), the Dead ones last in each; then mobs the map doesn't
+-- know. Last of all, the ones cn next skipped
 local function pick()
-  local here, live, dead, first = game.room.zone, {}, {}, {}
+  local here, dead, first = game.room.zone, {}, {}
   for i, e in ipairs(list) do
     local z = e.zone or ("?" .. i)
-    if e.dead then dead[z] = true else live[z] = true end
+    if e.dead then dead[z] = true end
     first[z] = first[z] or i
   end
   local best, best_key
   for i, e in ipairs(list) do
     local z = e.zone or ("?" .. i)
     local tier
-    if not e.zone then tier = 5   -- can't be walked to
-    elseif e.zone == here then tier = e.dead and 1 or 0
-    elseif not dead[z] then tier = 2
-    elseif live[z] then tier = 3
-    else tier = 4 end
+    if not e.zone then tier = (e.where and #e.where > 1) and 2 or 5
+    elseif not dead[z] then tier = e.zone == here and 0 or 1
+    else tier = e.zone == here and 3 or 4 end
     if skipped[e.mob] then tier = tier + 10 end
     local key = { tier, first[z], e.dead and 1 or 0, i }
     local better = not best_key
@@ -299,9 +318,21 @@ local function pick()
   return best
 end
 
+-- Returns true when it sent you on your way itself (the area picker)
 local function aim(e)
   cur, cur_dead = e, false
   cur.n = count(e.mob)
+  if not e.zone and e.where and #e.where > 1 then
+    target.clear("campaign")   -- none until you choose its area
+    row()
+    travel.go_area_of(e.where, e.mob .. ": " .. e.place, function(zone)
+      local a = travel.areas[zone]
+      e.zone, e.area_name = zone, a and a.name or nil
+      target.set({ name = e.mob, zone = zone, room = e.room, src = "campaign" })
+      row()
+    end)
+    return true
+  end
   if not e.zone then
     local where = e.where and #e.where > 1 and (" - in " .. table.concat(e.where, ", ")) or ""
     warn("[campaign] " .. e.mob .. ": can't tell the area of \"" .. e.place .. "\"" .. where .. ".")
@@ -316,7 +347,9 @@ rune.alias.exact("cn", function(args)
   local skip = util.trim(args) == "next"
   if skip and cur then skipped[cur.mob] = true end
   if skip or not cur or cur_dead then
-    aim(pick())
+    if aim(pick()) then return end
+  elseif not cur.zone and cur.where and #cur.where > 1 then
+    return aim(cur)   -- the picker again: none chosen yet
   else
     local t = target.get()
     if not (t and t.src == "campaign" and t.name == cur.mob) then

@@ -69844,7 +69844,7 @@ R	24213	ygg	air	1		Sea of Tranquility
 X	24213	24186	d		
 R	24214	ygg	mountain	3		Descent into Svartalfheim
 X	24214	24215	d		
-R	24215	ygg	mountain			Deeper into the Caverns
+R	24215	ygg	mountain	2		Deeper into the Caverns
 X	24215	24214	u		
 X	24215	24216	d		
 R	24216	ygg	mountain	1		Into the Darkest Regions
@@ -109052,7 +109052,7 @@ X	38599	38600	e
 X	38599	38598	w		
 R	38600	fortune	icehills			In the Counting House
 X	38600	38599	w		
-R	38601	fortune	icehills			In the Streets
+R	38601	fortune	icehills	2		In the Streets
 X	38601	38597	s		
 X	38601	38602	e		
 X	38601	38604	n		

@@ -23,6 +23,7 @@
 -- Also here: hiding the rooms a walk passes through (tags.hide_rooms, below).
 
 local util = require("core.util")
+local game = require("core.game")   -- fighting (a fight ends a walk's hiding)
 
 local tags = {}
 
@@ -71,7 +72,8 @@ end, { name = "tags_desc", priority = 90, span = { to = "^\\{/rdesc\\}$", max = 
 -- hide_rooms, removed when the walk ends - and between hidden rooms it lets
 -- lines through. The room being hidden is kept. If the walk stops short - a wrong exit
 -- (tags.walk_stopped, from nav/travel.lua), a fight, a closed door - it's
--- printed after all: at once for a wrong exit, else 5 s after the last
+-- printed after all: at once for a wrong exit or a fight (an aggressive mob
+-- on the way - GMCP char.status says fighting), else 5 s after the last
 -- room came in. No look is sent.
 -- The game's runto sends a bare name line for each room it passes,
 -- "{rname}Whitewind Avenue (G) (5882)" - those are always hidden, with the
@@ -144,6 +146,13 @@ function tags.walk_stopped()
   rooms_left = 0
   show_held()
 end
+
+-- A fight during a walk stops it where you are: that room shows at once,
+-- before the fight's lines, not 5 s into them (seen live 2026-11-07: it
+-- looked like a stray look). Moves sent after it show their rooms, if any run
+rune.gmcp.on("char.status", function()
+  if game.state == 8 and (rooms_left > 0 or #held > 0) then tags.walk_stopped() end
+end, { name = "tags_walk_fight" })
 
 local function watchdog()
   if watch then watch:cancel() end

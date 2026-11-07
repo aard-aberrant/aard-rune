@@ -33,6 +33,7 @@ local MAP_ME = "\27[38;2;0;255;0m●\27[0m"
 
 local map_buf = {}   -- { raw = ..., clean = ... } for each line of the block
 local show_next = false   -- the next block answers a map you typed: show it
+local quiet_next = false  -- the next block answers the login map: hide a blank after it
 
 local function blank(line) return util.blank(line.clean) end
 
@@ -197,6 +198,9 @@ rune.trigger.exact("<MAPSTART>", function(_, ctx)
   if show_next then
     show_next = false
     for _, l in ipairs(map_buf) do rune.echo(l.raw) end
+  elseif quiet_next then
+    quiet_next = false
+    util.eat_blanks("<MAPEND>")
   end
   map_layout()
 end, { name = "aard_map", priority = 10, gag = true, span = { to = "^<MAPEND>$", max = 120 } })
@@ -226,6 +230,15 @@ rune.alias.exact("map", function(args)
   end
   show_next = true
   rune.send_raw(args ~= "" and ("map " .. args) or "map")
+end)
+
+-- At login and after a /reload, a silent map: the pane is filled straight
+-- away, not at your first move (the game sends the map only with a room).
+-- Its block is hidden as every one is, and a blank line after it with it
+-- (a guess - the bare map reply's shape isn't seen yet; nothing if none)
+game.on_login(function()
+  quiet_next = true
+  rune.send_raw("map")
 end)
 
 return minimap

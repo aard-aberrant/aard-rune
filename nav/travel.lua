@@ -761,6 +761,22 @@ end)
 -- also come on the tag's own line, the closing tag too. where only covers
 -- your own area, and some areas refuse it ("There are too many doors ...").
 
+-- One of `zones`, chosen: each is a choice, measured to its entrance (its
+-- room nearest you) - one reachable goes straight there, several open the
+-- picker (nearest first, with its steps). It walks to the entrance only;
+-- on_pick(zone) runs as the walk is sent. For a campaign room name several
+-- areas share (targets/campaign.lua)
+function T.go_area_of(zones, title, on_pick)
+  local choices = {}
+  for _, z in ipairs(zones) do
+    choices[#choices + 1] = { text = area_label(z), desc = "area " .. z, zone = z, what = "area " .. z }
+  end
+  choose(title, choices, nil, function(prev, how, v, w)
+    on_pick(M.rooms[v].area)
+    walk(prev, how, v, w)
+  end)
+end
+
 -- To the room named `room` in `zone` - the nearest, if several share it.
 -- In the area you're in: walked when the map has a way on foot, else by
 -- any route (home, portals)

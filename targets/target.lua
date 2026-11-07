@@ -28,6 +28,12 @@ local util = require("core.util")
 local game = require("core.game")       -- the area you're in
 local tags = require("core.tags")       -- no check while a walk is running
 local travel = require("nav.travel")   -- where, probe, go_area, go_room, areas
+local soh = require("targets.soh")     -- School of Horror mobs' hidden keywords
+
+-- The keyword: a School of Horror mob's saved one when none is given (its
+-- names aren't its keywords) - set with the target, so k has it at once,
+-- and tried first by the check
+local function first_kw(t) return t.kw or soh.for_mob(t.name, t.zone or game.room.zone) end
 
 local target = {}
 
@@ -52,6 +58,7 @@ local function changed() for _, fn in ipairs(listeners) do fn(cur) end end
 function target.get() return cur end
 
 function target.set(t)
+  t.kw = first_kw(t)
   cur = t
   pending = true
   say("[target] " .. label(t) .. (t.zone and (" in " .. area_name(t.zone)) or "") .. ".")
@@ -88,7 +95,7 @@ local function check()
     changed()
   end
   if t.name then
-    travel.probe(t.name, function(kw, room) found(kw, t.name, room) end, t.kw)
+    travel.probe(t.name, function(kw, room) found(kw, t.name, room) end, first_kw(t))
   else
     travel.where(t.kw, function(name, room) found(t.kw, name, name and room) end)
   end
@@ -134,7 +141,7 @@ function target.go()
   if t.kw then
     travel.where(t.kw, function(name, room) walk(t.kw, name, room) end)
   else   -- a name only (campaign, quest): find a keyword that fits
-    travel.probe(t.name, function(kw, room) walk(kw, kw and t.name, room) end)
+    travel.probe(t.name, function(kw, room) walk(kw, kw and t.name, room) end, first_kw(t))
   end
 end
 
