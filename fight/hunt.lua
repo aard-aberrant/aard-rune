@@ -1,0 +1,142 @@
+-- Hunting (tt++ modules/hunt.tin). Both read the game's hunt replies - game
+-- text, there is no GMCP for hunt - with triggers that are on only while
+-- one runs. Starting either stops the other.
+--   autohunt <mob>   hunt, take the direction it gives, hunt again ... until
+--                    you arrive or hunt can't lead you there. A fight pauses
+--                    it: the next hunt goes when GMCP says the fight is over
+--   autohuntoff      stop it
+--   hqq [mob]        the hunt trick: hunt 1.mob, 2.mob, 3.mob ... A reply
+--                    with a direction means that one can be hunted, so it's
+--                    the wrong one; "unable to hunt that target" (or "is
+--                    here!") marks the right one, which becomes the target
+--                    (targets/target.lua: N.mob, and its check finds the room).
+--                    No mob: the target's keyword
+--   hqof             give up on an hqq
+-- Not ported: tt++'s huntmaster cast before hqq (a Hunter on a global
+-- quest, from variables nothing set).
+-- The replies (tt++'s patterns):
+--   You are confident that X passed through here, heading D.
+--   You are certain that X is D from here.
+--   You have no idea what you're doing, but maybe X is|left D?   (hqq: wrong)
+--   X is here!
+--   No one in this area by the name X
+--   You seem unable to hunt that target for some reason.
+--   You couldn't find a path to X from here.
+--   Not while you are fighting!
+
+local util = require("core.util")
+local game = require("core.game")       -- fighting or not
+local target = require("targets.target")   -- hqq's mob becomes it; hqq's default
+
+local say, warn, trim = util.say, util.warn, util.trim
+
+local mode       -- nil, "auto" or "trick"
+local mob        -- autohunt: what's hunted; hqq: the keyword
+local n = 1      -- hqq: the number being tried
+local waiting = false   -- autohunt: a hunt owed once the fight ends
+local trig = {}
+
+local function on(yes) for _, t in ipairs(trig) do if yes then t:enable() else t:disable() end end end
+
+local function stop(why)
+  if not mode then return end
+  local was = mode
+  mode, waiting = nil, false
+  on(false)
+  if why then
+    say((was == "auto" and "[autohunt] off - " or "[hqq] ") .. why .. (was == "auto" and (" (" .. mob .. ")") or ""))
+  end
+end
+
+local function hunt()
+  if mode == "trick" then return rune.send_raw("hunt " .. n .. "." .. mob) end
+  if game.state == 8 then waiting = true; return end
+  rune.send_raw("hunt " .. mob)
+end
+
+-- A direction: autohunt walks it and hunts again; for hqq, a wrong mob
+local function direction(dir)
+  if mode == "auto" then
+    rune.send_raw(dir)
+    return hunt()
+  end
+  say("[hqq] wrong mob - " .. n .. "." .. mob)
+  n = n + 1
+  hunt()
+end
+
+local function found(how)
+  local kw = n .. "." .. mob
+  say("[hqq] " .. how .. " - " .. kw)
+  stop()
+  target.set({ kw = kw, src = "manual" })
+end
+
+local function add(pat, fn, mode)
+  trig[#trig + 1] = rune.trigger[mode or "regex"](pat, fn, { name = "hunt_" .. #trig })
+end
+
+add("^You are confident that .+ passed through here, heading (\\w+)\\.", function(m) direction(m[1]) end)
+add("^You are certain that .+ is (\\w+) from here\\.", function(m) direction(m[1]) end)
+add("^You have no idea what you're doing, but maybe .+ (?:is|left) \\w+", function()
+  if mode == "trick" then direction() end
+end)
+-- contains + a check: the regex ^.+ is here!$ cost 600 ns a line (core/util.lua)
+add(" is here!", function(_, ctx)
+  if not ctx.line:clean():find(" is here!$") then return end
+  if mode == "auto" then stop("arrived") else found("mob in the room") end
+end, "contains")
+add("You seem unable to hunt that target for some reason\\.", function()
+  if mode == "auto" then stop("that mob can't be hunted") else found("right mob") end
+end)
+add("^No one in this area by the name ", function()
+  stop(mode == "auto" and "no such mob here" or "wrong area, wrong mob, or no_hunt.")
+end)
+add("^You couldn't find a path to .+ from here\\.$", function()
+  if mode == "auto" then stop("no path") else direction() end
+end)
+add("^Not while you are fighting!$", function()
+  if mode == "auto" then waiting = true end
+end)
+on(false)
+
+-- The fight is over: the hunt it held up
+rune.gmcp.on("char.status", function()
+  if mode == "auto" and waiting and game.state ~= 8 then
+    waiting = false
+    hunt()
+  end
+end, { name = "hunt_fight_over" })
+
+rune.alias.exact("autohunt", function(args)
+  local m = trim(args)
+  if m == "" then return warn("[autohunt] autohunt <mob>") end
+  stop()
+  mode, mob = "auto", m
+  on(true)
+  say("[autohunt] hunting " .. m .. " - autohuntoff to stop.")
+  hunt()
+end)
+
+rune.alias.exact("autohuntoff", function()
+  if mode ~= "auto" then return say("[autohunt] not running.") end
+  stop("stopped")
+end)
+
+rune.alias.exact("hqq", function(args)
+  local m = trim(args)
+  if m == "" then
+    local t = target.get()
+    m = t and t.kw and t.kw:gsub("^%d+%.", "") or ""
+    if m == "" then return warn("[hqq] hqq <mob> - or set a target with a keyword first.") end
+  end
+  stop()
+  mode, mob, n = "trick", m, 1
+  on(true)
+  hunt()
+end)
+
+rune.alias.exact("hqof", function()
+  if mode ~= "trick" then return say("[hqq] not running.") end
+  stop("given up")
+end)

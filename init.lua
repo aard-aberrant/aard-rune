@@ -1,0 +1,99 @@
+-- Rune trial for Aardwolf (2026-11-06)
+-- Port of the tt++ setup (aardwolf-tintin), piece by piece. See TODO.md.
+
+-- The same GMCP packages the tt++ setup asks for (modules/gmcp.tin)
+for _, pkg in ipairs({ "Char", "Room", "Comm", "Core", "Group" }) do
+  rune.gmcp.subscribe(pkg, 1)
+end
+
+-- The files, by folder. Each requires only from its own folder or the ones
+-- above it in this list, with a note on why (Lua's require: each runs once,
+-- and /reload starts a fresh Lua state), and returns its table when others
+-- use it:
+--   core/      util, game (GMCP state), layout, tags, aliases, login -
+--              core/layout, core/game and core/util require nothing of ours
+--   panes/     status, group, chats, info, affects, and timer (which
+--              shows in info). Features plug into the panes (status's slots,
+--              info.set); a pane never requires a feature
+--   gear/      eq, invmon
+--   nav/       mapper, travel, minimap (the map's pane), moons
+--   targets/   target, and quest and campaign, which set it
+--   fight/     combat, autocast, heal, hunt, dps, rheal, pup
+-- data/ is settings and game data, map/ the map, tools/ the converters.
+-- This file only sets Rune up and lists the features
+local util = require("core.util")
+require("core.layout")     -- the panes, and the picker wrapper
+
+-- Ctrl+E goes to the end of the input line, as in a shell (Ctrl+A already
+-- goes to the start). Rune binds Ctrl+E to "edit the line in $EDITOR" -
+-- that moves to Alt+E. set_cursor takes a byte offset, and #text is the
+-- line's length in bytes
+rune.bind("ctrl+e", function()
+  rune.input.set_cursor(#rune.input.get())
+end)
+rune.bind("alt+e", "input.open_editor")
+
+-- Mouse wheel scrolling (3 lines a tick, main output only). While Rune has
+-- the mouse, a drag goes to Rune, not to tmux or the terminal, so text can't
+-- be selected. F12 switches it: on to scroll with the wheel, off to select
+-- and copy. Starts on.
+local mouse_on = true
+rune.config.set("mouse", mouse_on)
+rune.bind("f12", function()
+  mouse_on = not mouse_on
+  rune.config.set("mouse", mouse_on)
+  if mouse_on then
+    util.say("[mouse] wheel scrolling on - F12 to select text")
+  else
+    util.say("[mouse] off - select text freely, F12 for wheel scrolling")
+  end
+end)
+
+-- Sending a command while the main pane is scrolled back jumps it to live
+-- output, as Ctrl+End would (Rune's own binding, 95_ui.lua - run through
+-- binds._dispatch; scroll_to_bottom on the pane as well, in case). The
+-- status line shows SCROLLED meanwhile (panes/status.lua). A pane can't take a
+-- background colour - Rune's layout refuses bg/background/style (tried)
+rune.hooks.on("input", function()
+  if rune._state.scroll_mode ~= "scrolled" then return end
+  pcall(rune.pane.scroll_to_bottom, "output")
+  pcall(rune.binds._dispatch, "ctrl+end")
+end, { name = "jump_on_input" })
+
+-- The features, by folder. Each requires what it uses, so the order
+-- doesn't matter
+require("core.login")        -- answers the login prompts from .env
+require("core.tags")         -- the game's tag lines, hidden or cut out
+require("core.aliases")      -- one-line aliases: su, sq, qs, gh ...
+require("panes.group")       -- the group pane
+require("panes.chats")       -- the chats pane: channels, tells, remote socials
+require("panes.status")      -- the status pane (TCK, HP/MN/MV, Enemy ...)
+require("panes.info")        -- the info pane: quest, campaign, alerts, account, infomsg
+require("panes.timer")       -- timer
+require("panes.affects")     -- the affects pane, saf, affectsreset
+require("gear.eq")           -- eqwear, eqsave, eqcheck, eqsets
+require("nav.minimap")       -- the minimap pane, from the game's map tag
+require("nav.mapper")        -- map/aard.map, kept current from GMCP room.info
+require("nav.travel")        -- routes and g, ga, find, label
+require("nav.moons")         -- the 3MN light, moons, weather notices hidden
+require("targets.target")    -- the target: target / t, gm
+require("targets.quest")     -- qx
+require("targets.campaign")  -- cn
+require("fight.combat")      -- k, kk, aa
+require("fight.autocast")    -- ac, the AC light
+require("fight.heal")        -- h: incomplete healing, held for the gap between kills
+require("fight.hunt")        -- autohunt, hqq
+require("fight.dps")         -- the DPS meter
+require("fight.rheal")       -- rh, sleep, the regen ring on waking
+require("fight.pup")         -- pup: powerup pace
+
+-- /reload starts every table above empty, and the game only sends char.*
+-- and group when something changes - ask for both now so the bar and the
+-- group pane fill at once (the plain "request group" form, confirmed live).
+-- The room too: the mapper and the travel commands need to know where you are
+rune.gmcp.send("request char")
+rune.gmcp.send("request group")
+rune.gmcp.send("request room")
+rune.gmcp.send("request quest")   -- QST
+
+util.say("[init.lua] loaded.")
