@@ -63,7 +63,7 @@ rune.alias.exact("k", function(args)
     elseif t then
       warn("[combat] k: no keyword for " .. t.name .. " - k <mob>.")
     else
-      warn("[combat] k: no target - k <mob>, or set one: target <kw>, gm <mob>, qx.")
+      rune.echo("\27[38;5;246mk: no target\27[0m")   -- quiet gray (the user, 2026-11-08); help k has the rest
     end
   end
 end)
@@ -96,7 +96,7 @@ end
 
 -- Help (core/help.lua): /help, xhelp
 local help = require("core.help")
-help.add("k", "k [mob]", "your primary attack: on <mob>; bare in a fight: your enemy; bare out of one: the target, by its keyword")
+help.add("k", "k [mob]", "your primary attack: on <mob>; bare in a fight: your enemy; bare out of one: the target, by its keyword (set one with target <kw>, gm <mob> or qx)")
 help.add("kk", "kk [mob]", "your secondary attack")
 help.add("aa", "aa", "your area attack")
 

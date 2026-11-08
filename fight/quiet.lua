@@ -2,26 +2,23 @@
 -- matched as in a Rune log of a group fight (~/combat, 2026-11-07): GMCP
 -- sends only totals, not what one kill gave.
 --
--- A kill's rewards on one line. These are hidden as they come:
---   You receive 87+9 experience points.
+-- A fight's rewards on one line. These are hidden as they come:
+--   You receive 87+9 experience points.           (one per kill - the count)
 --   You receive 96 bonus experience points to rejoice in ...
 --   You receive 75 'rare kill' experience bonus.      (the user's log 2026-11-07)
 --   You get 5,767 gold coins from the blasted corpse of ...
 --   You share 5,767 gold coins with 2 other members. Your share is 1,923 gold.
 --   Scars shares 5,732 gold coins with 2 others. Your share is 1,910 gold.
 --   Gigantic Golem Arm crumbles into 2,000 gold pieces.
---   You are taxed 19 gold coins by your clan.     (also "25 gold by"; only after
---                                                   a kill's gold - a sale's shows)
--- and at the game's prompt (GA/EOR-confirmed), or 1 s after the last one if
--- no prompt comes, one line shows:
---   +267 xp (87+9+96 bonus+75 rare), +1,891 gold
--- The xp total first, then its parts: the experience line's (87+9), the
--- bonus, and each quoted one by its first word ('rare kill': rare). Gold is
--- what you keep: the coins you got, less what you shared away, plus your
--- share of others', less the clan's tax. A second experience line starts the next kill's.
--- Every other line shows as it comes (campaign, banish, an item from the
--- corpse ...) - no list of the lines that can come between: the summary
--- follows the round's lines, just before the prompt.
+--   You are taxed 19 gold coins by your clan.     (also "25 gold by")
+-- while your GMCP state is fighting (8), and added up. When the state
+-- changes, one line shows - the last kill's lines come before the change
+-- (debug quiet, live 2026-11-07; the game sends no prompt Rune sees):
+--   +1,234 xp, +5,678 gold (4 kills)
+-- Gold is what you keep: the coins you got, less what you shared away, plus
+-- your share of others', less the clan's tax. Every other line shows as it
+-- comes (campaign, banish, an item from the corpse ...), and so do these
+-- out of a fight (a sale's tax).
 --
 -- "You have 38 tells waiting. Type 'replay' ..." - after nearly every kill:
 -- shown only when the number changes.
@@ -33,7 +30,6 @@
 -- (an item in a room - "... skinned from X lies here" - still shows)
 
 local util = require("core.util")
-local style = rune.style
 
 local function num(s) return tonumber((s:gsub(",", ""))) or 0 end
 local function commas(n)
@@ -42,84 +38,90 @@ local function commas(n)
   return s
 end
 
--- Kill rewards -------------------------------------------------------------
+-- Fight rewards -----------------------------------------------------------
 
-local r            -- this kill's: { xp, bonus, gold, tax } or nil
-local watch = util.group()   -- the prompt that ends a kill's lines
-local idle = util.slot()     -- or 1 s after the last of them
+local game = require("core.game")   -- fighting or not
+local dbg = require("core.debug").topic("quiet", "the fight total: GMCP state changes, reward lines, when it shows")
 
-local function flush()
-  idle.stop()
-  watch.set(false)
-  if not r then return end
-  local total, parts = 0, {}
-  if r.xp then
-    for n in r.xp:gmatch("[%d,]+") do total = total + num(n) end
-    parts[#parts + 1] = r.xp
+local t            -- this fight's: { xp, gold, kills } or nil
+
+-- The line: right-justified in the main pane (its width: layout.RIGHT_W),
+-- as a powerline-style tab - a left-pointing triangle in the tab's colour,
+-- then the text on that colour, up against it:
+--                                           <|+314 xp, +13,458 gold (2 kills)
+-- The triangle is the powerline glyph U+E0B2, which fills its cell (needs
+-- a terminal or font that draws it); "◀" (U+25C0) is the plain stand-in.
+-- Colour codes written out - rune.style's end in a reset, which would end
+-- the background too
+local layout = require("core.layout")
+local ESC = string.char(27)
+local TRI = "\238\130\178"   -- U+E0B2, one column
+local TAB = { 75, 100, 160 }    -- the tab's colour (r, g, b)
+local function rgb(kind, c) return string.format("%s[%d;2;%d;%d;%dm", ESC, kind, c[1], c[2], c[3]) end
+local XP, GOLD, DIM = rgb(38, { 130, 225, 130 }), rgb(38, { 240, 210, 90 }), rgb(38, { 215, 220, 230 })
+
+local function show()
+  if not t then return end
+  if dbg.on then dbg.log("show") end
+  local parts, plain = {}, {}
+  local function part(code, text)
+    parts[#parts + 1] = code .. text
+    plain[#plain + 1] = text
   end
-  if r.bonus > 0 then total = total + r.bonus; parts[#parts + 1] = commas(r.bonus) .. " bonus" end
-  for _, k in ipairs(r.kinds or {}) do
-    total = total + k[2]
-    parts[#parts + 1] = commas(k[2]) .. " " .. (k[1]:match("^%S+") or k[1])
+  if t.xp > 0 then part(XP, "+" .. commas(t.xp) .. " xp") end
+  if t.gold ~= 0 then
+    if parts[1] then part(DIM, ", ") end
+    part(GOLD, (t.gold > 0 and "+" or "") .. commas(t.gold) .. " gold")
   end
-  local out = {}
-  if parts[1] then
-    out[#out + 1] = style.green("+" .. commas(total) .. " xp") .. style.gray(" (" .. table.concat(parts, "+") .. ")")
-  end
-  local gold = r.gold - r.tax
-  if r.gold ~= 0 or r.tax > 0 then
-    out[#out + 1] = style.yellow((gold >= 0 and "+" or "") .. commas(gold) .. " gold")
-  end
-  r = nil
-  if out[1] then rune.echo(table.concat(out, style.gray(", "))) end
+  local kills = t.kills
+  t = nil
+  if not parts[1] then return end
+  if kills > 0 then part(DIM, " (" .. kills .. (kills == 1 and " kill)" or " kills)")) end
+  local width = 1 + #table.concat(plain)   -- the triangle, the text
+  rune.echo(string.rep(" ", math.max(0, layout.RIGHT_W - width))
+    .. rgb(38, TAB) .. TRI .. rgb(48, TAB) .. table.concat(parts) .. ESC .. "[0m")
 end
 
-local function cur()
-  r = r or { bonus = 0, gold = 0, tax = 0 }
-  return r
+local function tot()
+  t = t or { xp = 0, gold = 0, kills = 0 }
+  return t
+end
+
+local function add_xp(s)
+  local c = tot()
+  for n in s:gmatch("[%d,]+") do c.xp = c.xp + num(n) end
 end
 
 -- Each reward line: its pattern on the clean line, and what it adds
 local REWARDS = {
-  { "^You receive ([%d,+]+) experience points?%.$", function(x)
-      if r and r.xp then flush() end   -- the next kill's
-      cur().xp = x
-    end },
-  { "^You receive ([%d,]+) bonus experience points?", function(n) cur().bonus = cur().bonus + num(n) end },
-  { "^You receive ([%d,]+) '([^']+)' experience bonus%.$", function(n, kind)
-      local c = cur()
-      c.kinds = c.kinds or {}
-      c.kinds[#c.kinds + 1] = { kind, num(n) }
-    end },
-  { "^You get ([%d,]+) gold coins? from ", function(n) cur().gold = cur().gold + num(n) end },
+  { "^You receive ([%d,+]+) experience points?%.$", function(x) add_xp(x); t.kills = t.kills + 1 end },
+  { "^You receive ([%d,]+) bonus experience points?", add_xp },
+  { "^You receive ([%d,]+) '[^']+' experience bonus%.$", add_xp },
+  { "^You get ([%d,]+) gold coins? from ", function(n) local c = tot(); c.gold = c.gold + num(n) end },
   { "^You share ([%d,]+) gold coins? with .-Your share is ([%d,]+) gold%.$", function(all, mine)
-      cur().gold = cur().gold - num(all) + num(mine)
+      local c = tot()
+      c.gold = c.gold - num(all) + num(mine)
     end },
   { "^%S+ shares [%d,]+ gold coins? with .-Your share is ([%d,]+) gold%.$", function(mine)
-      cur().gold = cur().gold + num(mine)
+      local c = tot()
+      c.gold = c.gold + num(mine)
     end },
-  { "^.+ crumbles into ([%d,]+) gold pieces%.$", function(n) cur().gold = cur().gold + num(n) end },
-  -- "gold coins by" or "gold by". Only in a kill's lines (it comes after
-  -- the gold) - a sale's tax shows as the game sent it
-  { "^You are taxed ([%d,]+) gold.- by your clan%.$", function(n)
-      if not r then return "show" end
-      r.tax = r.tax + num(n)
-    end },
+  { "^.+ crumbles into ([%d,]+) gold pieces%.$", function(n) local c = tot(); c.gold = c.gold + num(n) end },
+  -- "gold coins by" or "gold by"
+  { "^You are taxed ([%d,]+) gold.- by your clan%.$", function(n) local c = tot(); c.gold = c.gold - num(n) end },
 }
 
-local function reward(c)
+local function on_reward(_, ctx)
+  if game.state ~= 8 then return end
+  local c = ctx.line:clean()
   for _, p in ipairs(REWARDS) do
     local a, b = c:match(p[1])
-    if a then return p[2], a, b end
+    if a then
+      if dbg.on then dbg.log("reward (state " .. tostring(game.state) .. "): " .. c:sub(1, 40)) end
+      p[2](a, b)
+      return false
+    end
   end
-end
-
-local function on_reward(_, ctx)
-  local fn, a, b = reward(ctx.line:clean())
-  if not fn or fn(a, b) == "show" then return end
-  watch.set(true)
-  idle.start(1, flush)
-  return false
 end
 -- Cheap prefixes and substrings (Go-side), the line checked in Lua after
 rune.trigger.starts("You receive ", on_reward, { name = "quiet_xp" })
@@ -128,12 +130,15 @@ rune.trigger.starts("You are taxed ", on_reward, { name = "quiet_tax" })
 rune.trigger.contains(" gold coins with ", on_reward, { name = "quiet_share" })
 rune.trigger.contains(" crumbles into ", on_reward, { name = "quiet_crumble" })
 
--- While a kill's lines are coming: the game's prompt (GA/EOR-confirmed)
--- ends them. A half line (a packet ending mid-line) also comes through the
--- prompt pass, unconfirmed - not the end
-watch.add("starts", "", function(_, ctx)
-  if ctx.confirmed then flush() end
-end, { name = "quiet_end", on = "prompt" })
+-- The fight's over: the total shows
+local last_state
+rune.gmcp.on("char.status", function()
+  if dbg.on and game.state ~= last_state then
+    dbg.log("state " .. tostring(last_state) .. " -> " .. tostring(game.state) .. (t and ", total open" or ""))
+  end
+  last_state = game.state
+  if game.state ~= 8 then show() end
+end, { name = "quiet_fight_end" })
 
 -- The tells reminder ---------------------------------------------------------
 

@@ -2,9 +2,11 @@
 
 local util = {}
 
--- Messages: cyan for news, yellow for a problem, red for an error
+-- Messages: cyan for news, a muted amber for a problem (xterm-256 179,
+-- #d7af5f - plain yellow was bright and jarring, the user 2026-11-08), red
+-- for an error
 function util.say(s) rune.echo(rune.style.cyan(s)) end
-function util.warn(s) rune.echo(rune.style.yellow(s)) end
+function util.warn(s) rune.echo("\27[38;5;179m" .. s .. "\27[0m") end
 function util.err(s) rune.echo(rune.style.red(s)) end
 
 -- Replace a pane's text - only when it differs from what was last put

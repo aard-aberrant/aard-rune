@@ -17,10 +17,25 @@
 --     stays blank
 -- Every line is cut at the pane's width (layout.MINIMAP_W). Down and up exits (< and >) become arrows,
 -- as in map.tin, and your # becomes MAP_ME.
+--
+-- Running (the user, 2026-11-08): a run - the game's run, runto - sends no
+-- map block for the rooms it passes, while GMCP room.info still comes for
+-- every room, so the map stood still under a changing header. The rule:
+-- a room.info with no map block since the one before means a room without
+-- its map - the pane shows the header and RUNNING in place of the map. The
+-- next map block draws the map again. Works whichever comes first, the
+-- map block or room.info (either is seen - the header note below): with
+-- the map first, RUNNING from a run's first room; with room.info first,
+-- from its second, the first showing the last map a moment. A run the game
+-- aborts ("Too many run errors.") ends with no room shown, so
+-- nav/travel.lua calls minimap.refresh(): a silent map, as at login.
+-- Cost: nothing per line - a flag set at each map block, read at each
+-- room.info.
 
 local util = require("core.util")
 local game = require("core.game")       -- the room's zone and vnum
 local mapper = require("nav.mapper")   -- the room's note
+local maprec = require("nav.maprec")   -- map record / plan / edit / drop / apply
 local layout = require("core.layout")   -- the pane's size
 
 local minimap = {}
@@ -127,15 +142,32 @@ local function last_sgr(raw)
   return found
 end
 
+-- The header: zone | vnum, in yellow
+local function header()
+  local room = game.room
+  local head = room.zone or ""
+  if room.num and room.num ~= -1 then head = head .. " | " .. room.num end
+  return rune.style.yellow(head)
+end
+
+-- On a run: the header, and RUNNING in the middle of the pane
+local map_since_info = false   -- a map block came since the last room.info
+local function running_layout()
+  local out = { header() }
+  local word = "RUNNING"
+  local mid = math.floor(H / 2)
+  while #out < mid do out[#out + 1] = "" end
+  out[#out + 1] = string.rep(" ", math.floor((W - #word) / 2)) .. rune.style.bold(word)
+  util.pane("minimap", table.concat(out, "\n"))
+end
+
 local function map_layout()
   local lines = map_buf
   local i, n = 1, #lines
   while i <= n and blank(lines[i]) do i = i + 1 end
   local out = {}
   local room = game.room
-  local head = room.zone
-  if room.num and room.num ~= -1 then head = head .. " | " .. room.num end
-  out[1] = rune.style.yellow(head)
+  out[1] = header()
   -- the room name: up to the first whitespace-only line
   local carry = ""
   while i <= n and not blank(lines[i]) do
@@ -202,6 +234,7 @@ rune.trigger.exact("<MAPSTART>", function(_, ctx)
     quiet_next = false
     util.eat_blanks("<MAPEND>")
   end
+  map_since_info = true
   map_layout()
 end, { name = "aard_map", priority = 10, gag = true, span = { to = "^<MAPEND>$", max = 120 } })
 
@@ -209,24 +242,37 @@ end, { name = "aard_map", priority = 10, gag = true, span = { to = "^<MAPEND>$",
 -- map block: drawn again then, so they never show the room you just left
 -- (core/game.lua has stored it already)
 rune.gmcp.on("room.info", function()
+  if not map_since_info then   -- this room came without its map: a run
+    running_layout()
+    return
+  end
+  map_since_info = false
   if map_buf[1] then map_layout() end
 end, { name = "minimap_room" })
 
 -- map: the game's map, shown in the main output too (the minimap takes
 -- every map block, so a typed map showed nothing). Also the map editing
 -- commands (nav/mapper.lua):
+--   map info                   where you are on the map (nav/mapper.lua)
 --   map unlink <exit>          remove a wrong exit from this room
 --   map exit <vnum> <command>  add an exit GMCP doesn't list (custom exits)
+--   map record, plan, edit, drop, apply   record a way past a room (nav/maprec.lua)
 rune.alias.exact("map", function(args)
   args = util.trim(args)
   local sub, rest = args:match("^(%S+)%s*(.-)$")
-  if sub == "unlink" then
+  if sub == "info" and rest == "" then
+    mapper.info()
+    return
+  elseif sub == "unlink" then
     local msg, ok = mapper.unlink(rest)
     return (ok and util.say or util.warn)(msg)
   elseif sub == "exit" then
     local v, cmd = rest:match("^(%d+)%s+(.+)$")
     local msg, ok = mapper.add_exit(tonumber(v), cmd)
     return (ok and util.say or util.warn)(msg)
+  elseif maprec.subs[sub] then
+    maprec.command(sub, rest)
+    return
   end
   show_next = true
   rune.send_raw(args ~= "" and ("map " .. args) or "map")
@@ -236,10 +282,11 @@ end)
 -- away, not at your first move (the game sends the map only with a room).
 -- Its block is hidden as every one is, and a blank line after it with it
 -- (a guess - the bare map reply's shape isn't seen yet; nothing if none)
-game.on_login(function()
+function minimap.refresh()
   quiet_next = true
   rune.send_raw("map")
-end)
+end
+game.on_login(minimap.refresh)
 
 -- Help (core/help.lua): /help, xhelp
 local help = require("core.help")

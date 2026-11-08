@@ -13,6 +13,17 @@
 -- info.alert_clear(TITLE) takes one off.
 -- Account is the fallback (account.tin): gold, worth, QP, TP, trains, HR/DR
 -- and any stat but int under STAT_MIN, from GMCP char.worth / char.stats.
+-- infopane (tt++ modules/info.tin - the user's choice, 2026-11-08; not
+-- "info", the game's own info channel):
+--   infopane          list the providers: priority, showing or idle, which
+--                     is on the pane, which is pinned
+--   infopane <name>   pin one (any unique start of its name): it shows
+--                     instead of the normal winner whenever it has something
+--                     to show, beating all but an alert flashing; with
+--                     nothing to show it waits and the normal winner shows
+--   infopane reset    unpin - back to the normal order
+-- The pin is kept in rune.session: a /reload keeps it, quitting Rune
+-- forgets it.
 
 local util = require("core.util")
 local game = require("core.game")       -- char.worth, char.stats (account)
@@ -27,12 +38,19 @@ local HR_MIN, DR_MIN, STAT_MIN = DEF_HR, DEF_DR, DEF_STAT
 local mins_for   -- the subclass they were read for
 
 local prov = {}         -- name -> { prio, text }
+local PIN = "info_pin"  -- rune.session: the pinned provider's name
+local pin = rune.session.get(PIN)
+if pin == "" then pin = nil end
 
 local function refresh()
   local best
   for _, p in pairs(prov) do
     if p.text and (not best or p.prio < best.prio) then best = p end
   end
+  -- the pinned one, if it has something - unless an alert is flashing
+  local pinned = pin and prov[pin]
+  local alert = (prov.alert_crit and prov.alert_crit.text) or (prov.alert_warn and prov.alert_warn.text)
+  if pinned and pinned.text and not alert then best = pinned end
   local text = best and best.text or ""
   util.pane("info", text)
   return best
@@ -214,8 +232,50 @@ rune.alias.exact("infomsg", function(args)
   info.msg(rest or text, tonumber(secs))
 end)
 
+-- infopane: list, pin, reset (see the top)
+local function names()
+  local n = {}
+  for name in pairs(prov) do n[#n + 1] = name end
+  table.sort(n, function(a, b) return prov[a].prio < prov[b].prio end)
+  return n
+end
+
+rune.alias.exact("infopane", function(args)
+  local arg = util.trim(args):lower()
+  if arg == "" then
+    local best = refresh()
+    util.say("[info] info pane providers (lowest priority wins):")
+    for _, name in ipairs(names()) do
+      local p = prov[name]
+      local state = p == best and "on the pane" or (p.text and "showing" or "idle")
+      rune.echo(string.format("  %-11s %3d  %s%s", name, p.prio, state, name == pin and "  (pinned)" or ""))
+    end
+    return
+  end
+  if arg == "reset" then
+    pin = nil
+    rune.session.set(PIN, "")
+    refresh()
+    return util.say("[info] info pane: back to the normal order.")
+  end
+  local hits = {}
+  for _, name in ipairs(names()) do
+    if name == arg then hits = { name }; break end
+    if name:sub(1, #arg) == arg then hits[#hits + 1] = name end
+  end
+  if #hits == 0 then return util.warn("[info] infopane: nothing called \"" .. arg .. "\" - infopane lists them.") end
+  if #hits > 1 then return util.warn("[info] infopane: \"" .. arg .. "\" could be " .. table.concat(hits, ", ") .. ".") end
+  pin = hits[1]
+  rune.session.set(PIN, pin)
+  refresh()
+  util.say("[info] info pane: pinned to " .. pin
+    .. (prov[pin].text and "" or ", which has nothing to show yet - it shows when it does")
+    .. ". infopane reset to undo.")
+end)
+
 -- Help (core/help.lua): /help, xhelp
 local help = require("core.help")
+help.add("infopane", "infopane [<name>|reset]", "list what can show in the info pane; <name>: pin one (it shows whenever it has something, beating all but an alert); reset: the normal order again")
 help.add("infomsg", "infomsg [-t secs] [text]", "your own text on the info pane (| starts a line, 4 lines); -t: gone after secs; bare clears it")
 
 return info

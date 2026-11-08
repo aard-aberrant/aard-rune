@@ -6,7 +6,8 @@
 --                walked - never home or a portal
 --   find [text]  anywhere: labels, areas, room names, a vnum. One match goes
 --                there; several open a picker. No text: labels and areas.
---   mf [text]    as find, but shows the route instead of walking it
+--   mf [text]    as find, but shows the route instead of walking it, and
+--                copies it to the clipboard as one line
 --   gnom         the gnome airship (not on the map)
 --   label <word> / unlabel <word> / labels
 --   13s, 3e2n ...              speedwalk (sent as one game "run 3e2n")
@@ -14,6 +15,9 @@
 -- only the room a run ends in, and stops it after three failed moves
 -- ("Too many run errors.") or at a fight - the rest isn't sent from the
 -- wrong room. Doors, portals, home and custom exits are sent as they are.
+-- Inside the destination's area the steps go one by one instead, paced by
+-- GMCP's room reports (run_cmds, send_paced): the minimap follows you, and
+-- a fight stops the walk.
 -- For other modules: go_vnum, go_nearest, go_area, go_room, zone_of, where,
 -- probe, zones_with_rooms, and areas (target, quest, campaign use them).
 -- Data: data/portals.lua, areas.lua, labels.lua (made from tt++ by
@@ -31,6 +35,7 @@
 local util = require("core.util")
 local game = require("core.game")         -- tier and level (portals)
 local tags = require("core.tags")         -- hiding the rooms a walk passes
+local minimap = require("nav.minimap")    -- a fresh map after an aborted run
 local eq = require("gear.eq")             -- g's hidden eqdata (the end of its chores)
 local M = require("nav.mapper")          -- the map
 local aliases = require("core.aliases")   -- speedwalk lets an alias go first
@@ -251,9 +256,18 @@ local alas = false   -- an "Alas, you cannot go that way." during this walk's ru
 -- them is one game "run" ("run 2n3e"), a door, portal, home or custom
 -- exit is sent as it is. Also how many of them show a room: a run shows
 -- only the room it ends in (the game's, seen live 2026-11-07 - GMCP still
--- sends room.info for every room on the way), any other step its room
-local function run_cmds(chain)
+-- sends room.info for every room on the way), any other step its room.
+-- From the first step into the destination's area on, the steps aren't in
+-- the commands: they come back as `paced` ({ k, cmds } each), to be sent
+-- one at a time as the walk reaches each one's room (the user, 2026-11-08):
+-- each shows its room, so the minimap follows you there (the rooms stay
+-- hidden all the same - core/tags.lua), and a fight stops the walk where
+-- it is. The long way to an area runs, the last stretch inside it you see
+local function run_cmds(chain, rooms)
   local out, shows = {}, 0
+  local last_room = rooms and M.rooms[rooms[#rooms]]
+  local dest = last_room and last_room.area
+  local paced = {}
   local run, last, count = "", nil, 0
   local function close_dir()
     if last then run = run .. (count > 1 and count or "") .. last end
@@ -267,9 +281,14 @@ local function run_cmds(chain)
       run = ""
     end
   end
-  for _, s in ipairs(chain) do
+  for k, s in ipairs(chain) do
     local c = type(s.cmds) == "string" and s.cmds or nil
-    if c and c:match("^[nsewud]$") then
+    local r = rooms and M.rooms[rooms[k]]
+    if #paced > 0 or (dest and r and r.area == dest) then
+      close_run()
+      paced[#paced + 1] = { k = k, cmds = type(s.cmds) == "table" and s.cmds or split_cmds(s.cmds) }
+      shows = shows + 1
+    elseif c and c:match("^[nsewud]$") then
       if c ~= last then close_dir(); last = c end
       count = count + 1
     else
@@ -279,7 +298,7 @@ local function run_cmds(chain)
     end
   end
   close_run()
-  return out, shows
+  return out, shows, paced
 end
 T.run_cmds = run_cmds   -- for the offline tests
 
@@ -290,9 +309,13 @@ local function send_walk(_, chain, rooms, what)
   say(string.format("[travel] %s: %d step%s%s", what, n, n == 1 and "" or "s", describe(chain)))
   plan = { from = M.here, chain = chain, rooms = rooms, seen = {} }
   alas = false
-  local cmds, shows = run_cmds(chain)
+  local cmds, shows, paced = run_cmds(chain, rooms)
   tags.hide_rooms(shows)   -- show only the room you arrive in; also marks the walk (core/tags.lua)
-  rune.send_raw(table.concat(cmds, "\n"))
+  if #cmds > 0 then rune.send_raw(table.concat(cmds, "\n")) end
+  if #paced > 0 then
+    plan.paced = paced
+    T.send_paced()   -- the first, if it starts where you are
+  end
 end
 
 -- Walk to `to` using a finished search from the current room
@@ -325,6 +348,31 @@ end
 
 -- mf: the route to `to`, printed - not walked. Each step with the room it
 -- reaches, then the commands as one line (to type or paste)
+-- A route as one line, plain moves run together ("3n2e;open north;north")
+local function speedwalk(chain)
+  local out, run, last, count = {}, "", nil, 0
+  local function close_dir()
+    if last then run = run .. (count > 1 and count or "") .. last end
+    last, count = nil, 0
+  end
+  for _, s in ipairs(chain) do
+    local c = type(s.cmds) == "string" and s.cmds or nil
+    if c and c:match("^[nsewud]$") then
+      if c ~= last then close_dir(); last = c end
+      count = count + 1
+    else
+      close_dir()
+      if run ~= "" then out[#out + 1] = run; run = "" end
+      for _, x in ipairs(type(s.cmds) == "table" and s.cmds or split_cmds(s.cmds)) do out[#out + 1] = x end
+    end
+  end
+  close_dir()
+  if run ~= "" then out[#out + 1] = run end
+  return table.concat(out, ";")
+end
+
+-- mf: the route, step by step, and copied to the clipboard as one line
+-- (rune.clipboard.set, as inst does - the user, 2026-11-08)
 local function show(prev, how, to, what)
   local cmds, n, chain, rooms = T.path(prev, how, to)
   if n == 0 then return say("[travel] mf: already at " .. what .. ".") end
@@ -336,6 +384,77 @@ local function show(prev, how, to, what)
       r and rune.style.gray(util.strip(r.name) .. ", " .. r.area) or ""))
   end
   rune.echo("  " .. table.concat(cmds, ";"))
+  local line = speedwalk(chain)
+  rune.clipboard.set(line)
+  rune.echo(rune.style.gray("  copied: " .. line))
+end
+
+local room_desc   -- below
+
+-- A paced walk (run_cmds) stopped: say where, and forget it
+local function stop_paced(why)
+  local p = plan
+  plan = nil
+  local left = p.paced[1] and (#p.rooms - p.paced[1].k + 1) or 0
+  say(string.format("[travel] %s - the walk stopped, %d step%s short.", why, left, left == 1 and "" or "s"))
+end
+
+-- Where `v` is on the route: 0 for the start, k for the room step k
+-- reaches, nil if it isn't on it - the first match at or after `from`
+local function route_pos(p, v, from)
+  for k = from, #p.rooms do
+    if (k == 0 and p.from or p.rooms[k]) == v then return k end
+  end
+  return nil
+end
+
+-- Paced by where you are, not by counting rooms (the user's walks,
+-- 2026-11-08: one "n" took them two rooms on, and a count that never came
+-- stalled a walk). At each room: on the route before the paced stretch
+-- (still on the run) - wait; at or past its start - send on from here,
+-- dropping steps that were skipped; behind (an old report) - nothing; not
+-- on the route - off course, stopped. Nothing is sent while you're
+-- fighting (GMCP char.status).
+-- AHEAD steps may be on their way at once: each waits for the server to
+-- report a room (~80 ms), so one at a time was slow (the user, 2026-11-08).
+-- A fight can find up to AHEAD steps already sent - with 2, one more than
+-- one at a time; each later step waits.
+-- A room GMCP doesn't report (Sanctum's Clash of the Elements, 15323, seen
+-- live 2026-11-08 - the room shows, but nav/mapper.lua's room stays the one
+-- before): no report 2 s after a step, and nothing ended the walk (a wrong
+-- way - GMCP room.wrongdir - or a fight would have), so the first step on
+-- its way is taken to have got where the map says, and the walk goes on.
+local AHEAD = 2
+local paced_wait = util.slot()
+
+function T.send_paced(assumed)
+  local p = plan
+  if not (p and p.paced and p.paced[1]) then return end
+  local pos = assumed or route_pos(p, M.here, p.pos or 0)
+  if not pos and route_pos(p, M.here, 0) then return end   -- behind: an old report
+  if not pos then
+    plan = nil
+    return warn("[travel] the walk went off course: you're in " .. room_desc(M.here)
+      .. ", not on the route - stopped.")
+  end
+  p.pos = pos
+  if pos >= #p.rooms then plan = nil; return end   -- there
+  -- steps not sent yet whose room you're already past: skipped
+  while p.paced[1] and p.paced[1].k <= pos do table.remove(p.paced, 1) end
+  local nxt = p.paced[1]
+  while nxt and nxt.k - 1 - pos < AHEAD do
+    if game.state == 8 then return stop_paced("you're fighting") end
+    table.remove(p.paced, 1)
+    rune.send_raw(table.concat(nxt.cmds, "\n"))
+    p.sent = nxt.k
+    nxt = p.paced[1]
+  end
+  -- no report in 2 s: the first step on its way got there
+  if (p.sent or 0) > pos then
+    paced_wait.start(2, function()
+      if plan == p and (p.pos or 0) == pos then T.send_paced(pos + 1) end
+    end)
+  end
 end
 
 -- (after nav/mapper.lua's handler, which this file's require ran first)
@@ -344,10 +463,17 @@ rune.gmcp.on("room.info", function()
   local v = M.here
   local seen = plan.seen
   if v and v ~= seen[#seen] and v ~= (#seen == 0 and plan.from or nil) then seen[#seen + 1] = v end
-  if #seen >= #plan.rooms then plan = nil end   -- arrived (or as many moves as planned)
+  -- arrived: the last room, or as many moves as planned
+  if v == plan.rooms[#plan.rooms] or #seen >= #plan.rooms then plan = nil; return end
+  if plan.paced then T.send_paced() end
 end, { name = "travel_walk_rooms" })
 
-local function room_desc(v)
+-- A fight on a paced walk: nothing more is sent
+rune.gmcp.on("char.status", function()
+  if plan and plan.paced and plan.paced[1] and game.state == 8 then stop_paced("you're fighting") end
+end, { name = "travel_walk_fight" })
+
+function room_desc(v)
   local r = v and M.rooms[v]
   return tostring(v) .. (r and r.name ~= "" and (" (" .. util.strip(r.name) .. ")") or "")
 end
@@ -431,6 +557,7 @@ rune.trigger.exact("Alas, you cannot go that way.", function()
   if plan then alas = true end
 end, { name = "travel_run_alas" })
 rune.trigger.exact("Too many run errors. Aborting speedwalk.", function()
+  minimap.refresh()   -- no room is shown, so no map came: ask for one (any run, typed too)
   local was_alas = alas
   alas = false
   if not plan or tags.walk_owner() then return end
@@ -593,7 +720,11 @@ local function choose(title, choices, on_none, act)
       .. (#lost > 5 and ", ..." or "") .. " - not linked to this part of the map. g <area> falls back to the game's runto.")
     return
   end
+  -- by the steps the picker shows (the user, 2026-11-08: sorting by cost -
+  -- a portal can cost more than a step - put 17 steps above 16), then cost
   table.sort(items, function(a, b)
+    local ha, hb = hops[a.v], hops[b.v]
+    if ha ~= hb then return ha < hb end
     if a.d ~= b.d then return a.d < b.d end
     return a.c.text < b.c.text
   end)
@@ -1030,7 +1161,7 @@ local help = require("core.help")
 help.add("g", "g [area]", "bare: the home routine; with an area: go there (a picker if several match)")
 help.add("ga", "ga <text>", "this area: the nearest room labelled or named <text>, walked")
 help.add("find", "find [text]", "anywhere: labels, areas, room names, a vnum - one match goes there, several open a picker")
-help.add("mf", "mf [text]", "as find, but shows the route instead of walking it")
+help.add("mf", "mf [text]", "as find, but shows the route instead of walking it, and copies it to the clipboard (3n2e;open north;north)")
 help.add("gnom", "gnom", "the gnome airship (not on the map)")
 help.add("label", "label <word>", "label this room, for find and ga")
 help.add("unlabel", "unlabel <word>", "remove a label from this room")

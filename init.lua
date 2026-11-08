@@ -84,6 +84,7 @@ require("panes.affects")     -- the affects pane, saf, affectsreset
 require("gear.eq")           -- eqwear, eqsave, eqcheck, eqsets
 require("nav.minimap")       -- the minimap pane, from the game's map tag
 require("nav.mapper")        -- map/aard.map, kept current from GMCP room.info
+require("nav.maprec")        -- map record: custom exits from what you do
 require("nav.travel")        -- routes and g, ga, find, label
 require("nav.repop")         -- the POP light, pop
 require("targets.target")    -- the target: target / t, gm
@@ -99,7 +100,7 @@ require("fight.dps")         -- the DPS meter
 require("fight.rheal")       -- rh, sleep, the regen ring on waking
 require("fight.pup")         -- pup: powerup pace
 require("fight.instinct")    -- inst: instinct above 0 on one line, copied
-require("fight.quiet")       -- a kill's rewards on one line, tells reminder, skinning hidden
+require("fight.quiet")       -- a fight's xp and gold on one line at its end, tells reminder, skinning hidden
 require("fight.bcc")         -- bcc, bcc find: Black Claw Crag (the fight: areas/blackclaw.lua)
 require("host.spup")         -- spup, spn, spq: hosting spellups
 require("areas.loader")      -- areas/<zone>.lua, only while you're in that zone
