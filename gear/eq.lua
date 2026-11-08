@@ -366,4 +366,13 @@ game.on_login(check_worn)
 -- matched it anywhere; anchored here, so a channel quoting it can't set it off
 rune.trigger.starts("Your eyes glaze over.", function() check_worn() end, { name = "afk_glaze" })
 
+-- Help (core/help.lua): /help, xhelp
+local help = require("core.help")
+help.add("eqwear", "eqwear [level | name]", "wear the set for your level (or that level / named set) from the eq bag; what it replaces goes in the bag")
+help.add("eqsave", "eqsave [level | name]", "save what you wear now as a set (default: your level)")
+help.add("eqcheck", "eqcheck [level | name]", "the set's pieces you aren't wearing")
+help.add("eqsets", "eqsets [set | del <set>]", "the saved sets (yours marked), one set's items, or delete one")
+help.add("dt", "dt <type> | next | reset", "wield the damage-type weapon for <type> (a unique start works), the next type, or back to your primary")
+help.add("d1", "d1 .. d6", "dt for the damage types in data's order")
+
 return { bag = EQBAG, check_worn = check_worn }

@@ -169,4 +169,9 @@ rune.alias.exact("gm", function(args)
   target.go()
 end)
 
+-- Help (core/help.lua): /help, xhelp
+local help = require("core.help")
+help.add("target", "target / t [kw | clear]", "show the target, set it by keyword, or drop it")
+help.add("gm", "gm [mob]", "go to the target (its area, then its room); with a mob: target it first")
+
 return target

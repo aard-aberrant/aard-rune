@@ -67,3 +67,7 @@ rune.alias.exact("pup", function(args)
     say("[pup] tracking is off - pup track to start.")
   end
 end)
+
+-- Help (core/help.lua): /help, xhelp
+local help = require("core.help")
+help.add("pup", "pup [track | reset]", "powerup pace: seconds per powerup; track on/off, reset starts over")

@@ -3,10 +3,15 @@
 Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.lua here.
 
 ## Done (confirmed live)
+- [x] Priest recoveries on the affects pane (confirmed live 2026-11-07): HUML AUGM SERE HLSH -
+      bright with the buff's time while up (humility sn 602 right), gray countdown while cooling;
+      {recon}/{recoff} ids learned (humility 52, 1800 s); recdebug shows the tags
+- [x] inst (confirmed live 2026-11-07): fight/instinct.lua - one line of skills with instinct above 0,
+      copied with rune.clipboard.set (OSC 52 reaches the Mac's clipboard)
 
 - Status: bordered two-row pane above the input (a bar can't have a border); row 2 has
   HP/MN/MV in the tt++ "HP 88.2" format and the state or enemy on the right
-- Group pane (rune.pane.replace, fills on reload via "request group")
+- Group pane (rune.pane.replace, fills on reload via "request group"); two columns as tt++ (confirmed live 2026-11-07)
 - Layout copying bin/tmuxit.sh, no pane titles
 - Minimap from the game's <MAPSTART>..<MAPEND> block, hidden from the main output; blank row
   after the room name; your # found as the magenta one (shops are ##), drawn as a pure green ●
@@ -22,6 +27,18 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
 
 ## To check
 
+- [ ] Walks as game runs (nav/travel.lua, offline-tested 2026-11-07): plain moves sent as "run 2n3e",
+      doors/portals/home as they are; rooms hidden per command that shows one. Check live: a
+      multi-direction run ("run 2nd2ns3es" - only single-direction runs tried), a route with a door and
+      a portal, and "Too many run errors" naming the failed step
+- [ ] fight/quiet.lua (offline-tested on ~/combat): a kill's xp/bonus/gold/tax on one line, shown
+      before the next line (or 1 s after); tells reminder only when the count changes; skinning
+      (makes / drops / crumbles into dust) hidden with its blank line. Watch for a reward line shape
+      not in that log - it shows as before
+- [ ] Per-subclass modules (init.lua's last section): Shaman gets 3MN at login and after /reload; a
+      Priest doesn't; logging in as the other subclass reloads once
+- [ ] Status bars (native rune.ui.bar, status1/status2): two rows as before, no divider between them,
+      TCK never skips a second, SCROLLED shows; TCK kept across /reload
 - [ ] Chats pane: tells and channels show there, with Aardwolf's colours (not raw codes)
 - [ ] Group pane: no flicker in a fight
 - [ ] Status pane: state/enemy right-aligned at the screen's right edge (no border now)
@@ -66,7 +83,7 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
 - [ ] Minimap fills only after the first move - send "map" at login (tt++ does)
 - [ ] Info pane (panes/info.lua, offline-tested): quest (targets/quest.lua), alerts (info.alert - nothing
       calls it until timer/moons/doubles are ported; no beep yet), account fallback. Not
-      ported: bcc, infopane pin
+      ported: infopane pin (bcc's grid is areas/blackclaw.lua)
 - [x] timer (panes/timer.lua) - confirmed live: flashes black (24-bit) on red with a beep. Survives
       /reload via rune.store. Not ported: timer repop
 - [x] infomsg (panes/info.lua) - confirmed live: infomsg <text> shows it, bare infomsg clears
@@ -198,7 +215,9 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
       areascripts. geniewish (ftl wff wfa mini), knossos. partroxis (2026-11-07, offline-tested): maze
       navigator (mazerun/mazenext/..., speedrun back after a wrong exit, rooms hidden) and graxkeys.
       Check live: the exits reply's end line, a fight mid-run, the dwarf's room (5830 a guess).
-      Next: blackclaw (breath grid, rr/rrs) + always-loaded bcc / bcc find
+      blackclaw (2026-11-07, offline-tested): breath grid in the info pane, rr/rrs; with fight/bcc.lua
+      (bcc, bcc find, the run count in home's room note). bcc confirmed live 2026-11-07. Check live:
+      the grid's countdown, rr retreat/plain answers, the whisper line and the count (131 next)
 - [ ] spup / spn / spq (host/spup.lua, offline-tested 2026-11-07): tt++ spuphost.tin. Test mode on at every
       load - spup test off to really gossip. Check live: the gossip toggle's
       hint line, the sitting check on a wrapped "is / sitting here." entry

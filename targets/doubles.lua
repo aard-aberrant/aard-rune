@@ -44,7 +44,7 @@ local function set(k, mins)
   if mins > 0 and ends[k] <= now then info.alert("warn", FLASH, TITLE[k], string.format(MINS[k], mins)) end
   ends[k] = mins > 0 and now + mins * 60 or 0
   rune.session.set(k .. "_until", tostring(ends[k]))
-  status.draw()
+  rune.ui.refresh_bars()
 end
 
 -- The lights ---------------------------------------------------------------
@@ -151,3 +151,7 @@ end
 
 rune.alias.exact("double", function() send(false) end)
 game.on_login(function() send(true) end)
+
+-- Help (core/help.lua): /help, xhelp
+local help = require("core.help")
+help.add("double", "double", "the game's double; its reply also sets the 2XP and 2QP lights")

@@ -2,16 +2,16 @@
 -- and its scroll keys.
 local util = require("core.util")
 local game = require("core.game")   -- at login
-local layout = require("core.layout")   -- the pane's height (what the restore fills)
 
 -- The log: every line the pane gets is appended to chats.log, with its date
 -- ("2026-11-07<TAB>14:03 (Group) ..."), kept for good (tt++'s
 -- log/Aardwolf-chats) - colour codes and all (less -R reads them). Rune
--- empties the pane when it quits, so at start its last RESTORE lines (a
--- paneful) are written back; a /reload keeps the pane (only Lua restarts),
--- so not then (rune.session lasts until Rune quits). Only the file's end is read
+-- empties the pane when it quits, so at start its last RESTORE lines are
+-- written back, to scroll back through with the wheel; a /reload keeps the
+-- pane (only Lua restarts), so not then (rune.session lasts until Rune
+-- quits). Only the file's end is read (RESTORE * 400 bytes, about 120 KB)
 local LOG = rune.config_dir .. "/chats.log"
-local RESTORE = layout.CHATS_H
+local RESTORE = 300
 
 local function chat(text)
   text = text:gsub("\n", " ")
@@ -93,8 +93,10 @@ end, { name = "chats_finger", gag = true, span = { to = "^-+$", max = 40 } })
 -- main output (Rune's defaults); the same keys with Alt scroll chats, and
 -- Alt+End goes back to live tailing. Shift too - but most terminals keep
 -- Shift+PgUp for their own scrollback (Shift didn't scroll chats live
--- 2026-11-07 - the terminal, presumably). The mouse wheel scrolls only the main output: Rune sends
--- every wheel tick there, wherever the pointer is (ui/tui/model.go)
+-- 2026-11-07 - the terminal, presumably). The mouse wheel scrolls the pane
+-- under the pointer - with our patched Rune (branch scrolling-panes on the
+-- aard-aberrant fork, PR'd upstream); stock Rune 5d808d6 sends every wheel
+-- tick to the main output
 local function up() rune.pane.scroll_up("chats", 10) end
 local function down() rune.pane.scroll_down("chats", 10) end
 local function live() rune.pane.scroll_to_bottom("chats") end

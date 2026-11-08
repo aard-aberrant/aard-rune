@@ -361,3 +361,8 @@ end)
 
 -- At login and after a /reload
 game.on_login(check_quietly)
+
+-- Help (core/help.lua): /help, xhelp
+local help = require("core.help")
+help.add("cn", "cn [next]", "go to the current campaign mob, else the next (Dead ones' areas last); next skips it")
+help.add("cp", "cp / campaign [args]", "the game's campaign command; its reply also updates cn's list")

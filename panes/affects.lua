@@ -7,6 +7,9 @@
 --   the expiry histogram - how many good spells and skills (not the tracked
 --     ones, which have their own times) run out within 30s, 1m, 2m, 5m, 10m
 --   the next three of them to run out, by name, coloured by how soon
+--   recoveries (data/affects.lua, by subclass) under the good affects: while
+--     the spell is up, bright with its time left (as a good affect); while
+--     it recovers, gray with minutes until ready; ready, the label in gray
 --   Shaman: the totem - type, minutes left, area; then Create Totem's
 --     recovery, "totem ready"
 -- Kept current from the game's tags: {affon}sn,secs and {affoff}sn as
@@ -20,6 +23,7 @@
 -- and a hidden "totem" reads its time and area.
 --   saf / aff / affects [args]   the game's command, then a hidden slist
 --   affectsreset                 just the hidden slist
+--   debug recov [on|off]         show the {recon}/{recoff} tags as they come (core/debug.lua)
 -- core/tags.lua hides the affon, affoff, sfail, recon and recoff lines.
 
 local util = require("core.util")
@@ -46,6 +50,12 @@ local asked = {}     -- sn -> true once a slist has been asked for it
 local seen = false   -- a slist affected reply has been read
 local totem = { type = nil, area = "", ends = 0, rec_end = 0, ready = false, none = false }
 
+-- This subclass's recoveries (data/affects.lua's recoveries): a list of
+-- { d = its entry, ends = os.time it's ready, 0 = ready }, and by recovery
+-- id, by spell number and by name (lower case). An id is the {recon} tag's
+local recs, rec_by_id, rec_by_sn, rec_by_name = {}, {}, {}, {}
+local rec_asked = {}   -- recovery id -> true once a slist has been asked for it
+
 -- This subclass's tracked affects: good and bad id lists (by number), the
 -- label widths, and also-name -> id
 local good_ids, bad_ids, also = {}, {}, {}
@@ -70,6 +80,28 @@ local function build()
   end
   table.sort(good_ids)
   table.sort(bad_ids)
+  recs, rec_by_id, rec_by_sn, rec_by_name = {}, {}, {}, {}
+  for _, d in ipairs(CFG.recoveries or {}) do
+    local on = not d.only
+    for _, s in ipairs(d.only or {}) do if s == subclass then on = true end end
+    if on then
+      local r = { d = d, ends = 0 }
+      recs[#recs + 1] = r
+      if d.id then rec_by_id[d.id] = r end
+      if d.sn then rec_by_sn[d.sn] = r end
+      rec_by_name[d.name:lower()] = r
+      if #d.label > good_w then good_w = #d.label end
+    end
+  end
+end
+
+-- A recovery's id, learned (an slist row): this one, not any given before.
+-- Id 0 isn't one: augmentation's {recon} comes as 0 (live, 2026-11-07), and
+-- 0 may stand for more than one recovery - its tags ask an slist instead
+local function rec_learn(r, id)
+  if not id or id == 0 then return end
+  for k, v in pairs(rec_by_id) do if v == r and k ~= id then rec_by_id[k] = nil end end
+  rec_by_id[id] = r
 end
 
 -- Drawing ---------------------------------------------------------------
@@ -103,6 +135,20 @@ local function good_line(id, now)
   if e == 0 then return GRN(label) .. "    " end
   local left = e - now
   return time_style(left)(label .. " " .. rjust(math.min(math.max(mins(left), 0), 99), 2) .. "m")
+end
+
+-- A recovery's line, under the good affects: while its spell is up, as a
+-- good affect's (bright, the time left); while it recovers, gray with the
+-- minutes until it's ready; ready and not up, the label alone in gray
+local function rec_line(r, now)
+  local label = rjust(r.d.label, good_w)
+  local e = r.d.sn and up[r.d.sn]
+  if e == 0 then return GRN(label) .. "    " end
+  if e and e > now then
+    return time_style(e - now)(label .. " " .. rjust(math.min(mins(e - now), 99), 2) .. "m")
+  end
+  if r.ends > now then return GRAY(label .. " " .. rjust(math.min(mins(r.ends - now), 99), 2) .. "m") end
+  return GRAY(label) .. "    "
 end
 
 local function bad_light(id, lit)
@@ -171,14 +217,19 @@ local function draw()
     local id = s and also[s.name]
     if id then lit[id] = true end
   end
-  local rows = math.max(#good_ids, #bad_ids)
+  local rows = math.max(#good_ids + #recs, #bad_ids)
   local blank_good = string.rep(" ", good_w + 4)
   -- the bad lights end at the pane's right edge
   local gap = string.rep(" ", math.max(width - (good_w + 4) - bad_w, 1))
   for i = 1, rows do
-    local id = good_ids[i]
-    local line = id and good_line(id, now) or blank_good
+    local id, r = good_ids[i], recs[i - #good_ids]
+    local line = id and good_line(id, now) or r and rec_line(r, now) or blank_good
     if id and up[id] and up[id] > now then soonest = math.min(soonest, till_minute(up[id] - now)) end
+    if r then
+      local e = r.d.sn and up[r.d.sn]
+      if e and e > now then soonest = math.min(soonest, till_minute(e - now), till_colour(e - now))
+      elseif r.ends > now then soonest = math.min(soonest, till_minute(r.ends - now)) end
+    end
     if bad_ids[i] then line = line .. gap .. bad_light(bad_ids[i], lit[bad_ids[i]]) end
     out[#out + 1] = line
   end
@@ -189,6 +240,7 @@ local function draw()
     local timers = {}   -- { left, name }
     local tracked_good = {}
     for _, id in ipairs(good_ids) do tracked_good[id] = true end
+    for _, r in ipairs(recs) do if r.d.sn then tracked_good[r.d.sn] = true end end
     for sn, e in pairs(up) do
       local s = spell[sn]
       if s then   -- one not learned yet is left out until the slist comes
@@ -299,9 +351,11 @@ local function closed(lines, tag) return lines[#lines]:clean() == tag end
 
 -- sn,name,target,secs,learned,recovery,type - the name may hold commas
 local function on_spell(c)
-  local sn, name, target, secs, _, _, kind = c:match("^(%d+),(.*),(%d+),(%-?%d+),(%-?%d+),(%-?%d+),(%d+)$")
+  local sn, name, target, secs, _, recov, kind = c:match("^(%d+),(.*),(%d+),(%-?%d+),(%-?%d+),(%-?%d+),(%d+)$")
   if not sn then return end
   sn, secs = tonumber(sn), tonumber(secs)
+  local r = rec_by_sn[sn]
+  if r and tonumber(recov) > 0 then rec_learn(r, tonumber(recov)) end
   spell[sn] = { name = name:lower(), target = tonumber(target), type = tonumber(kind) }
   up[sn] = secs > 0 and os.time() + secs or 0
 end
@@ -320,9 +374,13 @@ end, { name = "affects_slist_spells", gag = true, span = { to = "^\\{/spellheade
 rune.trigger.exact("{recoveries affected}", function(_, ctx)
   local lines = ctx.lines
   totem.rec_end, totem.ready = 0, true
+  for _, r in ipairs(recs) do r.ends = 0 end   -- ready unless listed
   for i = 2, #lines do
-    local sn, secs = lines[i]:clean():match("^(%d+),.*,(%d+)$")
-    if tonumber(sn) == 65 then totem.rec_end, totem.ready = os.time() + tonumber(secs), false end
+    local id, name, secs = lines[i]:clean():match("^(%d+),(.*),(%d+)$")
+    id, secs = tonumber(id), tonumber(secs)
+    if id == 65 then totem.rec_end, totem.ready = os.time() + secs, false end
+    local r = name and rec_by_name[name:lower()]
+    if r then rec_learn(r, id); r.ends = os.time() + secs end
   end
   seen = true
   changed()
@@ -349,18 +407,69 @@ tags.on("affoff", function(rest)
   changed()
 end)
 
+-- {recon}id,secs / {recoff}id: 65 is Create Totem; a tracked recovery's
+-- id. Another id while a tracked one's id isn't known yet: a hidden slist,
+-- once per id, whose recoveries rows name it
+-- "debug recov" (core/debug.lua): each tag as it comes (hidden otherwise),
+-- with the recovery it matched; its status line, the ids learned so far
+local rec_dbg = require("core.debug").topic("recov",
+  "the {recon}/{recoff} recovery tags as they come", function()
+    local known = {}
+    for id, r in pairs(rec_by_id) do known[#known + 1] = r.d.label .. "=" .. id end
+    table.sort(known)
+    return "recovery ids known: " .. (known[1] and table.concat(known, " ") or "none yet")
+  end)
+local function dbg(what, id)
+  if not rec_dbg.on then return end
+  local r = rec_by_id[id]
+  rec_dbg.log(what .. (id == 65 and " (Create Totem)" or id == 0 and " (id 0 - asking slist which)"
+    or r and (" (" .. r.d.name .. ")") or " (not tracked / id not known yet)"))
+end
+
 tags.on("recon", function(rest)
-  local secs = rest:match("^65,(%d+)$")
-  if not secs then return end
-  totem.rec_end, totem.ready = os.time() + tonumber(secs), false
+  dbg("{recon}" .. rest, tonumber(rest:match("^(%d+)")))
+  local id, secs = rest:match("^(%d+),(%d+)$")
+  if not id then return end
+  id, secs = tonumber(id), tonumber(secs)
+  if id == 65 then
+    totem.rec_end, totem.ready = os.time() + secs, false
+  elseif id == 0 then
+    if #recs > 0 then soon.start(1, resync) end   -- which one, by name
+  elseif rec_by_id[id] then
+    rec_by_id[id].ends = os.time() + secs
+  elseif #recs > 0 and not rec_asked[id] then
+    for _, r in ipairs(recs) do
+      local known = false
+      for _, v in pairs(rec_by_id) do if v == r then known = true end end
+      if not known then rec_asked[id] = true; soon.start(1, resync); break end
+    end
+  end
   changed()
 end)
 
 tags.on("recoff", function(rest)
-  if rest ~= "65" then return end
-  totem.rec_end, totem.ready = 0, true
+  dbg("{recoff}" .. rest, tonumber(rest:match("^(%d+)")))
+  local id = tonumber(rest:match("^(%d+)$"))
+  if id == 65 then
+    totem.rec_end, totem.ready = 0, true
+  elseif id == 0 then
+    if #recs > 0 then soon.start(1, resync) end
+  elseif id and rec_by_id[id] then
+    rec_by_id[id].ends = 0
+  end
   changed()
 end)
+
+-- Used too soon: "You are still recovering your Humility abilities (1:23)."
+-- (tt++'s pattern) - its time, by name. Create Totem's is the totem's own
+-- trigger. Literal in Go, the line checked in Lua
+rune.trigger.contains("You are still recovering your ", function(_, ctx)
+  local name, m, s = ctx.line:clean():match("You are still recovering your (.+) abilities %((%d+):(%d+)%)")
+  local r = name and rec_by_name[name:lower()]
+  if not r then return end
+  r.ends = os.time() + tonumber(m) * 60 + tonumber(s)
+  changed()
+end, { name = "affects_recovering" })
 
 -- The totem (Shaman) ------------------------------------------------------
 -- Game text - no tag covers it. Placing one asks a hidden "totem", whose
@@ -493,3 +602,10 @@ rune.alias.exact("affectsreset", function()
 end)
 
 build()
+
+-- Help (core/help.lua): /help, xhelp
+local help = require("core.help")
+help.add("saf", "saf / aff / affects [args]", "the game's command, then a hidden slist that resets the affects pane")
+help.add("slist", "slist [args]", "the game's slist; a typed slist affected also resets the affects pane")
+help.add("affectsreset", "affectsreset", "resync the affects pane (a light looks stuck or wrong)")
+help.add("totem", "totem", "the game's totem; its reply also sets the totem line")

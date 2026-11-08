@@ -141,3 +141,10 @@ rune.alias.exact("hqof", function()
   if mode ~= "trick" then return say("[hqq] not running.") end
   stop("given up")
 end)
+
+-- Help (core/help.lua): /help, xhelp
+local help = require("core.help")
+help.add("autohunt", "autohunt <mob>", "hunt and follow its directions until you arrive or it can't lead you there; a fight pauses it")
+help.add("autohuntoff", "autohuntoff", "stop an autohunt")
+help.add("hqq", "hqq [mob]", "the hunt trick: hunt 1.mob, 2.mob ... until the right one, which becomes the target")
+help.add("hqof", "hqof", "give up on an hqq")

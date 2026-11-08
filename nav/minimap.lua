@@ -241,4 +241,10 @@ game.on_login(function()
   rune.send_raw("map")
 end)
 
+-- Help (core/help.lua): /help, xhelp
+local help = require("core.help")
+help.add("map", "map", "the game's map, in the main output too")
+help.add("map exit", "map exit <vnum> <command>", "add a custom exit from this room to <vnum>, taken by <command>")
+help.add("map unlink", "map unlink <exit>", "remove a wrong exit from this room")
+
 return minimap

@@ -32,14 +32,14 @@ game, not just a connection, uses `game.on_login(fn)`. It runs at the first
 ## Folders and layering
 
 ```
-core/     util  game  layout  tags  aliases  login  history
+core/     util  game  layout  tags  aliases  login  history  debug  help
 panes/    status  group  chats  info  affects  timer
 gear/     eq  invmon
 nav/      mapper  travel  minimap  moons  repop
 targets/  target  quest  campaign  doubles  soh
-fight/    combat  autocast  heal  hunt  dps  rheal  pup
+fight/    combat  autocast  heal  hunt  dps  rheal  pup  instinct  quiet  bcc
 host/     spup (hosting spellups)
-areas/    loader  + one script per zone (geniewish, knossos, partroxis)
+areas/    loader  + one script per zone (geniewish, knossos, partroxis, blackclaw)
 data/     settings and game data (Lua tables), data/classes/<subclass>.lua
 map/      aard.map, the room map
 tools/    one-time converters from the tt++ data, rune-api.txt (API dump)
@@ -142,9 +142,10 @@ walk stalls.
 **Panes.**
 - **`core/layout.lua`** sets every pane's size.
 - **`util.pane(name, text)`** writes a pane only when its text changed, so redraws are cheap.
-- **The status pane** (`panes/status.lua`) has slots: `row1`, `row1_end`, `row2`
-  and `row2_end`. A feature adds functions that return its segment, and calls
-  `status.draw()` when its text changes.
+- **The status rows** (`panes/status.lua`) are two native Rune bars, `status1`
+  and `status2`, which Rune redraws every 250 ms. They have slots: `row1`,
+  `row1_end`, `row2` and `row2_end`. A feature adds functions that return its
+  segment, and calls `rune.ui.refresh_bars()` to show a change at once.
 - **The info pane** (`panes/info.lua`) is shared by priority with `info.set(name, prio, text)`.
   The lowest priority wins: alerts 20/25, quest 50, campaign 60, account 90.
   `info.alert(level, secs, title, text)` flashes it.
@@ -158,10 +159,37 @@ row.
 `util.err` (red, an error). Every message starts with its module's tag:
 `[maze]`, `[eq]`, `[areas]`.
 
+**Help.** Every command has an entry: the module that makes it registers
+it next to its code with `require("core.help").add(name, usage,
+description)` (an area script: `A.help(...)`, gone when it unloads).
+`core/help.lua` wraps Rune's own `/help`, which lists Rune's commands and
+then ours; `/help <text>` and `xhelp [text]` search them. `core/aliases.lua`
+registers its one-liners from its own table, so a new one gets help too.
+A new command without a help entry is unfinished.
+
+**Debug output.** `core/debug.lua` holds named topics: a module registers
+one with `require("core.debug").topic(name, description, status_fn)` and
+writes `if dbg.on then dbg.log(msg) end`. The `debug` command lists them
+and switches them (`debug <topic> [on|off]`, `debug all off`). A topic that's
+on stays on across `/reload`. Debug code goes in a topic, not a command of
+its own. Topics: `recov` (panes/affects.lua).
+
 **Aliases.** Rune keys aliases by name, so adding one replaces any other of
 that name. An alias's return value is run as a command, so a handler never
 does `return rune.send_raw(...)`. One-line aliases live in `core/aliases.lua`,
 and everything else sits with its feature.
+
+## Per-subclass modules
+
+A module that only one subclass uses goes in that subclass's
+`data/classes/<subclass>.lua` as `modules = { ... }` (Shaman: `nav.moons`),
+not in `init.lua`. Every other module loads on every subclass, so a class
+file lists only its extras. The loader is the last section of `init.lua`:
+the subclass comes in GMCP `char.base` and is kept in `rune.session`, so a
+`/reload` loads the modules at once. A different subclass later (a remort,
+another character) reloads, because Lua can't take a module's triggers and
+slots back out. Parts of a shared module that depend on the subclass (the
+totem, `only` affects) check `game.subclass` themselves.
 
 ## Area scripts
 
@@ -184,7 +212,8 @@ script's own `room.info` handlers miss that one. A script that needs the
 current room reads `game.room` when it loads (partroxis does).
 
 A command that has to work from outside its area (`bcc find`) belongs in an
-always-loaded module, not an area script.
+always-loaded module, not an area script: fight/bcc.lua, with the fight itself
+in areas/blackclaw.lua.
 
 ## Data and the map
 
@@ -209,6 +238,14 @@ always-loaded module, not an area script.
   make the code noticeably simpler, that's raised as an option, not done
   silently.
 - **GMCP over text,** as above.
+- **Rune's native features first.** Where Rune has a feature for a job, use it
+  rather than building one in Lua. For example: bars (`rune.ui.bar`) for the
+  status rows, spans and groups for hiding output, `rune.session`/`rune.store`
+  for state, `rune.history` for command history. Rune's version is usually
+  cheaper (Go, not Lua), steadier (its bars redraw on a fixed 250 ms clock,
+  where `rune.timer.every` slips), and less code. Build your own only where
+  Rune has nothing, or its version can't do the job; then say why in the
+  file's header.
 - **Syntax-check with `luac -p`** on the Mac. It's Lua 5.5, stricter than Rune's
   Lua 5.1 engine (lunar): you can't assign to a loop variable, for example.
   Offline tests use a mock `rune` table, outside this directory.

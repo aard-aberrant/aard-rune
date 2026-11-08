@@ -7,6 +7,8 @@
 -- every one recorded so leaving the zone removes it:
 --   A.trigger.regex/exact/starts/contains, A.alias.exact/regex,
 --   A.timer.after/every, A.gmcp.on, A.hooks.on
+--   A.help(name, usage, desc)  a command of the script's in /help and xhelp
+--                    (core/help.lua) while the script is loaded
 --   A.on_unload(fn)  fn() just before the script goes (stop things, give
 --                    up the info pane)
 --   A.keep()         from an on_unload fn: stay until the next zone change
@@ -21,6 +23,7 @@
 -- Requires core only; area scripts require whatever they use.
 local util = require("core.util")
 local game = require("core.game")   -- the zone you're in
+local help = require("core.help")   -- an area's commands, while it's loaded
 
 local say, warn = util.say, util.warn
 
@@ -58,6 +61,11 @@ local function context(rec)
     timer = { after = wrap("timer", "after"), every = wrap("timer", "every") },
     gmcp = { on = wrap("gmcp", "on") },
     hooks = { on = wrap("hooks", "on") },
+    -- its commands in /help and xhelp (core/help.lua), gone when it goes
+    help = function(name, usage, desc)
+      help.add(name, usage, desc)
+      rec.handles[#rec.handles + 1] = { remove = function() help.remove(name) end }
+    end,
     on_unload = function(fn) rec.unload[#rec.unload + 1] = fn end,
     keep = function() rec.keep = true end,
   }
@@ -101,6 +109,7 @@ rune.gmcp.on("room.info", function()
   if exists(zone) then load(zone) end
 end, { name = "areas_zone" })
 
+help.add("areascripts", "areascripts", "the area scripts, and which one is loaded")
 rune.alias.exact("areascripts", function()
   local names = {}
   local ok, p = pcall(io.popen, 'ls "' .. DIR .. '" 2>/dev/null')

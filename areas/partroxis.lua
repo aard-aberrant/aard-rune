@@ -296,6 +296,12 @@ local function mazehere(args)
   say("[maze] current room set to #" .. n .. " (" .. ROOMS[n][1] .. ").")
 end
 
+A.help("mazenext", "mazenext", "maze: one step on (or resume a speedrun a fight cut short) (partroxis)")
+A.help("mazerun", "mazerun [mob]", "maze: auto-run to that mob's room (a picker if several); bare: on to the target, or a picker (partroxis)")
+A.help("mazeabort", "mazeabort", "maze: stop an auto-run and forget its target (partroxis)")
+A.help("mazehere", "mazehere [n]", "maze: show or set the room number (partroxis)")
+A.help("mazeexit", "mazeexit", "maze: hunt elf, buy rock, drop rock (partroxis)")
+A.help("graxkeys", "graxkeys", "Grax's three-key quest, from Grax's room 5814 (partroxis)")
 A.alias.exact("mazenext", function() mazenext() end)
 A.alias.exact("mazehere", mazehere)
 local function run_to(n)

@@ -1,5 +1,63 @@
 {
   "last_address": "mud3.aardmud.org:4000",
+  "moons": {
+    "allup": false,
+    "ask_at": 1794092420,
+    "at": 1794092697,
+    "cand": {
+      "black": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ],
+      "grey": [
+        11
+      ],
+      "white": [
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26
+      ]
+    },
+    "owed": false,
+    "reboot_at": 1794092417,
+    "set_at": {
+      "black": 0,
+      "grey": 1794092601,
+      "white": 0
+    },
+    "st": {
+      "black": "up",
+      "grey": "down",
+      "white": "up"
+    },
+    "tick": 24,
+    "wx_at": 1794092420,
+    "wx_up": "white grey black"
+  },
   "rheal_removed": {},
   "worlds": {
     "aard": {

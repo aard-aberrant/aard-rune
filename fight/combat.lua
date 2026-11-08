@@ -88,4 +88,16 @@ function combat.pattack()
   return c, c and C.pattack_hit
 end
 
+-- Your heal spell, for h and rh (fight/heal.lua, fight/rheal.lua): the class
+-- file's heal, else incomplete healing (a subclass not known yet, too)
+function combat.heal()
+  return C and C.heal or "incomplete healing"
+end
+
+-- Help (core/help.lua): /help, xhelp
+local help = require("core.help")
+help.add("k", "k [mob]", "your primary attack: on <mob>; bare in a fight: your enemy; bare out of one: the target, by its keyword")
+help.add("kk", "kk [mob]", "your secondary attack")
+help.add("aa", "aa", "your area attack")
+
 return combat

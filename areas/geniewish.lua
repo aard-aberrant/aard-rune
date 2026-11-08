@@ -6,8 +6,11 @@
 --   mini   n, wish for peace, then 4 north
 local A = ...
 
-local function cmd(name, text) A.alias.exact(name, function() rune.send_raw(text) end) end
-cmd("ftl", "find the lamp")
-cmd("wff", "wish for forgiveness")
-cmd("wfa", "wish for adventure")
-cmd("mini", "n\nwish for peace\nn\nn\nn\nn")
+local function cmd(name, text, desc)
+  A.alias.exact(name, function() rune.send_raw(text) end)
+  A.help(name, name, desc .. " (geniewish)")
+end
+cmd("ftl", "find the lamp", "find the lamp")
+cmd("wff", "wish for forgiveness", "wish for forgiveness")
+cmd("wfa", "wish for adventure", "wish for adventure")
+cmd("mini", "n\nwish for peace\nn\nn\nn\nn", "n, wish for peace, then 4 north")

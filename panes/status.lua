@@ -1,7 +1,9 @@
--- The status pane (require("panes.status")): two rows between the main output and
--- the input, under the layout's divider line, like the tt++ status box. A
--- pane, not a bar, redrawn whole on every change (util.pane - only written
--- when the text differs), and each second.
+-- The status rows (require("panes.status")): two rows between the main output
+-- and the input, under the layout's divider line, like the tt++ status box.
+-- Two native Rune bars, status1 and status2 (rune.ui.bar; core/layout.lua
+-- places them): Rune calls their renderers every 250 ms on its own steady
+-- clock, lines up each row's left and right parts, and redraws only a row
+-- whose text changed (ui/tui/widget/bar.go).
 --   row 1: TCK, [row1 slots: QST (targets/quest.lua)], TNL LVL ALN,
 --          [row1_end slots: POP (nav/repop.lua), 3MN (nav/moons.lua), 2XP 2QP
 --          (targets/doubles.lua)]; REC (Rune's /log) at the right end
@@ -10,7 +12,8 @@
 --          state, or the enemy's name in red while fighting, on the right
 -- Reads core/game.lua's `game`. Features add their own segments: a slot holds
 -- functions returning text, called at each draw, and a feature whose text
--- changed calls status.draw(). So this file knows no feature - they
+-- changed calls rune.ui.refresh_bars() to show it at once rather than at the
+-- next 250 ms. So this file knows no feature - they
 -- require it, never the other way round.
 --   status.field(label, value, width, style)   a "LBL value" segment
 
@@ -49,16 +52,9 @@ local function vlen(s)
   return select(2, plain:gsub("[^\128-\191]", ""))
 end
 
--- left and right on one row of width w, the gap filled with spaces
-local function spread(left, right, w)
-  local gap = w - vlen(left) - vlen(right)
-  if gap < 1 then gap = 1 end
-  return left .. string.rep(" ", gap) .. right
-end
-
 -- Status row 1 (tt++ ticking.tin). Each label plain, its value cyan unless
 -- marked, padded so the labels never move:
---   TCK  seconds to the next tick (game.tick); red under 10. "--" until the
+--   TCK  seconds to the next tick (game.tick()); red under 10. "--" until the
 --        first tick
 --   TNL  experience to the next level, red under 300   (char.status)
 --   LVL  your level, left out at 201 and up            (char.status)
@@ -71,7 +67,7 @@ end
 local field = status.field
 
 local function status_row1()
-  local t = game.tick
+  local t = game.tick()
   local f = { t and field("TCK", t, 2, t < 10 and rune.style.red or nil) or field("TCK", "--", 2) }
   for _, seg in ipairs(status.row1) do f[#f + 1] = seg() end
   if game.tnl then f[#f + 1] = field("TNL", game.tnl, 4, game.tnl < 300 and rune.style.red or nil) end
@@ -83,11 +79,6 @@ local function status_row1()
   for _, seg in ipairs(status.row1_end) do f[#f + 1] = seg() end
   return table.concat(f, " ")
 end
-
--- Each second: TCK counts down (core/game.lua), slots with clocks move on, and
--- SCROLLED shows or clears (rune._state.scroll_mode: "live" or "scrolled" -
--- nothing tells when it changes, so it's looked at here)
-rune.timer.every(1, function() status.draw() end, { name = "status_second" })
 
 -- Row 2's Enemy segment (tt++ statusbar.tin): " | Enemy 70 " while fighting,
 -- green under 20 (nearly dead), red otherwise; blank at the same width
@@ -111,8 +102,14 @@ local function rec()
   return "\27[38;2;255;0;0mREC\27[0m"
 end
 
-function status.draw()
-  local row1 = spread(status_row1(), rec(), layout.RIGHT_W)
+-- Row 1: the fields on the left, REC at the right end
+rune.ui.bar("status1", function()
+  return { left = status_row1(), right = rec() }
+end)
+
+-- Row 2. SCROLLED is looked at on each render (rune._state.scroll_mode:
+-- "live" or "scrolled" - nothing tells when it changes)
+rune.ui.bar("status2", function()
   local left = meter("HP", game.hp, game.maxhp) .. " "
     .. meter("MN", game.mana, game.maxmana) .. " "
     .. meter("MV", game.moves, game.maxmoves)
@@ -125,19 +122,21 @@ function status.draw()
   local fighting = game.state == 8 and game.enemy ~= ""
   local right = fighting and (game.enemy:gsub("@x%d%d?%d?", ""):gsub("@.", ""))
     or state_names[game.state or 0] or "?"
-  -- Cut to the room the left leaves, so the row never wraps (a wrapped row
-  -- pushes row 1 out of the pane): a long mob name ends in "…"
+  -- Cut to the room the left leaves, ending in "…" (Rune would cut the
+  -- row's end off with no mark). The renderer is given the terminal's width,
+  -- not the bar's, so the column's own width is used
   local room = layout.RIGHT_W - vlen(left) - 1 - (scrolled and #SCROLLED + 1 or 0)
   if #right > room then right = room > 1 and right:sub(1, room - 1) .. "…" or "" end
   if fighting then right = rune.style.red(right) end
   -- The main pane scrolled back: new output is below what you see
   if scrolled then right = "\27[30;43m" .. SCROLLED .. "\27[0m " .. right end
-  util.pane("status", row1 .. "\n" .. spread(left, right, layout.RIGHT_W))
-end
+  return { left = left, right = right }
+end)
 
--- Redraw on whatever changes a field (core/game.lua has already stored it)
+-- Shown at once on whatever changes a field (core/game.lua has already
+-- stored it), not at the next 250 ms
 for _, pkg in ipairs({ "char.vitals", "char.maxstats", "char.status", "comm.tick" }) do
-  rune.gmcp.on(pkg, function() status.draw() end, { name = "status_" .. pkg })
+  rune.gmcp.on(pkg, function() rune.ui.refresh_bars() end, { name = "status_" .. pkg })
 end
 
 return status

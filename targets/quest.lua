@@ -107,7 +107,7 @@ local function qst_update(d)
       wait(d.wait, true)
     end
   end
-  status.draw()
+  rune.ui.refresh_bars()
 end
 
 rune.gmcp.on("comm.tick", function()
@@ -215,3 +215,7 @@ rune.alias.exact("qc", function()
   rune.send_raw("home\nquest complete\neqdata\ngulp\neqdata")
 end)
 
+-- Help (core/help.lua): /help, xhelp
+local help = require("core.help")
+help.add("qx", "qx", "go to the quest mob: makes it the target, goes to its area, then its room")
+help.add("qc", "qc", "home, quest complete, gulp - the chores hidden")

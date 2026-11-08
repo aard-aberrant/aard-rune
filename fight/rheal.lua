@@ -1,7 +1,8 @@
 -- rh - rest and heal to above 95% HP (tt++ modules/rheal.tin), and the
 -- regen ring around sleep.
 --   rh        put on the regen ring (from the eq bag), then each second:
---             cast incomplete healing while the tick (game.tick) is
+--             cast your heal spell (fight/combat.lua's heal: the class
+--             file's, default incomplete healing) while the tick (game.tick()) is
 --             6 s or more away, sleep at 2, wake a second after the tick.
 --             HP above 95%: the ring(s) it replaced go back on, the regen
 --             ring back in the bag
@@ -21,6 +22,7 @@ local util = require("core.util")
 local game = require("core.game")       -- HP, mana, state, the tick
 local invmon = require("gear.invmon")   -- the regen ring on or off
 local eq = require("gear.eq")           -- the eq bag
+local combat = require("fight.combat")   -- the heal spell
 
 local say, warn = util.say, util.warn
 
@@ -108,7 +110,7 @@ end
 local function cast()
   if cost and (game.mana or 0) < cost then return fail("out of mana") end
   pending = { at = os.time(), hp = game.hp or 0, mana = game.mana or 0 }
-  rune.send_raw("cast 'incomplete healing'")
+  rune.send_raw("cast '" .. combat.heal() .. "'")
 end
 
 local function second()
@@ -124,7 +126,7 @@ local function second()
     end
   end
   if hp_pct() > 95 then return finish() end
-  local ticks = game.tick
+  local ticks = game.tick()
   if ticks and ticks <= 2 then
     state = "sleep"
     return rune.send_raw("sleep")
@@ -186,3 +188,8 @@ end)
 rune.alias.exact("sleep", function()
   regen_on(function() rune.send_raw("sleep") end)
 end)
+
+-- Help (core/help.lua): /help, xhelp
+local help = require("core.help")
+help.add("rh", "rh [stop]", "heal to above 95% HP: regen ring on, your heal spell between ticks, sleep through each tick; stop: now")
+help.add("sleep", "sleep", "the regen ring on, then sleep (it comes off when you wake, unless rh is running)")

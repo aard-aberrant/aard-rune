@@ -3,7 +3,7 @@
 --   left column    group (what's left over), info (INFO_H), then a row of
 --                  minimap (MINIMAP_W x MINIMAP_H) beside affects (the rest)
 --   right column   RIGHT_W wide: chats (CHATS_H), the main output, the status
---                  pane (2 rows), the input
+--                  bars (2 rows, panes/status.lua), the input
 -- No pane has a border: dividers = true draws lines between panes only, so
 -- there's no frame around the screen's edge. Sizes are the content, since
 -- nothing has a border to count. A divider is one column.
@@ -23,6 +23,12 @@ local layout = {
 -- The left column's width (the info pane's), from the terminal's
 function layout.left_w()
   return math.max((rune._state.width or 0) - layout.RIGHT_W - 1, 20)
+end
+
+-- The group pane's height: what info, the minimap row and their two
+-- dividers leave
+function layout.group_h()
+  return math.max((rune._state.height or 0) - layout.INFO_H - layout.MINIMAP_H - 2, 1)
 end
 
 -- The affects pane's width: the left column less the minimap and a divider
@@ -59,7 +65,16 @@ local function apply(picking)
         children = {
           { type = "pane", name = "chats", size = layout.CHATS_H, border = "none" },
           { type = "pane", name = "output", border = "none" },
-          { type = "pane", name = "status", size = 2, border = "none" },
+          -- the status rows: two native bars (panes/status.lua), in a column
+          -- of their own so no divider comes between them
+          {
+            type = "column",
+            size = 2,
+            children = {
+              { type = "bar", name = "status1" },
+              { type = "bar", name = "status2" },
+            },
+          },
           { type = "input", size = not picking and 1 or nil },
         },
       },

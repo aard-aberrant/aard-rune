@@ -391,3 +391,9 @@ rune.alias.exact("spup", function(args)
   if S.on then return status() end
   say("[spup] off. spup on starts a session.")
 end)
+
+-- Help (core/help.lua): /help, xhelp
+local help = require("core.help")
+help.add("spup", "spup [on | off | resume | test [off]]", "a spellup session at Muranooyashiro: walk, announce, spell up everyone who smiles; bare: its state; test: gossips only shown")
+help.add("spn", "spn", "spellup next: the first in the queue")
+help.add("spq", "spq [clear]", "the spellup queue, or empty it")
