@@ -9,7 +9,11 @@
 --   mf [text]    as find, but shows the route instead of walking it
 --   gnom         the gnome airship (not on the map)
 --   label <word> / unlabel <word> / labels
---   13s, 3e2n ...              speedwalk
+--   13s, 3e2n ...              speedwalk (sent as one game "run 3e2n")
+-- A walk's plain moves go as the game's run ("run 2n3e"): the game shows
+-- only the room a run ends in, and stops it after three failed moves
+-- ("Too many run errors.") or at a fight - the rest isn't sent from the
+-- wrong room. Doors, portals, home and custom exits are sent as they are.
 -- For other modules: go_vnum, go_nearest, go_area, go_room, zone_of, where,
 -- probe, zones_with_rooms, and areas (target, quest, campaign use them).
 -- Data: data/portals.lua, areas.lua, labels.lua (made from tt++ by
@@ -241,13 +245,53 @@ end
 -- reach, and the rooms GMCP room.info has reported since (one per move) -
 -- so a failed step can be named
 local plan
+local alas = false   -- an "Alas, you cannot go that way." during this walk's run
 
--- Send a walk: the steps, the rooms they reach, the commands
-local function send_walk(cmds, chain, rooms, what)
+-- The commands for a route, plain moves run together: each stretch of
+-- them is one game "run" ("run 2n3e"), a door, portal, home or custom
+-- exit is sent as it is. Also how many of them show a room: a run shows
+-- only the room it ends in (the game's, seen live 2026-11-07 - GMCP still
+-- sends room.info for every room on the way), any other step its room
+local function run_cmds(chain)
+  local out, shows = {}, 0
+  local run, last, count = "", nil, 0
+  local function close_dir()
+    if last then run = run .. (count > 1 and count or "") .. last end
+    last, count = nil, 0
+  end
+  local function close_run()
+    close_dir()
+    if run ~= "" then
+      out[#out + 1] = run:match("^[nsewud]$") and run or ("run " .. run)
+      shows = shows + 1
+      run = ""
+    end
+  end
+  for _, s in ipairs(chain) do
+    local c = type(s.cmds) == "string" and s.cmds or nil
+    if c and c:match("^[nsewud]$") then
+      if c ~= last then close_dir(); last = c end
+      count = count + 1
+    else
+      close_run()
+      for _, x in ipairs(type(s.cmds) == "table" and s.cmds or split_cmds(s.cmds)) do out[#out + 1] = x end
+      shows = shows + 1
+    end
+  end
+  close_run()
+  return out, shows
+end
+T.run_cmds = run_cmds   -- for the offline tests
+
+-- Send a walk: the steps, the rooms they reach (cmds, from T.path, isn't
+-- used: run_cmds rebuilds them from the steps)
+local function send_walk(_, chain, rooms, what)
   local n = #chain
   say(string.format("[travel] %s: %d step%s%s", what, n, n == 1 and "" or "s", describe(chain)))
   plan = { from = M.here, chain = chain, rooms = rooms, seen = {} }
-  tags.hide_rooms(n)   -- show only the room you arrive in; also marks the walk (core/tags.lua)
+  alas = false
+  local cmds, shows = run_cmds(chain)
+  tags.hide_rooms(shows)   -- show only the room you arrive in; also marks the walk (core/tags.lua)
   rune.send_raw(table.concat(cmds, "\n"))
 end
 
@@ -378,6 +422,32 @@ rune.gmcp.on("room.wrongdir", function(d)
   end
 end, { name = "travel_wrongdir" })
 
+-- A run stopped: after three failed moves - a wall ("Alas, you cannot go
+-- that way."), a room that refuses you ("Only a primary class paladin can
+-- enter that room.") - the game gives up on it (seen live 2026-11-07). A
+-- fight stops a run too (core/tags.lua shows the room at once). If GMCP's
+-- room.wrongdir came first, that reported it and the plan is gone
+rune.trigger.exact("Alas, you cannot go that way.", function()
+  if plan then alas = true end
+end, { name = "travel_run_alas" })
+rune.trigger.exact("Too many run errors. Aborting speedwalk.", function()
+  local was_alas = alas
+  alas = false
+  if not plan or tags.walk_owner() then return end
+  tags.walk_stopped()
+  local bad = bad_step()
+  local k = #plan.seen + 1
+  local step = plan.chain[k]
+  plan = nil
+  if not bad then return end
+  warn("[travel] the walk stopped: " .. bad .. ".")
+  local r = M.here and M.rooms[M.here]
+  local dir = step and type(step.cmds) == "string" and step.cmds
+  if was_alas and r and dir and r.exits[dir] then
+    warn(string.format("[travel] the game says there's no %s exit here - if so, remove the map's: map unlink %s", dir, dir))
+  end
+end, { name = "travel_run_abort" })
+
 -- Speedwalk, as tt++'s #CONFIG SPEEDWALK ON: a line of only n s e w u d,
 -- each with an optional count before it ("13s", "3e2n", "nnw"), is walked.
 -- Like tt++, a word of only those letters ("news") is walked too
@@ -389,11 +459,10 @@ rune.alias.regex("^((?:[0-9]*[nsewud])+)$", function(m)
     for _ = 1, math.min(tonumber(count) or 1, 100) do cmds[#cmds + 1] = dir end
   end
   if #cmds == 0 then return end
-  -- One step (a plain "s") is just a move, not a walk: a wall then gets only
-  -- the game's own message, not the wrong-exit one
+  -- One game run: it shows only the room it ends in, and stops at a wall
+  -- or a fight with its own message. One step (a plain "s") is just a move
   plan = nil   -- not a planned route: no step to name
-  if #cmds > 1 then tags.hide_rooms(#cmds) end
-  rune.send_raw(table.concat(cmds, "\n"))
+  rune.send_raw(#cmds == 1 and cmds[1] or ("run " .. m[1]))
 end, { name = "travel_speedwalk" })
 
 -- The game refused a recall or home: mark the room no-recall (2, or 3 with
@@ -955,5 +1024,17 @@ rune.alias.exact("labels", function()
     rune.echo(string.format("  %-14s %s", name, table.concat(where, "; ")))
   end
 end)
+
+-- Help (core/help.lua): /help, xhelp
+local help = require("core.help")
+help.add("g", "g [area]", "bare: the home routine; with an area: go there (a picker if several match)")
+help.add("ga", "ga <text>", "this area: the nearest room labelled or named <text>, walked")
+help.add("find", "find [text]", "anywhere: labels, areas, room names, a vnum - one match goes there, several open a picker")
+help.add("mf", "mf [text]", "as find, but shows the route instead of walking it")
+help.add("gnom", "gnom", "the gnome airship (not on the map)")
+help.add("label", "label <word>", "label this room, for find and ga")
+help.add("unlabel", "unlabel <word>", "remove a label from this room")
+help.add("labels", "labels", "every room label")
+help.add("13s", "13s, 3e2n ...", "speedwalk: a count and a direction letter, run together")
 
 return T

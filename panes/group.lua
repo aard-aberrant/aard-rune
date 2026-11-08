@@ -1,11 +1,16 @@
 -- The group pane (tt++ modules/group.tin), from GMCP group.
 local util = require("core.util")
 local game = require("core.game")   -- your name, shown cyan
+local layout = require("core.layout")   -- the pane's height, for the columns
 
--- One line per member, "lvl name hp%", lowest HP
+-- One line per member, "lvl name hp%" (20 columns: level 3, name cut and
+-- padded to 12, HP 3), lowest HP
 -- first and members who aren't here at the bottom, dimmed. Your own name is
 -- cyan. HP is green, yellow under 60%, red under 20% (the tt++ group pane,
--- modules/group.tin). Redrawn whole (util.pane - only when it changed), so no flicker.
+-- modules/group.tin). Two columns, as tt++: the first holds as many as the
+-- pane has rows, the rest go in the second after a 2-space gap - a small
+-- group looks like one column. Every line is 20 wide, so they line up.
+-- Redrawn whole (util.pane - only when it changed), so no flicker.
 local function group_line(m)
   local info = m.info or {}
   local hp, mhp = tonumber(info.hp) or 0, tonumber(info.mhp) or 0
@@ -40,7 +45,10 @@ rune.gmcp.on("group", function(d)
     if a.key ~= b.key then return a.key < b.key end
     return a.i < b.i
   end)
-  local out = {}
-  for _, r in ipairs(rows) do out[#out + 1] = r.text end
+  local h, out = layout.group_h(), {}
+  for k = 1, math.min(#rows, h) do
+    local second = rows[k + h]
+    out[k] = rows[k].text .. (second and ("  " .. second.text) or "")
+  end
   util.pane("group", table.concat(out, "\n"))
 end, { name = "aard_group" })

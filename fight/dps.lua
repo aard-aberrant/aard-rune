@@ -85,4 +85,8 @@ rune.alias.exact("dps", function(args)
   end
 end)
 
+-- Help (core/help.lua): /help, xhelp
+local help = require("core.help")
+help.add("dps", "dps [reset]", "damage per second: totals and the last 5 sessions; reset starts over (moving to another area resets too)")
+
 return dps

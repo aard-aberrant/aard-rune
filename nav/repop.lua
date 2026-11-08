@@ -59,7 +59,7 @@ rune.gmcp.on("comm.repop", function(d)
   end
   a.seen, a.next, a.sure, a.pred = now, nil, false, nil
   save(zone, a)
-  status.draw()
+  rune.ui.refresh_bars()
 end, { name = "repop_seen" })
 
 -- A sense life reading: `mins` whole minutes (nil: no range - always an
@@ -81,7 +81,7 @@ local function reading(mins, secs)
   if not sure and not contra and a.next and a.next > now and (a.sure or a.next < new) then return end
   a.next, a.sure, a.pred = new, sure, sure and new or nil
   save(zone, a)
-  status.draw()
+  rune.ui.refresh_bars()
 end
 
 local SENSE = "You sense that life will return to this area "
@@ -116,3 +116,7 @@ rune.alias.exact("pop", function()
   say("[pop] the last " .. #stats .. " exact countdowns (repop minus prediction):")
   for _, l in ipairs(stats) do rune.echo("  " .. l) end
 end)
+
+-- Help (core/help.lua): /help, xhelp
+local help = require("core.help")
+help.add("pop", "pop", "how the last 5 exact repop countdowns (POP) compared with the repops")

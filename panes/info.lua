@@ -19,7 +19,12 @@ local game = require("core.game")       -- char.worth, char.stats (account)
 local layout = require("core.layout")   -- the pane's width
 
 local info = {}
-local HR_MIN, DR_MIN, STAT_MIN = 1600, 2000, 600   -- conf/equipment.tin
+-- Below these, the account view shows red. The defaults (conf/equipment.tin);
+-- a subclass's file (data/classes/<subclass>.lua) may set its own: hr_min,
+-- dr_min, stat_min. Read again when the subclass changes
+local DEF_HR, DEF_DR, DEF_STAT = 1600, 2000, 600
+local HR_MIN, DR_MIN, STAT_MIN = DEF_HR, DEF_DR, DEF_STAT
+local mins_for   -- the subclass they were read for
 
 local prov = {}         -- name -> { prio, text }
 
@@ -169,6 +174,16 @@ for _, pkg in ipairs({ "char.worth", "char.stats" }) do
   rune.gmcp.on(pkg, account, { name = "info_" .. pkg })
 end
 
+-- A new subclass (core/game.lua has stored char.base already): its minimums
+rune.gmcp.on("char.base", function()
+  local sub = game.subclass
+  if not sub or sub == mins_for then return end
+  mins_for = sub
+  local C = util.load_data(rune.config_dir .. "/data/classes/" .. sub:lower() .. ".lua") or {}
+  HR_MIN, DR_MIN, STAT_MIN = C.hr_min or DEF_HR, C.dr_min or DEF_DR, C.stat_min or DEF_STAT
+  account()
+end, { name = "info_class_mins" })
+
 -- infomsg ----------------------------------------------------------------
 -- infomsg [-t secs] text: your own text on the pane, priority 40 - over
 -- quest, campaign and account, under the alerts. | starts a new line (4 at
@@ -198,5 +213,9 @@ rune.alias.exact("infomsg", function(args)
   end
   info.msg(rest or text, tonumber(secs))
 end)
+
+-- Help (core/help.lua): /help, xhelp
+local help = require("core.help")
+help.add("infomsg", "infomsg [-t secs] [text]", "your own text on the info pane (| starts a line, 4 lines); -t: gone after secs; bare clears it")
 
 return info

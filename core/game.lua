@@ -9,8 +9,8 @@
 --   char.worth    worth = the message as sent (gold, bank, qp, tp, trains)
 --   char.stats    stats = the message as sent (str ... luck, hr, dr)
 --   room.info     room = { num, zone, name } (num can be -1 in a maze)
---   comm.tick     tick = seconds to the next tick: 30 at each tick, counted
---                 down each second (panes/status.lua's TCK, fight/rheal.lua)
+--   comm.tick     tick() = seconds to the next tick (30 at a tick), nil before
+--                 the first (panes/status.lua's TCK, fight/rheal.lua, nav/moons.lua)
 --   game.on_login(fn)  fn() once you're in the game: at the first char.base
 --                 after this loaded (after a /reload: init.lua asks for
 --                 char) and after each reconnect. Not at "connected" - Rune
@@ -61,11 +61,19 @@ on("room.info", function(d)
   game.room = { num = tonumber(d.num), zone = d.zone or "", name = d.name or "" }
 end)
 
--- (comm.tick may come with no table)
-rune.gmcp.on("comm.tick", function() game.tick = 30 end, { name = "game_comm.tick", priority = 1 })
-rune.timer.every(1, function()
-  if game.tick and game.tick > 0 then game.tick = game.tick - 1 end
-end, { name = "game_tick" })
+-- (comm.tick may come with no table). Worked out from the clock when asked,
+-- not counted down by a timer: Rune's repeating timers slip (each is re-armed
+-- from when it fired) and drop a tick when Rune is busy (timer/service.go),
+-- so a count lost seconds. The tick's time is kept in rune.session, so a
+-- /reload doesn't lose it
+local tick_at = tonumber(rune.session.get("game_tick_at") or nil)
+rune.gmcp.on("comm.tick", function()
+  tick_at = os.time()
+  rune.session.set("game_tick_at", tostring(tick_at))
+end, { name = "game_comm.tick", priority = 1 })
+function game.tick()
+  return tick_at and math.max(0, 30 - (os.time() - tick_at)) or nil
+end
 
 on("char.worth", function(d) game.worth = d end)
 on("char.stats", function(d) game.stats = d end)

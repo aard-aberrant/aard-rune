@@ -36,6 +36,19 @@ local status = require("panes.status")  -- the 3MN light (a row1_end slot)
 local info = require("panes.info")      -- the all-up alert
 local travel = require("nav.travel")    -- home_vnum
 
+-- First: weather messages on at every login (config noweather off) - rises,
+-- falls and weather replies are what this reads. init.lua turns them off
+-- for everyone at login; this login action is registered after that one,
+-- so it runs after it and wins. Its "## Setting ..." reply is hidden, by a
+-- trigger that exists only until it comes (or 10 s)
+game.on_login(function()
+  util.await("exact", "## Setting noweather to off.", function(_, ctx)
+    util.eat_blanks(ctx.line:clean())
+    return false
+  end, "moons_cfg_reply")
+  rune.gmcp.send("config noweather off")
+end)
+
 local say = util.say
 
 local MOONS = { "white", "grey", "black" }
@@ -110,7 +123,7 @@ local function dur(secs)
   return string.format("%dh%02d", math.floor(mins / 60), mins % 60)
 end
 local function both(n)
-  return dur((game.tick or 30) + (n - 1) * 30) .. " (" .. n .. "t)"
+  return dur((game.tick() or 30) + (n - 1) * 30) .. " (" .. n .. "t)"
 end
 
 -- After any change: each moon's state and exact phase, all up, the span.
@@ -148,7 +161,7 @@ end
 -- The state across a /reload ----------------------------------------------
 
 rune.hooks.on("reloading", function()
-  pcall(rune.store.set, KEY, { at = os.time(), tick = game.tick, cand = cand, set_at = set_at,
+  pcall(rune.store.set, KEY, { at = os.time(), tick = game.tick(), cand = cand, set_at = set_at,
     st = st, wx_at = wx_at, wx_up = wx_up, reboot_at = reboot_at, ask_at = ask_at,
     owed = owed, allup = allup })
 end, { name = "moons_save" })
@@ -279,12 +292,8 @@ for _, pkg in ipairs({ "room.info", "char.status" }) do
   rune.gmcp.on(pkg, ready, { name = "moons_ready_" .. pkg })
 end
 
--- Login: weather messages on (noweather off - its "## Setting ..." reply is
--- hidden, by a trigger that exists only until it comes, or 10 s), a
--- reading owed, one asked for at once
+-- Login: a reading owed, one asked for at once
 game.on_login(function()
-  util.await("exact", "## Setting noweather to off.", function(_, ctx) return hide(ctx) end, "moons_cfg_reply")
-  rune.gmcp.send("config noweather off")
   owed = true
   ask_at = 0
   ask()
@@ -335,8 +344,11 @@ rune.trigger.regex("^A .+ blows from the (?:north|south|east|west|northeast|nort
   function(_, ctx) if not cap then return hide(ctx) end end, { name = "moons_notice_wind" })
 
 -- The 3MN light -----------------------------------------------------------
+-- Second in row1_end, after POP: this loads after nav/repop and
+-- targets/doubles (a Shaman's module, init.lua), so appending would put it
+-- after 2XP 2QP
 
-table.insert(status.row1_end, function()
+table.insert(status.row1_end, math.min(2, #status.row1_end + 1), function()
   if need() then return status.field("3MN", "??", 7, rune.style.yellow) end
   if allup then
     return status.field("3MN", setleft >= 0 and ((setleft + 1) .. "t") or "--", 7,
@@ -390,3 +402,8 @@ rune.alias.exact("moons", function()
   end
   if need() then say("  A reading is owed - type weather outdoors, or it's taken next time you're home.") end
 end)
+
+-- Help (core/help.lua): /help, xhelp
+local help = require("core.help")
+help.add("moons", "moons", "each moon's state and timing, and when all three are next up")
+help.add("weather", "weather [args]", "the game's weather; its reply also sets the moons")

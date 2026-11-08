@@ -103,7 +103,7 @@ rune.alias.exact("ac", function(args)
     on = args == "on"
     clear()
     say("[ac] autocast " .. args .. ".")
-    status.draw()
+    rune.ui.refresh_bars()
   elseif args == "cast reset" then
     cmd, hit = nil, nil
     show()
@@ -118,3 +118,11 @@ rune.alias.exact("ac", function(args)
     warn("[ac] ac [on|off|cast <command> | <hit word>|cast reset]")
   end
 end)
+
+-- Help (core/help.lua): /help, xhelp
+local help = require("core.help")
+help.add("ac", "ac [on|off]", "autocast: in a fight, your primary attack (k) once a round, at the melee round; bare: the state")
+help.add("ac cast", "ac cast <command> | <hit> | reset", "autocast something else this session (<hit>: its word after \"Your \" in the damage line); reset: back to k's")
+
+-- For others (fight/bcc.lua's check before the mist)
+return { on = function() return on end }

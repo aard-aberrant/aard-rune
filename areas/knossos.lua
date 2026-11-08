@@ -16,6 +16,7 @@ local STEPS = {
   "e", "e", "n", "n", "n", "n", "w", "n", "give id guard", "give pass guard",
 }
 
+A.help("knossos", "knossos", "the whole Knossos area quest, from the portal's landing room 28193 (knossos)")
 A.alias.exact("knossos", function()
   if game.room.num ~= START then
     return util.warn("[knossos] start in room " .. START .. ", Before a great city (you're in "

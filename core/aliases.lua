@@ -42,8 +42,13 @@ function aliases.run(name, args)
   return true
 end
 
-for name in pairs(A) do
+-- Each in /help and xhelp (core/help.lua) as what it sends - no list to
+-- keep: a new one here gets its help too
+local help = require("core.help")
+for name, body in pairs(A) do
   rune.alias.exact(name, function(args) aliases.run(name, args) end)
+  local usage = name .. (body:find("%%[0-9]") and " [args]" or "")
+  help.add(name, usage, "sends: " .. body:gsub("%%0", "<args>"):gsub("%%(%d)", "<arg%1>"):gsub(";", "; "))
 end
 
 return aliases

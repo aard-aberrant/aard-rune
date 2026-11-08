@@ -134,9 +134,18 @@ function M.room_info(d)
   end
 end
 
+-- debug rooms: each GMCP room.info and room.wrongdir as it comes - what
+-- the game's "run" sends (one room.info per room - seen live 2026-11-07)
+local dbg = require("core.debug").topic("rooms", "each GMCP room.info (vnum, zone, name) and room.wrongdir as it comes")
+
 rune.gmcp.on("room.info", function(d)
-  if type(d) == "table" then M.room_info(d) end
+  if type(d) ~= "table" then return end
+  if dbg.on then dbg.log(tostring(d.num) .. " " .. tostring(d.zone) .. " " .. util.strip(tostring(d.name))) end
+  M.room_info(d)
 end, { name = "aard_mapper" })
+rune.gmcp.on("room.wrongdir", function(d)
+  if dbg.on then dbg.log("wrongdir " .. (type(d) == "table" and tostring(d.dir or d[1]) or tostring(d))) end
+end, { name = "aard_mapper_wrongdir" })
 
 rune.timer.every(60, function()
   if M.dirty then M.save() end
@@ -205,5 +214,10 @@ rune.alias.exact("mapinfo", function()
 end)
 
 M.load()
+
+-- Help (core/help.lua): /help, xhelp
+local help = require("core.help")
+help.add("mapinfo", "mapinfo", "where you are on the map: room, area, exits, and the map's state")
+help.add("mapsave", "mapsave", "save the map now (it saves itself every 60 s and on disconnect)")
 
 return M
