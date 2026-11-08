@@ -173,27 +173,47 @@ function M.unlink(dir)
   return "[map] removed exit " .. dir .. " from room " .. M.here .. " - walking it again lets GMCP add the real one.", true
 end
 
+-- Exit `name` from room `from` to room `to`, taken by sending `cmds`
+-- (";"-joined; "" or the same as the name means just the name). Replaces
+-- an exit of the same name, keeping its flags (avoid) if it went to the
+-- same room. Both rooms must be on the map. Returns a message, ok.
+-- Used by map exit (below) and map apply (nav/maprec.lua)
+function M.set_exit(from, name, to, cmds)
+  local r = from and M.rooms[from]
+  if not r then return "[map] room " .. tostring(from) .. " isn't on the map.", false end
+  if not to or not M.rooms[to] then
+    return "[map] room " .. tostring(to) .. " isn't on the map - visit it once first.", false
+  end
+  name = util.trim(name or ""):lower()
+  if name == "" then return "[map] an exit needs a name.", false end
+  cmds = util.trim(cmds or "")
+  if cmds:lower() == name then cmds = "" end
+  local old = r.exits[name]
+  local flags = old and old.to == to and old.flags or ""
+  r.exits[name] = { to = to, flags = flags, cmds = cmds }
+  M.dirty = true
+  return string.format("[map] exit \"%s\" from room %d to %d (%s)%s %s.", name, from, to,
+    util.strip(M.rooms[to].name), cmds ~= "" and (" sends " .. cmds) or "",
+    old and "replaced" or "added"), true
+end
+
 -- An exit from the room you're in that GMCP doesn't list - a custom exit
 -- ("exits" shows them as Custom, with a Name), or one you only find by
 -- trying. Taking it sends `cmd`. Replaces an exit of the same name
 function M.add_exit(v, cmd)
-  local r = M.here and M.rooms[M.here]
-  if not v or not r or not cmd or cmd == "" then
+  if not v or not M.here or not cmd or cmd == "" then
     return "map exit <vnum> <command> - stand in the room the exit leaves from.", false
   end
-  cmd = cmd:lower()
-  if not M.rooms[v] then return "[map] room " .. v .. " isn't on the map - visit it once first.", false end
-  r.exits[cmd] = { to = v, flags = "", cmds = "" }
-  M.dirty = true
-  return string.format("[map] exit \"%s\" from room %d to %d (%s) added.", cmd, M.here, v, M.rooms[v].name), true
+  return M.set_exit(M.here, cmd, v, "")
 end
 
 rune.alias.exact("mapsave", function()
   if M.save() then util.say("[map] saved, " .. M.count .. " rooms.") end
 end)
 
--- "mapinfo": where you are on the map, and the map's state
-rune.alias.exact("mapinfo", function()
+-- map info (nav/minimap.lua's map command): where you are on the map, and
+-- the map's state
+function M.info()
   local r = M.here and M.rooms[M.here]
   if not r then
     util.warn("[map] current room " .. tostring(M.here) .. " isn't on the map.")
@@ -211,13 +231,13 @@ rune.alias.exact("mapinfo", function()
   end
   rune.echo(string.format("      %d rooms, %s", M.count,
     M.dirty and "unsaved changes" or "saved"))
-end)
+end
 
 M.load()
 
 -- Help (core/help.lua): /help, xhelp
 local help = require("core.help")
-help.add("mapinfo", "mapinfo", "where you are on the map: room, area, exits, and the map's state")
+help.add("map info", "map info", "where you are on the map: room, area, exits, and the map's state")
 help.add("mapsave", "mapsave", "save the map now (it saves itself every 60 s and on disconnect)")
 
 return M

@@ -27,12 +27,27 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
 
 ## To check
 
+- [ ] map record (nav/maprec.lua, offline-tested 2026-11-08): map record, do what gets you past a room
+      (say xwxhxfx, look field + enter field, open n + n), map record stop shows the plan, map edit /
+      drop fix it, map apply writes the exits. Check live: what a heal or autocast line sent mid-recording
+      looks like in the plan, and that find/g then route through the new exit (a /reload
+      ends a recording and throws it away)
 - [ ] Walks as game runs (nav/travel.lua, offline-tested 2026-11-07): plain moves sent as "run 2n3e",
       doors/portals/home as they are; rooms hidden per command that shows one. Check live: a
       multi-direction run ("run 2nd2ns3es" - only single-direction runs tried), a route with a door and
       a portal, and "Too many run errors" naming the failed step
-- [ ] fight/quiet.lua (offline-tested on ~/combat): a kill's xp/bonus/gold/tax on one line, shown
-      before the next line (or 1 s after); tells reminder only when the count changes; skinning
+- [ ] nav/minimap.lua running mode, redone 2026-11-08 (offline-tested): a GMCP room.info with no map block since
+      the last one shows RUNNING (any run: g, cn, rt, typed run); the next map block ends it. Travel walks the
+      last stretch inside the destination area one step at a time, each sent when GMCP confirms the room
+      before it, so the minimap follows it and a fight (char.status) stops the walk there. Check live: cn
+      inside an area shows each room's map; a long g shows RUNNING then the area's rooms; no RUNNING flicker
+      on ordinary moves; an aborted run redraws the map
+- [ ] infopane (panes/info.lua, offline-tested 2026-11-08): ported from tt++ - list, pin a provider (e.g.
+      infopane account during a campaign break), reset; an alert still beats the pin
+- [ ] panes/group.lua markers (offline-tested 2026-11-08): L leader (GMCP group.leader - a guess, check with
+      "debug group on"), F whom you follow (game text, ~/groupinfo), E both; no mark for a follow outside the group
+- fight/quiet.lua (confirmed live 2026-11-07): a fight's xp/gold/tax added up, one line
+      "+xp, +gold (N kills)" when GMCP state leaves fighting (live order checked 2026-11-07); tells reminder only when the count changes; skinning
       (makes / drops / crumbles into dust) hidden with its blank line. Watch for a reward line shape
       not in that log - it shows as before
 - [ ] Per-subclass modules (init.lua's last section): Shaman gets 3MN at login and after /reload; a

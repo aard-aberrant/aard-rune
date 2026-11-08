@@ -35,14 +35,15 @@ game, not just a connection, uses `game.on_login(fn)`. It runs at the first
 core/     util  game  layout  tags  aliases  login  history  debug  help
 panes/    status  group  chats  info  affects  timer
 gear/     eq  invmon
-nav/      mapper  travel  minimap  moons  repop
+nav/      mapper  maprec  travel  minimap  moons  repop
 targets/  target  quest  campaign  doubles  soh
 fight/    combat  autocast  heal  hunt  dps  rheal  pup  instinct  quiet  bcc
 host/     spup (hosting spellups)
 areas/    loader  + one script per zone (geniewish, knossos, partroxis, blackclaw)
 data/     settings and game data (Lua tables), data/classes/<subclass>.lua
 map/      aard.map, the room map
-tools/    one-time converters from the tt++ data, rune-api.txt (API dump)
+tools/    one-time converters from the tt++ data, rune-api.txt (API dump),
+          trigbench/ (what the triggers cost per line)
 ```
 
 The folders form layers, top to bottom. A file requires only from its own
@@ -108,6 +109,10 @@ From Rune's source (`lua/matcher.go`) and benchmarks of this config
     something just sent (Rune's `once`), then goes (heal's refusal, the login
     config replies);
   - readers built inline do the same (spup, the partroxis exits, eqdata rows).
+- **Measure, don't guess:** `tools/trigbench` reads every trigger pattern
+  from the config and times them against real /log files (`go test -bench .
+  -args ~/combatmsg ...`). 2026-11-08: 50 permanent triggers, ~0.9 µs a line
+  (literals ~8 ns each, regexes 15-115 ns). Rune's own `/triggers` lists them.
 - **Adding or removing a trigger rebuilds the matcher,** so a trigger toggled
   every combat round (autocast's) stays registered and disabled.
 - **Timers are cancelled, not outlived.** `rune.timer.after` returns a handle with
@@ -226,7 +231,8 @@ in areas/blackclaw.lua.
 - `map/aard.map` is the room map: TAB-separated `R` (room) and `X` (exit)
   lines, about 34,800 rooms. It was converted from tt++ by
   `tools/convert_ttmap.py`, and `nav/mapper.lua` keeps it current from GMCP as
-  you walk. `nav/travel.lua` does route search, walks and the travel commands
+  you walk; `nav/maprec.lua` (map record) adds the custom exits GMCP can't show.
+  `nav/travel.lua` does route search, walks and the travel commands
   on top of it.
 
 ## Conventions
