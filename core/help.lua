@@ -9,9 +9,9 @@
 --   /help          Rune's commands, then ours, by name
 --   /help <text>   both, only those whose name, usage or description holds
 --                  the text (any case) - Rune's own /help ignores what follows
---   xhelp [text]   ours only, the same search (tt++'s name)
--- Plain "help" goes to the game, as ever. Costs nothing per line: a table
--- filled at load, read when asked.
+-- tt++'s xhelp (ours alone) went 2026-11-09: /help covers it. Plain "help"
+-- goes to the game, as ever. Costs nothing per line: a table filled at
+-- load, read when asked.
 local util = require("core.util")
 
 local M = {}
@@ -70,11 +70,5 @@ rune.command.add("help", function(args)
   local b = ours(q)
   if not (a or b) then util.warn("[help] nothing matches \"" .. q .. "\".") end
 end, "Show available commands - Rune's and ours; /help <text> searches")
-
-rune.alias.exact("xhelp", function(args)
-  local q = util.trim(args):lower()
-  if not ours(q) then util.warn("[help] no command of ours matches \"" .. q .. "\".") end
-end)
-M.add("xhelp", "xhelp [text]", "our commands, or those matching text (any case); /help shows Rune's too")
 
 return M

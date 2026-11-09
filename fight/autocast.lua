@@ -117,7 +117,7 @@ rune.alias.exact("ac", function(args)
   end
 end)
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("ac", "ac", "autocast on/off (a toggle): in a fight, your primary attack (k) once a round, at the melee round")
 help.add("ac cast", "ac cast <command> | <hit> | reset", "autocast something else this session (<hit>: its word after \"Your \" in the damage line); reset: back to k's")

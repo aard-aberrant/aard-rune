@@ -148,8 +148,9 @@ walk stalls.
 - **`core/layout.lua`** sets every pane's size.
 - **`util.pane(name, text)`** writes a pane only when its text changed, so redraws are cheap.
 - **The status rows** (`panes/status.lua`) are two native Rune bars, `status1`
-  and `status2`, which Rune redraws every 250 ms. Row 1 is the game around you, row 2 is
-  you. They have slots: `row1`, `row1_end` and `row2`. A feature adds functions
+  and `status2`, which Rune redraws every 250 ms. Row 1 is timers and running measures
+  (clocks, countdowns, DPS, PUP), row 2 is you (your stats, then the enemy). A row-1 segment
+  with nothing running shows a gray `--`, padded to its usual width. They have slots: `row1`, `row1_end` and `row2`. A feature adds functions
   that return its segment (the text alone; the row adds the spaces), and calls `rune.ui.refresh_bars()` to show a change at once.
 - **The info pane** (`panes/info.lua`) is shared by priority with `info.set(name, prio, text)`.
   The lowest priority wins: alerts 20/25, quest 50, campaign 60, account 90.
@@ -168,8 +169,10 @@ row.
 it next to its code with `require("core.help").add(name, usage,
 description)` (an area script: `A.help(...)`, gone when it unloads).
 `core/help.lua` wraps Rune's own `/help`, which lists Rune's commands and
-then ours; `/help <text>` and `xhelp [text]` search them. `core/aliases.lua`
+then ours; `/help <text>` searches both. `core/aliases.lua`
 registers its one-liners from its own table, so a new one gets help too.
+A slash command (`/act`, `/copy`, `/debug` - the client's tools, nothing
+to do with the game) needs no entry: Rune's list shows its description.
 A new command without a help entry is unfinished.
 
 **Debug output.** `core/debug.lua` holds named topics: a module registers
@@ -233,7 +236,9 @@ in areas/blackclaw.lua.
   one per finished session, and `util.log_tail` reads the last few back.
   Rune's `/log` files go in `userlogs/` there, with `userlogs/` as the root of
   any path given (`panes/status.lua` wraps `rune.log.start`). No folder is
-  made; a missing one is an error.
+  made; a missing one is an error. Rune's `/log` leaves out `rune.echo`; ours
+  puts it in (`core/copy.lua` wraps `rune.echo`), so our messages and debug
+  topics' lines are in a log, except a chat-only one.
 - `data/classes/<subclass>.lua` holds the attack commands for `k`, `kk` and
   `aa`, chosen by GMCP `char.base` subclass.
 - `map/aard.map` is the room map: TAB-separated `R` (room) and `X` (exit)

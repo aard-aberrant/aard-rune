@@ -69,10 +69,7 @@ end
 local function reply_starts() hiding = table.remove(queue, 1) == true end
 util.hider(function() return hiding end)
 
-local function hide(ctx)
-  util.eat_blanks(ctx.line:clean())
-  return false
-end
+local hide = util.hide
 
 local function count(name)
   local n = 0
@@ -388,7 +385,7 @@ end)
 -- At login and after a /reload
 game.on_login(check_quietly)
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("cn", "cn [next]", "go to the current campaign mob, else the next (Dead ones' areas last); next skips it")
 help.add("cp", "cp / campaign [args]", "the game's campaign command; its reply also updates cn's list")

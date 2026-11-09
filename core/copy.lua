@@ -11,7 +11,7 @@
 --         "> qc" (Rune's echo hook, as /log does - the typed line, not
 --         what an alias sends), and our own messages ([eq] ... lines,
 --         every rune.echo - Rune has no hook for them, so rune.echo is
---         wrapped below)
+--         wrapped below; the wrapper also puts them in an open /log)
 --   chat  the last 500 lines panes/chats.lua writes to its pane
 --         (copy.keep)
 -- A /reload keeps both (rune.session, written once at the reload).
@@ -55,10 +55,21 @@ rune.hooks.on("echo", function(text) main.push(util.strip(text)) end, { name = "
 -- keeps its own copy), so they all go through this. The original is kept
 -- in rune._copy_echo, so a /reload that keeps Lua's state wraps the
 -- original again, not the last wrapper (every message would be kept twice)
+-- The same wrapper puts them in an open /log too, which Rune leaves them out
+-- of (lua/core/60_log.lua: "client chrome (rune.echo) is not logged") - so
+-- a debug topic's lines land in a log (the user, 2026-11-09). Colors kept
+-- in a raw log (rune.session "log_raw", as Rune's own hooks read it);
+-- nothing in a chat-only one (panes/chats.lua's "log_chat_only")
 rune._copy_echo = rune._copy_echo or rune.echo
 local echo = rune._copy_echo
 function rune.echo(text)
-  for piece in (util.strip(tostring(text)) .. "\n"):gmatch("([^\n]*)\n") do main.push(piece) end
+  text = tostring(text)
+  local plain = util.strip(text)
+  for piece in (plain .. "\n"):gmatch("([^\n]*)\n") do main.push(piece) end
+  if rune.log.status() and not rune.session.get("log_chat_only") then
+    local out = rune.session.get("log_raw") and text or plain
+    for piece in (out .. "\n"):gmatch("([^\n]*)\n") do rune.log.write(piece) end
+  end
   echo(text)   -- returns nothing, as Rune's does
 end
 

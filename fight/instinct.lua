@@ -68,6 +68,6 @@ rune.alias.exact("inst", function()
   rune.send_raw("instinct")
 end)
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("inst", "inst", "every skill with instinct above 0 on one line, copied to the clipboard")

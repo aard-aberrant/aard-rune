@@ -307,7 +307,7 @@ function R.command(sub, rest)
   cmd[sub](trim(rest or ""))
 end
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("map record", "map record [stop|cancel]", "record what you do to get past rooms; stop shows the exits it would write")
 help.add("map plan", "map plan", "the exits map record would write")

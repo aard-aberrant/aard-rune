@@ -73,7 +73,7 @@ table.insert(status.row1_end, function()
   return "PUP " .. (on and rune.style.green(text) or rune.style.gray(text)) .. string.rep(" ", W - #plain)
 end)
 
-local function clock(secs) return string.format("%d:%02d", math.floor(secs / 60), secs % 60) end
+local clock = util.clock
 
 rune.alias.exact("pup", function()
   local list = {}
@@ -93,6 +93,6 @@ rune.alias.exact("pup", function()
   end
 end)
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("pup", "pup", "powerup sessions, newest first: start, length, pups, average gap (logged to ~/.local/state/rune/pup.log; status row 1 shows the current one)")

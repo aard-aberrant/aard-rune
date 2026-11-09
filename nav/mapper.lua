@@ -223,7 +223,7 @@ end
 
 M.load()
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("map info", "map info", "where you are on the map: room, area, exits, and the map's state")
 help.add("mapsave", "mapsave", "save the map now (it saves itself every 60 s and on disconnect)")

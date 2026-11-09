@@ -76,6 +76,6 @@ if ok and type(saved) == "table" and tonumber(saved.ends) and saved.msg then
   start(tonumber(saved.ends), saved.msg)
 end
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("timer", "timer [<time> <message> | check | clear]", "one countdown (5m30, 5m, 45s): the message flashes on the info pane when it ends")

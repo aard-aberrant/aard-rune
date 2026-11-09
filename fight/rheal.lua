@@ -189,7 +189,7 @@ rune.alias.exact("sleep", function()
   regen_on(function() rune.send_raw("sleep") end)
 end)
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("rh", "rh [stop]", "heal to above 95% HP: regen ring on, your heal spell between ticks, sleep through each tick; stop: now")
 help.add("sleep", "sleep", "the regen ring on, then sleep (it comes off when you wake, unless rh is running)")

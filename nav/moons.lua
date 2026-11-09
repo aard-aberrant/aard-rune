@@ -191,7 +191,7 @@ local cap             -- the reply being read: { state, hdr, seen, bad, quiet, g
 local line_trig       -- the reply's lines; exists only while one is read
 local fail_trig = {}  -- our weather's two failure replies; exist while one is owed
 
-local function hide(ctx) util.eat_blanks(ctx.line:clean()); return false end
+local hide = util.hide
 
 local function fails(on)
   if on and #fail_trig == 0 then
@@ -402,7 +402,7 @@ rune.alias.exact("moons", function()
   if need() then say("  A reading is owed - type weather outdoors, or it's taken next time you're home.") end
 end)
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("moons", "moons", "each moon's state and timing, and when all three are next up")
 help.add("weather", "weather [args]", "the game's weather; its reply also sets the moons")

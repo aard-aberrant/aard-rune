@@ -21,16 +21,17 @@
 -- Running (the user, 2026-11-08): a run - the game's run, runto - sends no
 -- map block for the rooms it passes, while GMCP room.info still comes for
 -- every room, so the map stood still under a changing header. The rule:
--- a room.info with no map block since the one before means a room without
--- its map - the pane shows the header and RUNNING in place of the map. The
--- next map block draws the map again. Works whichever comes first, the
--- map block or room.info (either is seen - the header note below): with
--- the map first, RUNNING from a run's first room; with room.info first,
--- from its second, the first showing the last map a moment. A run the game
+-- a room.info while GMCP char.status says running (state 12) shows the
+-- header and RUNNING in place of the map; every map block draws the map.
+-- Checked live 2026-11-09 (debug minimap): rt, g's runto, run 5s, a plain
+-- 5s and run 10w all went to 12 - just after the first room passed (it
+-- shows the last map a moment) - and back to 3 around the arrival's map
+-- block; plain steps, g home and looks never did. It replaced a guess (a
+-- room.info with no map block since the last one), which a look in the
+-- dark, then heighten, set off while standing still. A run the game
 -- aborts ("Too many run errors.") ends with no room shown, so
 -- nav/travel.lua calls minimap.refresh(): a silent map, as at login.
--- Cost: nothing per line - a flag set at each map block, read at each
--- room.info.
+-- Cost: nothing per line - one state read at each room.info.
 
 local util = require("core.util")
 local game = require("core.game")       -- the room's zone and vnum
@@ -151,7 +152,6 @@ local function header()
 end
 
 -- On a run: the header, and RUNNING in the middle of the pane
-local map_since_info = false   -- a map block came since the last room.info
 local function running_layout()
   local out = { header() }
   local word = "RUNNING"
@@ -233,6 +233,22 @@ local function draw_map()
   util.pane("minimap", table.concat(out, "\n"))
 end
 
+-- debug minimap: the run check, in the order things come - each state
+-- change, each map block (its room name) and each room.info with the
+-- state then and what it drew (map or RUNNING). Made to check state 12
+-- (the header note); kept for when the minimap looks wrong
+local dbg = require("core.debug").topic("minimap", "the run check: state changes, map blocks, each room.info and what it drew")
+-- No redraw when the state leaves 12: run 10w's state went back before
+-- its map block came, so a redraw then showed the start room's map a moment
+local prev_state
+rune.gmcp.on("char.status", function()
+  if not dbg.on then return end
+  local s = game.state
+  if s == prev_state then return end
+  dbg.log("state " .. tostring(prev_state) .. " -> " .. tostring(s))
+  prev_state = s
+end, { name = "minimap_debug_state" })
+
 -- The block is one Rune span, <MAPSTART> to <MAPEND>, all of it hidden
 -- (gag): the action runs once at <MAPEND> with its lines. A block that
 -- answers a typed map is echoed to the main output as well
@@ -250,21 +266,27 @@ rune.trigger.exact("<MAPSTART>", function(_, ctx)
     quiet_next = false
     util.eat_blanks("<MAPEND>")
   end
-  map_since_info = true
   build_map()
   draw_map()
+  if dbg.on then
+    dbg.log("map block: " .. util.trim(util.strip(parts.name[1] or "?")) .. " (state " .. tostring(game.state) .. ")")
+  end
 end, { name = "aard_map", priority = 10, gag = true, span = { to = "^<MAPEND>$", max = 120 } })
 
 -- The header and note come from GMCP room.info, which can arrive after the
 -- map block: drawn again then, so they never show the room you just left
--- (core/game.lua has stored it already)
+-- (core/game.lua has stored it already). Running (state 12): RUNNING
 rune.gmcp.on("room.info", function()
-  if not map_since_info then   -- this room came without its map: a run
-    running_layout()
-    return
+  local running = game.state == 12
+  if dbg.on then
+    dbg.log(string.format("room.info %s %s (state %s) -> %s", tostring(game.room.num),
+      tostring(game.room.name), tostring(game.state), running and "RUNNING" or "map"))
   end
-  map_since_info = false
-  if parts then draw_map() end
+  if running then
+    running_layout()
+  elseif parts then
+    draw_map()
+  end
 end, { name = "minimap_room" })
 
 -- map: the game's map, shown in the main output too (the minimap takes
@@ -305,7 +327,7 @@ function minimap.refresh()
 end
 game.on_login(minimap.refresh)
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("map", "map", "the game's map, in the main output too")
 help.add("map exit", "map exit <vnum> <command>", "add a custom exit from this room to <vnum>, taken by <command>")

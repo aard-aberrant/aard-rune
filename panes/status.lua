@@ -4,7 +4,7 @@
 -- places them): Rune calls their renderers every 250 ms on its own steady
 -- clock, lines up each row's left and right parts, and redraws only a row
 -- whose text changed (ui/tui/widget/bar.go).
---   row 1, the game around you: TCK, [row1 slots: QST (targets/quest.lua)],
+--   row 1, timers and running measures: TCK, [row1 slots: QST (targets/quest.lua)],
 --          [row1_end slots: POP (nav/repop.lua), 3MN (nav/moons.lua), DPS
 --          (fight/dps.lua), PUP (fight/pup.lua), 2XP 2QP (targets/doubles.lua)];
 --          REC (Rune's /log) at the right end
@@ -45,15 +45,11 @@ local function meter(label, cur, max)
   return label .. " " .. rune.style.green(num) .. pad
 end
 
--- Visible width of a styled string: colour codes removed, UTF-8 characters
--- counted once each
-local function vlen(s)
-  local plain = util.strip(s)
-  return select(2, plain:gsub("[^\128-\191]", ""))
-end
-
--- Status row 1 (tt++ ticking.tin): the game around you. Each label plain,
--- its value cyan unless marked, padded so the labels never move:
+-- Status row 1 (tt++ ticking.tin): timers and running measures - clocks
+-- and countdowns (TCK QST POP 3MN 2XP 2QP), the fight's measures (DPS PUP)
+-- and REC. Each label plain, its value cyan unless marked, padded so the
+-- labels never move; a segment with nothing running shows a gray "--",
+-- padded to its usual width (DPS, PUP):
 --   TCK  seconds to the next tick (game.tick()); red under 10. "--" until the
 --        first tick
 -- then the row1 slots (QST) and the row1_end slots (POP 3MN DPS PUP 2XP
@@ -73,18 +69,17 @@ local function status_row1()
 end
 
 -- Row 2's last field (tt++ statusbar.tin): the enemy while fighting - its
--- name (GMCP sends it with the game's @-colour codes, taken out) cut or
--- padded to ENEMY_W, then its health; green under 20 (nearly dead), red
--- otherwise. Out of a fight your state ("standing")
+-- health, padded to 3 so the name never moves, then its name (GMCP sends it
+-- with the game's @-colour codes, taken out) cut to ENEMY_W; green under 20
+-- (nearly dead), red otherwise. Out of a fight your state ("standing")
 local ENEMY_W = 20
-local function pad(s, w) return s .. string.rep(" ", w - vlen(s)) end
 local function enemy_segment()
   if game.state ~= 8 then return state_names[game.state or 0] or "?" end
   local pct = game.enemypct or 0
   local style = pct < 20 and rune.style.green or rune.style.red
   local name = util.uncolor(game.enemy or "")
   if #name > ENEMY_W then name = name:sub(1, ENEMY_W - 1) .. "…" end
-  return style(pad(name, ENEMY_W) .. string.format(" %3s", pct))
+  return style(string.format("%3s ", pct) .. name)
 end
 
 -- Row 2: you. HP MN MV (meter, above), then from char.status

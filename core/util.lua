@@ -185,6 +185,12 @@ eater.add("starts", "", function(_, ctx)
 end, { name = "util_eat_blanks", priority = 5 })
 function util.eat_blanks(clean) eat_skip = clean; eater.set(true) end
 
+-- A trigger's line hidden, with the blank line(s) after it: return util.hide(ctx)
+function util.hide(ctx) util.eat_blanks(ctx.line:clean()); return false end
+
+-- Seconds as m:ss ("1:23", "75:00")
+function util.clock(secs) return string.format("%d:%02d", math.floor(secs / 60), secs % 60) end
+
 -- A timer slot: start(secs, fn) cancels the slot's waiting timer (Rune's
 -- timer handles) and starts a new one, stop() cancels it - in place of a
 -- generation counter that every stale timer had to check

@@ -53,7 +53,7 @@ local no_reply = util.slot()   -- 10 s after eqdata is sent
 local worn           -- id -> true, filling
 local row_line       -- the row reader: exists only inside a reply
 
-local function hide(ctx) util.eat_blanks(ctx.line:clean()); return false end
+local hide = util.hide
 
 -- A row: id,flags,name,level,type,unique,wearloc,... - the name may hold
 -- commas, so it runs up to the first four numbers after it. Added at
@@ -359,7 +359,7 @@ game.on_login(check_worn)
 -- matched it anywhere; anchored here, so a channel quoting it can't set it off
 rune.trigger.starts("Your eyes glaze over.", function() check_worn() end, { name = "afk_glaze" })
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("eqwear", "eqwear [level | name]", "wear the set for your level (or that level / named set) from the eq bag; what it replaces goes in the bag")
 help.add("eqsave", "eqsave [level | name]", "save what you wear now as a set (default: your level)")

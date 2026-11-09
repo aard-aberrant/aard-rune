@@ -4375,7 +4375,7 @@ R	1863	blackrose	underground			Sleeping Quarters
 X	1863	1862	w		
 R	1864	blackrose	underground			A Well Furnished Room
 X	1864	1861	u		
-R	1865	mayhem	inside			Stairs to the Balcony
+R	1865	mayhem	inside	2		Stairs to the Balcony
 X	1865	25334	s		
 X	1865	1866	n		
 R	1866	mayhem	inside			On the Southern Part of the Balcony
@@ -84132,7 +84132,7 @@ X	28811	28812	d
 R	28812	wyrm	underground			Gateway to Sin
 X	28812	28811	u		
 X	28812	28813	d		
-R	28813	wyrm	underground	1		The Rift
+R	28813	wyrm	underground	3		The Rift
 X	28813	28812	u		
 R	28814	wyrm	underground	1		Center of the Council
 X	28814	28821	s		
@@ -109752,7 +109752,7 @@ R	38815	icefall	icemount	1		Iced Fish Hatchery
 X	38815	38816	e		
 R	38816	icefall	icemount			Iced Fish Hatchery
 X	38816	38817	e		
-R	38817	icefall	icehills			Iced Fish Hatchery
+R	38817	icefall	icehills	2		Iced Fish Hatchery
 X	38817	38818	s		
 R	38818	icefall	icemount			Iced Fish Hatchery
 X	38818	38819	s		
