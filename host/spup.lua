@@ -55,8 +55,11 @@ local function mana_pct()
   return game.mana * 100 / game.maxmana
 end
 
+-- A gossip, with Aardwolf's color codes as written (@Y bright yellow, @G
+-- bright green, @r dark red, @w back to white - a guess that white is
+-- what follows in a gossip). Test mode shows it in those colors
 local function gossip(msg)
-  if test then say("[spup test] would gossip: " .. msg)
+  if test then say("[spup test] would gossip: "); rune.echo("  " .. util.aard_ansi(msg))
   else rune.send_raw("gossip " .. msg) end
 end
 
@@ -266,7 +269,8 @@ end
 local function check_last()
   if S.phase ~= "run" then return end
   if idle() then
-    gossip("Last call for spellups - n u of recall. I don't know you're here if you don't smile at me ('smile " .. me() .. "').")
+    gossip("Last call for spellups - n u of recall. I don't know you're here if you don't smile at me ('@Gsmile "
+      .. me() .. "@w').")
     S.phase = "last"
     at(30, check_done)
   else
@@ -279,7 +283,8 @@ local function open()
   S.phase = "run"
   local h = tonumber(os.date("!%H", os.time() - 5 * 3600))
   S.tod = (h >= 2 and h < 12) and "morning" or (h >= 12 and h < 18) and "afternoon" or "evening"
-  gossip("Good " .. S.tod .. "! Spellups n u of recall for the next couple of minutes. Sit for cancel, smile at me when ready. YOU MUST 'smile " .. me() .. "'.")
+  gossip("Good " .. S.tod .. "! Spellups in the @r-=Masaki=-@w clan hall (n u of recall) for the next couple of minutes. "
+    .. "Sit for cancel, smile at me when ready. @YYou MUST@w '@Gsmile " .. me() .. "@w'.")
   at(120, check_last)
   drain()
 end

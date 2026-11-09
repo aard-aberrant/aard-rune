@@ -883,7 +883,22 @@ quiet_line.add("starts", "", function(_, ctx)
   return false
 end, { name = "travel_home_quiet", priority = 1 })
 
+-- One at a time: the routine and qc (targets/quest.lua) each hide lines
+-- up to an eqdata reply, with one hider each and gear/eq.lua's one waiting
+-- eqdata. A g sent while one runs used to switch the first one's hiding
+-- off (seen live 2026-11-09: rapid g showed the bank lines), and a qc
+-- could have its quest reply hidden as a g's chores. So while either runs,
+-- g and qc refuse. T.home_busy(fn): fn() is true while that one runs
+local busy = {}
+function T.home_busy(fn) busy[#busy + 1] = fn end
+function T.home_running()
+  if quiet_line.is_on() then return true end
+  for _, on in ipairs(busy) do if on() then return true end end
+  return false
+end
+
 local function home_routine()
+  if T.home_running() then return warn("[travel] g: still finishing the last g or qc.") end
   quiet.hiding = false
   quiet_line.set(true)
   quiet.timer.start(10, function() quiet_line.set(false) end)

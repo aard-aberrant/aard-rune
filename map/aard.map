@@ -53885,7 +53885,7 @@ X	16936	16935	s
 R	16937	deadlights	underground	1		Above the Styx
 X	16937	16938	n		
 X	16937	16929	d		
-R	16938	deadlights	underground	1		The Path of the Dead
+R	16938	deadlights	underground	3		The Path of the Dead
 X	16938	16939	w		
 X	16938	16937	s		
 X	16938	16946	e		op e;e
@@ -117891,7 +117891,7 @@ X	43817	43816	n
 R	43818	crynn	hellinside	1		Screaming Ascent
 X	43818	43821	s		
 X	43818	43820	n		
-R	43819	crynn	hellinside	1		Screaming Ascent
+R	43819	crynn	hellinside	3		Screaming Ascent
 X	43819	43821	w		
 X	43819	43822	e		
 X	43819	43823	n		

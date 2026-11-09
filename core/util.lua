@@ -45,6 +45,19 @@ function util.strip(s) return (s:gsub("\27%[[%d;\\]*m", "")) end
 -- Text without Aardwolf's colour codes (@x123, @R) - GMCP's names carry them
 function util.uncolor(s) return (s:gsub("@x%d%d?%d?", ""):gsub("@.", "")) end
 
+-- Aardwolf's color codes made terminal colors, to show text as the game
+-- will: @r..@w dark (31-37), @R..@W bright (91-97), @D dark gray, @x123
+-- the 256-color one, @@ a plain @. Anything else is left as it is
+local AARD = { r = 31, g = 32, y = 33, b = 34, m = 35, c = 36, w = 37,
+               R = 91, G = 92, Y = 93, B = 94, M = 95, C = 96, W = 97, D = 90 }
+function util.aard_ansi(s)
+  s = s:gsub("@x(%d%d?%d?)", "\27[38;5;%1m"):gsub("@(.)", function(c)
+    if c == "@" then return "@" end
+    return AARD[c] and ("\27[" .. AARD[c] .. "m") or nil
+  end)
+  return s .. "\27[0m"
+end
+
 -- Nothing but spaces
 function util.blank(s) return s:match("^%s*$") ~= nil end
 

@@ -2,40 +2,66 @@
 -- and its scroll keys.
 local util = require("core.util")
 local game = require("core.game")   -- at login
+local copy = require("core.copy")   -- /copy chat: each line the pane gets
 
--- The log: every line the pane gets is appended to chats.log, with its date
--- ("2026-11-07<TAB>14:03 (Group) ..."), kept for good (tt++'s
--- log/Aardwolf-chats) - colour codes and all (less -R reads them). Rune
--- empties the pane when it quits, so at start its last RESTORE lines are
--- written back, to scroll back through with the wheel; a /reload keeps the
--- pane (only Lua restarts), so not then (rune.session lasts until Rune
--- quits). Only the file's end is read (RESTORE * 400 bytes, about 120 KB)
-local LOG = rune.config_dir .. "/chats.log"
-local RESTORE = 300
+-- The log: no file of its own. While a /log is open, each line the pane
+-- gets goes into it too (Rune's log has the game's text lines only, and
+-- channels come over GMCP). /log start chat [raw] [file] logs the chats
+-- alone: Rune's own two log hooks (lua/core/60_log.lua: "log-output", the
+-- game's lines, and "log-echo", what you type) are off until /log stop.
+-- Rune holds the file open (Go), so a line is one write - no open/close.
+-- The mode is kept in rune.session, as Rune keeps the open log, so a
+-- /reload goes on logging chats alone. Rune empties the pane when it quits:
+-- a restart starts it empty (a /reload keeps it)
+local CHAT_ONLY = "log_chat_only"
 
 local function chat(text)
   text = text:gsub("\n", " ")
   rune.pane.write("chats", text)
-  local fh = io.open(LOG, "a")
-  if fh then fh:write(os.date("%Y-%m-%d"), "\t", text, "\n"); fh:close() end
+  copy.keep(text)
+  if rune.log.status() then
+    rune.log.write(rune.session.get("log_raw") and text or (text:gsub("\27%[[%d;]*m", "")))
+  end
 end
 
-if not rune.session.get("chats_restored") then
-  rune.session.set("chats_restored", "1")
-  local ok, err = pcall(function()
-    local fh = io.open(LOG, "r")
-    if not fh then return end
-    local size = fh:seek("end")
-    fh:seek("set", math.max(0, size - RESTORE * 400))
-    local lines = {}
-    for l in fh:lines() do lines[#lines + 1] = l end
-    fh:close()
-    if size > RESTORE * 400 then table.remove(lines, 1) end   -- the cut first line
-    for i = math.max(1, #lines - RESTORE + 1), #lines do
-      rune.pane.write("chats", (lines[i]:gsub("^[^\t]*\t", "")))
+local function game_lines(on)
+  for _, name in ipairs({ "log-output", "log-echo" }) do
+    if on then rune.hooks.enable(name) else rune.hooks.disable(name) end
+  end
+end
+if rune.session.get(CHAT_ONLY) then
+  if rune.log.status() then game_lines(false) else rune.session.delete(CHAT_ONLY) end
+end
+
+-- /log, wrapped: "start chat" sets the mode; any other start clears it (a
+-- log Rune closed itself - a write error - leaves it set); stop clears it
+local rune_log = rune.command.get("log")
+rune_log = rune_log and rune_log:action()
+if rune_log then
+  rune.command.add("log", function(args)
+    local sub, rest = (args or ""):match("^%s*(%S*)%s*(.-)%s*$")
+    local first, more = rest:match("^(%S+)%s*(.*)$")
+    if sub == "start" and not rune.log.status() then
+      local only = first == "chat"
+      game_lines(not only)
+      if only then rune.session.set(CHAT_ONLY, "1") else rune.session.delete(CHAT_ONLY) end
+      rune_log(only and ("start " .. more) or args)
+      if not rune.log.status() then   -- it didn't open
+        game_lines(true)
+        rune.session.delete(CHAT_ONLY)
+      elseif only then
+        util.say("[log] chats only.")
+      end
+      return
     end
-  end)
-  if not ok then util.err("[chats] can't read " .. LOG .. ": " .. tostring(err)) end
+    rune_log(args)
+    if sub == "stop" then
+      game_lines(true)
+      rune.session.delete(CHAT_ONLY)
+    elseif (sub == "" or sub == "status") and rune.session.get(CHAT_ONLY) then
+      util.say("[log] chats only.")
+    end
+  end, "Log the session to a file, chats included (/log start [chat] [raw] [file], /log stop); chat: the chats alone")
 end
 
 -- Channels over GMCP only: the GMCP message "gmcpchannels on" makes the

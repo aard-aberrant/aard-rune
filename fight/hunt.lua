@@ -1,9 +1,11 @@
 -- Hunting (tt++ modules/hunt.tin). Both read the game's hunt replies - game
 -- text, there is no GMCP for hunt - with triggers that are on only while
 -- one runs. Starting either stops the other.
---   autohunt <mob>   hunt, take the direction it gives, hunt again ... until
+--   autohunt [mob]   hunt, take the direction it gives, hunt again ... until
 --                    you arrive or hunt can't lead you there. A fight pauses
---                    it: the next hunt goes when GMCP says the fight is over
+--                    it: the next hunt goes when GMCP says the fight is over.
+--                    No mob: the target (below)
+--   hunt [mob]       the game's hunt; no mob: the target (below)
 --   autohuntoff      stop it
 --   hqq [mob]        the hunt trick: hunt 1.mob, 2.mob, 3.mob ... A reply
 --                    with a direction means that one can be hunted, so it's
@@ -12,6 +14,10 @@
 --                    (targets/target.lua: N.mob, and its check finds the room).
 --                    No mob: the target's keyword
 --   hqof             give up on an hqq
+-- The target, for autohunt and hunt: its keyword as it is ("2.warrior"). A
+-- target with only a name (quest, campaign, before the area check has
+-- answered): travel.probe finds the keyword with where - in this area
+-- only, as hunt is - and the target keeps it (target.learn_kw)
 -- Not ported: tt++'s huntmaster cast before hqq (a Hunter on a global
 -- quest, from variables nothing set).
 -- The replies (tt++'s patterns):
@@ -26,7 +32,8 @@
 
 local util = require("core.util")
 local game = require("core.game")       -- fighting or not
-local target = require("targets.target")   -- hqq's mob becomes it; hqq's default
+local target = require("targets.target")   -- hqq's mob becomes it; the default mob
+local travel = require("nav.travel")   -- probe: a keyword for a target with only a name
 
 local say, warn, trim = util.say, util.warn, util.trim
 
@@ -109,14 +116,38 @@ rune.gmcp.on("char.status", function()
   end
 end, { name = "hunt_fight_over" })
 
-rune.alias.exact("autohunt", function(args)
-  local m = trim(args)
-  if m == "" then return warn("[autohunt] autohunt <mob>") end
+-- The target's keyword for `who`, to fn(kw) - probed for if it has only a name
+local function target_kw(who, fn)
+  local t = target.get()
+  if t and t.kw then return fn(t.kw) end
+  if not (t and t.name) then return warn("[" .. who .. "] " .. who .. " <mob> - or set a target first.") end
+  say("[" .. who .. "] finding a keyword for " .. t.name .. "...")
+  travel.probe(t.name, function(kw)
+    if not kw then return warn("[" .. who .. "] no keyword found for " .. t.name .. " in this area.") end
+    target.learn_kw(kw)
+    fn(kw)
+  end)
+end
+
+local function autohunt(m)
   stop()
   mode, mob = "auto", m
   on(true)
   say("[autohunt] hunting " .. m .. " - autohuntoff to stop.")
   hunt()
+end
+
+rune.alias.exact("autohunt", function(args)
+  local m = trim(args)
+  if m == "" then return target_kw("autohunt", autohunt) end
+  autohunt(m)
+end)
+
+-- hunt: the game's own, the target when no mob is given
+rune.alias.exact("hunt", function(args)
+  local m = trim(args)
+  if m ~= "" then rune.send_raw("hunt " .. m); return end
+  target_kw("hunt", function(kw) rune.send_raw("hunt " .. kw) end)
 end)
 
 rune.alias.exact("autohuntoff", function()
@@ -144,7 +175,8 @@ end)
 
 -- Help (core/help.lua): /help, xhelp
 local help = require("core.help")
-help.add("autohunt", "autohunt <mob>", "hunt and follow its directions until you arrive or it can't lead you there; a fight pauses it")
+help.add("autohunt", "autohunt [mob]", "hunt and follow its directions until you arrive or it can't lead you there; a fight pauses it; no mob: the target")
+help.add("hunt", "hunt [mob]", "the game's hunt; no mob: the target (its keyword, found with where if it has only a name)")
 help.add("autohuntoff", "autohuntoff", "stop an autohunt")
 help.add("hqq", "hqq [mob]", "the hunt trick: hunt 1.mob, 2.mob ... until the right one, which becomes the target")
 help.add("hqof", "hqof", "give up on an hqq")
