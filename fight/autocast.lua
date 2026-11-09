@@ -1,5 +1,5 @@
 -- ac - cast your primary attack once a round (tt++ modules/autocast.tin)
---   ac [on|off]                   on, off; bare: the state
+--   ac                            toggle it on or off (it says which, and what it sends)
 --   ac cast <command> | <hit>     send that instead, for this session - <hit>
 --                                 is its word after "Your " in its damage line
 --   ac cast reset                 back to k's attack (pattack, pattack_hit)
@@ -21,7 +21,7 @@
 -- (a cast refused while stunned): it clears, and the next char.status casts.
 -- Your k counts: a bare k in a fight is skipped (ac is attacking already),
 -- any other k is a cast pending.
--- Off at every load. The AC light on status row 2: green on, gray off.
+-- Off at every load. The AC light on status row 2, after "|": green on, gray off.
 
 local util = require("core.util")
 local game = require("core.game")
@@ -87,7 +87,7 @@ combat.k_hook = function(mob)
 end
 
 table.insert(status.row2, function()
-  return rune.style.gray(" | ") .. (on and rune.style.green("AC") or rune.style.gray("AC"))
+  return on and rune.style.green("AC") or rune.style.gray("AC")
 end)
 
 local function show()
@@ -98,11 +98,11 @@ end
 
 rune.alias.exact("ac", function(args)
   args = trim(args)
-  if args == "on" or args == "off" then
-    if args == "on" and not attack() then return end   -- it said why
-    on = args == "on"
+  if args == "" then
+    if not on and not attack() then return end   -- it said why
+    on = not on
     clear()
-    say("[ac] autocast " .. args .. ".")
+    show()
     rune.ui.refresh_bars()
   elseif args == "cast reset" then
     cmd, hit = nil, nil
@@ -112,16 +112,14 @@ rune.alias.exact("ac", function(args)
     if not c or c == "" then return warn("[ac] ac cast <command> | <hit word>, or ac cast reset") end
     cmd, hit = c, w
     show()
-  elseif args == "" then
-    show()
   else
-    warn("[ac] ac [on|off|cast <command> | <hit word>|cast reset]")
+    warn("[ac] ac (toggle), ac cast <command> | <hit word>, ac cast reset")
   end
 end)
 
 -- Help (core/help.lua): /help, xhelp
 local help = require("core.help")
-help.add("ac", "ac [on|off]", "autocast: in a fight, your primary attack (k) once a round, at the melee round; bare: the state")
+help.add("ac", "ac", "autocast on/off (a toggle): in a fight, your primary attack (k) once a round, at the melee round")
 help.add("ac cast", "ac cast <command> | <hit> | reset", "autocast something else this session (<hit>: its word after \"Your \" in the damage line); reset: back to k's")
 
 -- For others (fight/bcc.lua's check before the mist)

@@ -77,7 +77,7 @@ require("core.tags")         -- the game's tag lines, hidden or cut out
 require("core.aliases")      -- one-line aliases: su, sq, qs, gh ...
 require("panes.group")       -- the group pane
 require("panes.chats")       -- the chats pane: channels, tells, remote socials
-require("panes.status")      -- the status bars (TCK, HP/MN/MV, Enemy ...)
+require("panes.status")      -- the status bars (TCK, HP/MN/MV, the enemy ...)
 require("panes.info")        -- the info pane: quest, campaign, alerts, account, infomsg
 require("panes.timer")       -- timer
 require("panes.affects")     -- the affects pane, saf, affectsreset
@@ -90,7 +90,6 @@ require("nav.repop")         -- the POP light, pop
 require("targets.target")    -- the target: target / t, gm
 require("targets.quest")     -- qx
 require("targets.campaign")  -- cn
-require("targets.doubles")   -- 2XP / 2QP lights, double
 require("targets.soh")       -- soh: School of Horror mob keywords
 require("fight.combat")      -- k, kk, aa
 require("fight.autocast")    -- ac, the AC light
@@ -99,6 +98,7 @@ require("fight.hunt")        -- autohunt, hqq
 require("fight.dps")         -- the DPS meter
 require("fight.rheal")       -- rh, sleep, the regen ring on waking
 require("fight.pup")         -- pup: powerup pace
+require("targets.doubles")   -- 2XP / 2QP lights, double (after DPS and PUP: their lights end row 1)
 require("fight.instinct")    -- inst: instinct above 0 on one line, copied
 require("fight.quiet")       -- a fight's xp and gold on one line at its end, tells reminder, skinning hidden
 require("fight.bcc")         -- bcc, bcc find: Black Claw Crag (the fight: areas/blackclaw.lua)

@@ -12,31 +12,19 @@
 -- room of that name; when several do, cn opens a picker of them (nearest
 -- first) and walks to the entrance of the one you choose - a second cn
 -- goes on to the room, as qx does.
--- Kills come in any order: "Congratulations, that was one of your CAMPAIGN
--- mobs!" sends a hidden cp check, and the fresh list replaces the old - the
--- current mob is dead when fewer of its name are left. Then the target is
--- cleared and the pane says so; cn takes the next.
---   cn        the current campaign mob, else the next (pick, below): areas
---             with no Dead mob first, an area holding one last (its Dead
---             ones last in it). A Dead target shows (DEAD) in red on the
---             info pane until a cp check lists it alive
---   cn next   skip the current one for the next
--- The info pane (panes/info.lua), priority 60, from the first cn on: time left
--- and mobs left, area, room, mob. On load a hidden cp check rebuilds the
--- list.
--- The game answers in order, and a kill's cp check can wait behind spells
--- still queued: so no timeout - each cp check sent is queued (hidden: ours;
--- shown: one you type), and each reply takes the first (as panes/affects.lua's
--- slist). The notes (the Dead note and the like) are hidden wherever they
--- fall in our reply; after its time line, for 2 s - they come with it.
--- The triggers are on only while they can matter (tt++'s two groups):
---   the reply's   while a cp check is unanswered, its notes' 2 s, and for
---                 REPLY_WAIT after any other cp/campaign command you type
---                 (request, quit ...)
---   the kill's    while you're on a campaign - from a cp check listing
---                 mobs, "Good luck in your campaign!" or "You are already on
---                 an active campaign!" (tt++'s lines; either sends a hidden
---                 cp check, so cn has the mobs at once) to its end
+-- Kills come in any order. Only "Congratulations, that was one of your
+-- CAMPAIGN mobs!" says one died; which one is the enemy GMCP char.status
+-- named, struck off the list at that line (see below). Then, if it was the
+-- current mob, the target is cleared and the pane says so; cn takes the
+-- next. When the name can't tell, a hidden cp check does: its fresh list
+-- replaces the old, and the current mob is dead when fewer of its name are
+-- left.
+-- The enemy's name: the last GMCP char.status gave, case ignored, used
+-- once. Not on the list, or none (a mob killed before GMCP named it, or a
+-- GMCP name that isn't the cp check's; debug campaign shows both): the cp
+-- check. A strike sends none: the cp check comes at the next cn to another
+-- area (aim, below), and puts the list right then - a wrong strike too (an
+-- earlier fight's name, at a one-hit kill).
 
 local util = require("core.util")
 local game = require("core.game")       -- the area you're in (cn's order)
@@ -46,6 +34,7 @@ local travel = require("nav.travel")   -- areas, zone_of, the map's room names
 local soh = require("targets.soh")     -- a School of Horror mob's keyword, on its row
 
 local say, warn = util.say, util.warn
+local dbg = require("core.debug").topic("campaign", "at a campaign kill: GMCP's last enemy and the current cn mob")
 
 local list = {}       -- { mob, place, zone, room, dead }, in cp check order
 local reading = false -- inside a cp check reply
@@ -58,19 +47,19 @@ local hiding = false  -- the reply being read is ours
 local notes_until = 0 -- a hidden reply's notes are hidden until then
 local reply_until = 0 -- a typed cp command's reply is read until then
 local on_cp = false   -- on a campaign: the kill's triggers are on
+local last_enemy = "" -- the last enemy GMCP char.status named, lowercased
 local REPLY_WAIT = 120   -- tt++'s: the game answers only once a fight is over
 -- Both groups exist only while on (util.group)
 local reply_trig, live_trig = util.group(), util.group()
 
-local function set(group, on) group.set(on) end
 
 -- Each group on or off, as things stand now
 local resync = util.slot()   -- the reply window's end
 local function sync()
   local now = os.time()
   local until_ = math.max(notes_until, reply_until)
-  set(reply_trig, #queue > 0 or reading or hiding or now <= until_)
-  set(live_trig, on_cp)
+  reply_trig.set(#queue > 0 or reading or hiding or now <= until_)
+  live_trig.set(on_cp)
   if #queue == 0 and now <= until_ then   -- off again once the window ends
     resync.start(until_ - now + 1, sync)
   end
@@ -145,7 +134,7 @@ end
 -- The reply -------------------------------------------------------------
 
 -- Room name -> the zones holding it, from the map. Kept for the session -
--- each kill's cp check would otherwise scan all the map's rooms again
+-- each cp check would otherwise scan all the map's rooms again
 local room_zones = {}
 
 -- Area or room for every entry, once the list is complete
@@ -279,9 +268,41 @@ end
 rune.alias.exact("cp", typed("cp"))
 rune.alias.exact("campaign", typed("campaign"))
 
+-- The kill: strike the enemy off the list, else a cp check (see the top)
 live("^Congratulations, that was one of your CAMPAIGN mobs!$", function()
-  check_quietly()
+  if dbg.on then
+    dbg.log(string.format("enemy \"%s\", cn mob \"%s\"", last_enemy, tostring(cur and cur.mob)))
+  end
+  local killed = last_enemy
+  last_enemy = ""
+  -- One of its name off the list - the current mob's own entry when it's
+  -- the current mob (names repeat across areas)
+  local at
+  for i, e in ipairs(list) do
+    if e.mob:lower() == killed then
+      if not at then at = i end
+      if cur and e.mob == cur.mob and e.place == cur.place then at = i; break end
+    end
+  end
+  if killed == "" or not at then return check_quietly() end
+  local e = table.remove(list, at)
+  if cur and not cur_dead and e.mob == cur.mob then
+    cur_dead = true
+    target.clear("campaign")
+    say("[campaign] " .. cur.mob .. " killed - cn for the next, " .. #list .. " left.")
+  else
+    say("[campaign] " .. e.mob .. " killed, " .. #list .. " left.")
+  end
+  row()
 end, "cp_kill")
+
+-- The enemy's name, without the game's color codes
+rune.gmcp.on("char.status", function(d)
+  local e = type(d) == "table" and d.enemy
+  if type(e) == "string" and e ~= "" then
+    last_enemy = util.uncolor(e):lower()
+  end
+end, { name = "campaign_enemy" })
 sync()
 
 -- cn --------------------------------------------------------------------
@@ -322,6 +343,11 @@ end
 local function aim(e)
   cur, cur_dead = e, false
   cur.n = count(e.mob)
+  -- To another area: a hidden cp check first. Out of a fight nothing waits
+  -- ahead of it, so its reply comes as the walk starts, and puts right
+  -- what the strikes guessed (a wrong one, the Dead marks) - and this pick,
+  -- if it's dead already: fewer of its name left, "killed"
+  if e.zone ~= game.room.zone then check_quietly() end
   if not e.zone and e.where and #e.where > 1 then
     target.clear("campaign")   -- none until you choose its area
     row()

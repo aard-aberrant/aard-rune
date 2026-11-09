@@ -75,34 +75,22 @@ local function clean(s)
   return (tostring(s or ""):gsub("[\t\r\n]", " "))
 end
 
--- Written to a .tmp file first, then renamed over the map, so a failed
--- write never leaves half a map
 function M.save()
-  local tmp = M.file .. ".tmp"
-  local fh, err = io.open(tmp, "w")
-  if not fh then
-    util.err("[map] can't write " .. tmp .. ": " .. tostring(err))
-    return false
-  end
   local vnums = {}
   for v in pairs(M.rooms) do vnums[#vnums + 1] = v end
   table.sort(vnums)
-  for _, v in ipairs(vnums) do
-    local r = M.rooms[v]
-    fh:write(table.concat({ "R", v, clean(r.area), clean(r.terrain), clean(r.data),
-                            clean(r.note), clean(r.name) }, "\t"), "\n")
-    for name, e in pairs(r.exits) do
-      fh:write(table.concat({ "X", v, e.to, clean(name), clean(e.flags), clean(e.cmds) }, "\t"), "\n")
+  local ok = util.write_file(M.file, function(fh)
+    for _, v in ipairs(vnums) do
+      local r = M.rooms[v]
+      fh:write(table.concat({ "R", v, clean(r.area), clean(r.terrain), clean(r.data),
+                              clean(r.note), clean(r.name) }, "\t"), "\n")
+      for name, e in pairs(r.exits) do
+        fh:write(table.concat({ "X", v, e.to, clean(name), clean(e.flags), clean(e.cmds) }, "\t"), "\n")
+      end
     end
-  end
-  fh:close()
-  local ok, rerr = os.rename(tmp, M.file)
-  if not ok then
-    util.err("[map] can't replace " .. M.file .. ": " .. tostring(rerr))
-    return false
-  end
-  M.dirty = false
-  return true
+  end, "[map]")
+  if ok then M.dirty = false end
+  return ok
 end
 
 local function placeholder(v)

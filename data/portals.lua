@@ -74,7 +74,6 @@ return {
     ["drageran empire"] = { obj = "2423055461", lvl = 132, vnum = 25898 },
     ["sea king dominion skd"] = { obj = "2873815751", lvl = 140, vnum = 141 },
     ["nanjiki ruins"] = { obj = "2464144548", lvl = 140, vnum = 11204 },
-    ["mount dunoir"] = { obj = "2305702483", lvl = 140, vnum = 14293 },
     ["aiighialla empire"] = { obj = "2341695052", lvl = 142, vnum = 32262 },
     ["2drageran drageran"] = { obj = "2324863142", lvl = 142, vnum = 25919 },
     cataclysm = { obj = "3579124092", lvl = 147, vnum = 19976 },

@@ -148,9 +148,9 @@ walk stalls.
 - **`core/layout.lua`** sets every pane's size.
 - **`util.pane(name, text)`** writes a pane only when its text changed, so redraws are cheap.
 - **The status rows** (`panes/status.lua`) are two native Rune bars, `status1`
-  and `status2`, which Rune redraws every 250 ms. They have slots: `row1`,
-  `row1_end`, `row2` and `row2_end`. A feature adds functions that return its
-  segment, and calls `rune.ui.refresh_bars()` to show a change at once.
+  and `status2`, which Rune redraws every 250 ms. Row 1 is the game around you, row 2 is
+  you. They have slots: `row1`, `row1_end` and `row2`. A feature adds functions
+  that return its segment (the text alone; the row adds the spaces), and calls `rune.ui.refresh_bars()` to show a change at once.
 - **The info pane** (`panes/info.lua`) is shared by priority with `info.set(name, prio, text)`.
   The lowest priority wins: alerts 20/25, quest 50, campaign 60, account 90.
   `info.alert(level, secs, title, text)` flashes it.
@@ -225,7 +225,15 @@ in areas/blackclaw.lua.
 - `data/*.lua` are plain Lua tables loaded with `util.load_data`. Some are
   hand-edited settings (affects, portals, weapons), some are rewritten by
   commands (`eqsave` writes `eqsets.lua`, `label` writes `labels.lua`), and
-  `areas.lua` was converted once from tt++.
+  `areas.lua` was converted once from tt++. Every file this config writes
+  (those, the map, history, soh keywords) goes through `util.write_file`: a
+  .tmp file renamed into place.
+- Logs aren't config: they go in `util.state_dir`, which is `$XDG_STATE_HOME/rune`
+  or `~/.local/state/rune`. `util.append_log` adds a line to `dps.log` or `pup.log`,
+  one per finished session, and `util.log_tail` reads the last few back.
+  Rune's `/log` files go in `userlogs/` there, with `userlogs/` as the root of
+  any path given (`panes/status.lua` wraps `rune.log.start`). No folder is
+  made; a missing one is an error.
 - `data/classes/<subclass>.lua` holds the attack commands for `k`, `kk` and
   `aa`, chosen by GMCP `char.base` subclass.
 - `map/aard.map` is the room map: TAB-separated `R` (room) and `X` (exit)

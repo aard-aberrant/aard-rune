@@ -53,6 +53,13 @@ local function split_cmds(s)
   return out
 end
 
+-- A route step's commands - a list (portals) or a ";"-joined string - as
+-- a list, and as one line
+local function step_cmds(s) return type(s.cmds) == "table" and s.cmds or split_cmds(s.cmds) end
+local function step_text(s) return type(s.cmds) == "table" and table.concat(s.cmds, ";") or s.cmds end
+-- A plain move ("n"), or nil
+local function step_dir(s) return type(s.cmds) == "string" and s.cmds:match("^[nsewud]$") end
+
 -- Data -------------------------------------------------------------------
 
 T.dir = rune.config_dir .. "/data"
@@ -90,30 +97,19 @@ function T.same_area(z1, z2)
 end
 T.cfg.home_cmds = T.cfg.home_cmds or { "home" }
 
--- Written to a .tmp file, then renamed over labels.lua
 function T.save_labels()
-  local file = T.dir .. "/labels.lua"
-  local fh, err = io.open(file .. ".tmp", "w")
-  if not fh then
-    util.err("[travel] can't write labels: " .. tostring(err))
-    return false
-  end
   local names = {}
   for name in pairs(T.labels) do names[#names + 1] = name end
   table.sort(names)
-  fh:write("-- Room labels for ga / find: label -> vnums. Rewritten by label / unlabel.\nreturn {\n")
-  for _, name in ipairs(names) do
-    local v = T.labels[name]
-    table.sort(v)
-    fh:write(string.format("  [%q] = { %s },\n", name, table.concat(v, ", ")))
-  end
-  fh:write("}\n")
-  fh:close()
-  local ok, rerr = os.rename(file .. ".tmp", file)
-  if not ok then
-    util.err("[travel] can't replace labels.lua: " .. tostring(rerr))
-  end
-  return ok
+  return util.write_file(T.dir .. "/labels.lua", function(fh)
+    fh:write("-- Room labels for ga / find: label -> vnums. Rewritten by label / unlabel.\nreturn {\n")
+    for _, name in ipairs(names) do
+      local v = T.labels[name]
+      table.sort(v)
+      fh:write(string.format("  [%q] = { %s },\n", name, table.concat(v, ", ")))
+    end
+    fh:write("}\n")
+  end, "[travel]")
 end
 
 -- Which portals you can use: tier level = tier * 10 + level (core/game.lua)
@@ -211,8 +207,8 @@ function T.search(from, goal, walk_only)
   return nil, prev, how, dist, hops
 end
 
--- The commands to get from the search's start to `to`, the step count, the
--- steps ({ name, cmds }) and the room each step reaches
+-- The steps ({ name, cmds }) from the search's start to `to`, and the
+-- room each step reaches
 function T.path(prev, how, to)
   local chain, rooms = {}, {}
   while prev[to] do
@@ -220,12 +216,29 @@ function T.path(prev, how, to)
     table.insert(rooms, 1, to)
     to = prev[to]
   end
-  local cmds = {}
-  for _, s in ipairs(chain) do
-    local c = type(s.cmds) == "table" and s.cmds or split_cmds(s.cmds)
-    for _, x in ipairs(c) do cmds[#cmds + 1] = x end
+  return chain, rooms
+end
+
+-- Plain moves run together, for a game run or a speedwalk line: add(dir)
+-- each move; take() the moves so far ("3n2e", or "") and start again
+local function mover()
+  local run, last, count = "", nil, 0
+  local m = {}
+  local function close()
+    if last then run = run .. (count > 1 and count or "") .. last end
+    last, count = nil, 0
   end
-  return cmds, #chain, chain, rooms
+  function m.add(dir)
+    if dir ~= last then close(); last = dir end
+    count = count + 1
+  end
+  function m.take()
+    close()
+    local r = run
+    run = ""
+    return r
+  end
+  return m
 end
 
 -- The walk ---------------------------------------------------------------
@@ -267,33 +280,25 @@ local function run_cmds(chain, rooms)
   local out, shows = {}, 0
   local last_room = rooms and M.rooms[rooms[#rooms]]
   local dest = last_room and last_room.area
-  local paced = {}
-  local run, last, count = "", nil, 0
-  local function close_dir()
-    if last then run = run .. (count > 1 and count or "") .. last end
-    last, count = nil, 0
-  end
+  local paced, moves = {}, mover()
   local function close_run()
-    close_dir()
+    local run = moves.take()
     if run ~= "" then
       out[#out + 1] = run:match("^[nsewud]$") and run or ("run " .. run)
       shows = shows + 1
-      run = ""
     end
   end
   for k, s in ipairs(chain) do
-    local c = type(s.cmds) == "string" and s.cmds or nil
     local r = rooms and M.rooms[rooms[k]]
     if #paced > 0 or (dest and r and r.area == dest) then
       close_run()
-      paced[#paced + 1] = { k = k, cmds = type(s.cmds) == "table" and s.cmds or split_cmds(s.cmds) }
+      paced[#paced + 1] = { k = k, cmds = step_cmds(s) }
       shows = shows + 1
-    elseif c and c:match("^[nsewud]$") then
-      if c ~= last then close_dir(); last = c end
-      count = count + 1
+    elseif step_dir(s) then
+      moves.add(s.cmds)
     else
       close_run()
-      for _, x in ipairs(type(s.cmds) == "table" and s.cmds or split_cmds(s.cmds)) do out[#out + 1] = x end
+      for _, x in ipairs(step_cmds(s)) do out[#out + 1] = x end
       shows = shows + 1
     end
   end
@@ -302,9 +307,8 @@ local function run_cmds(chain, rooms)
 end
 T.run_cmds = run_cmds   -- for the offline tests
 
--- Send a walk: the steps, the rooms they reach (cmds, from T.path, isn't
--- used: run_cmds rebuilds them from the steps)
-local function send_walk(_, chain, rooms, what)
+-- Send a walk: the steps, the rooms they reach
+local function send_walk(chain, rooms, what)
   local n = #chain
   say(string.format("[travel] %s: %d step%s%s", what, n, n == 1 and "" or "s", describe(chain)))
   plan = { from = M.here, chain = chain, rooms = rooms, seen = {} }
@@ -320,12 +324,9 @@ end
 
 -- Walk to `to` using a finished search from the current room
 local function walk(prev, how, to, what)
-  local cmds, n, chain, rooms = T.path(prev, how, to)
-  if n == 0 then
-    say("[travel] already at " .. what .. ".")
-    return
-  end
-  send_walk(cmds, chain, rooms, what)
+  local chain, rooms = T.path(prev, how, to)
+  if #chain == 0 then return say("[travel] already at " .. what .. ".") end
+  send_walk(chain, rooms, what)
 end
 
 -- g <the area you're in>: home, then the way from home to the area - to
@@ -339,51 +340,48 @@ local function walk_from_home(zone, what)
   if not (home and M.rooms[home]) then return warn("[travel] g: home_vnum isn't on the map (data/portals.lua).") end
   local found, prev, how = T.search(home, function(x) return M.rooms[x].area == zone end)
   if not found then return warn("[travel] g: no route from home to " .. what .. " on the map.") end
-  local cmds, _, chain, rooms = T.path(prev, how, found)
-  table.insert(cmds, 1, "home")
+  local chain, rooms = T.path(prev, how, found)
   table.insert(chain, 1, { name = "home", cmds = "home" })
   table.insert(rooms, 1, home)
-  send_walk(cmds, chain, rooms, what .. " (" .. found .. ")")
+  send_walk(chain, rooms, what .. " (" .. found .. ")")
 end
 
 -- mf: the route to `to`, printed - not walked. Each step with the room it
 -- reaches, then the commands as one line (to type or paste)
 -- A route as one line, plain moves run together ("3n2e;open north;north")
 local function speedwalk(chain)
-  local out, run, last, count = {}, "", nil, 0
-  local function close_dir()
-    if last then run = run .. (count > 1 and count or "") .. last end
-    last, count = nil, 0
+  local out, moves = {}, mover()
+  local function close_run()
+    local run = moves.take()
+    if run ~= "" then out[#out + 1] = run end
   end
   for _, s in ipairs(chain) do
-    local c = type(s.cmds) == "string" and s.cmds or nil
-    if c and c:match("^[nsewud]$") then
-      if c ~= last then close_dir(); last = c end
-      count = count + 1
+    if step_dir(s) then
+      moves.add(s.cmds)
     else
-      close_dir()
-      if run ~= "" then out[#out + 1] = run; run = "" end
-      for _, x in ipairs(type(s.cmds) == "table" and s.cmds or split_cmds(s.cmds)) do out[#out + 1] = x end
+      close_run()
+      for _, x in ipairs(step_cmds(s)) do out[#out + 1] = x end
     end
   end
-  close_dir()
-  if run ~= "" then out[#out + 1] = run end
+  close_run()
   return table.concat(out, ";")
 end
 
 -- mf: the route, step by step, and copied to the clipboard as one line
 -- (rune.clipboard.set, as inst does - the user, 2026-11-08)
 local function show(prev, how, to, what)
-  local cmds, n, chain, rooms = T.path(prev, how, to)
+  local chain, rooms = T.path(prev, how, to)
+  local n = #chain
   if n == 0 then return say("[travel] mf: already at " .. what .. ".") end
   say(string.format("[travel] mf %s: %d step%s%s", what, n, n == 1 and "" or "s", describe(chain)))
+  local all = {}
   for k, step in ipairs(chain) do
-    local c = type(step.cmds) == "table" and table.concat(step.cmds, ";") or step.cmds
+    all[k] = step_text(step)
     local r = M.rooms[rooms[k]]
-    rune.echo(string.format("  %2d %-8s %d %s", k, c, rooms[k],
+    rune.echo(string.format("  %2d %-8s %d %s", k, all[k], rooms[k],
       r and rune.style.gray(util.strip(r.name) .. ", " .. r.area) or ""))
   end
-  rune.echo("  " .. table.concat(cmds, ";"))
+  rune.echo("  " .. table.concat(all, ";"))
   local line = speedwalk(chain)
   rune.clipboard.set(line)
   rune.echo(rune.style.gray("  copied: " .. line))
@@ -487,7 +485,7 @@ local function bad_step()
     if got ~= want then
       local at = k == 1 and p.from or p.rooms[k - 1]
       local step = p.chain[k]
-      local cmd = type(step.cmds) == "table" and table.concat(step.cmds, ";") or step.cmds
+      local cmd = step_text(step)
       if not got then
         return string.format("step %d of %d, \"%s\" from %s, didn't move you - the map says it leads to %s",
           k, #p.rooms, cmd, room_desc(at), room_desc(want))
@@ -569,7 +567,7 @@ rune.trigger.exact("Too many run errors. Aborting speedwalk.", function()
   if not bad then return end
   warn("[travel] the walk stopped: " .. bad .. ".")
   local r = M.here and M.rooms[M.here]
-  local dir = step and type(step.cmds) == "string" and step.cmds
+  local dir = step and step_dir(step)
   if was_alas and r and dir and r.exits[dir] then
     warn(string.format("[travel] the game says there's no %s exit here - if so, remove the map's: map unlink %s", dir, dir))
   end
@@ -676,6 +674,17 @@ end
 local function area_label(zone)
   local a = T.areas[zone]
   return a and a.name or zone or "?"
+end
+
+-- An area as a choice for choose()
+local function zone_choice(zone)
+  return { text = area_label(zone), desc = "area " .. zone, zone = zone, what = "area " .. zone }
+end
+
+-- No route on the map: home, and the game's runto
+local function runto(what, rt)
+  warn("[travel] no route to " .. what .. " on the map - going home and using runto.")
+  rune.send_raw("home\ndown\nrt " .. rt)
 end
 
 -- Choices: { text, desc, what, and set (vnum -> true) or zone }. Measured
@@ -801,10 +810,7 @@ local function find(args, title, act)
   end
   local zones = text == "" and {} or areas_matching(text)
   if text == "" then for zone in pairs(T.areas) do zones[#zones + 1] = zone end end
-  for _, zone in ipairs(zones) do
-    choices[#choices + 1] = { text = area_label(zone), desc = "area " .. zone,
-                              zone = zone, what = "area " .. zone }
-  end
+  for _, zone in ipairs(zones) do choices[#choices + 1] = zone_choice(zone) end
   if text ~= "" then
     for key, set in pairs(rooms_matching(text)) do
       local name, area = key:match("^(.*)\t(.*)$")
@@ -892,14 +898,8 @@ end
 local function go_zones(zones, rt, what)
   local function route()
     local choices = {}
-    for _, zone in ipairs(zones) do
-      choices[#choices + 1] = { text = area_label(zone), desc = "area " .. zone,
-                                zone = zone, what = "area " .. zone }
-    end
-    choose("g", choices, function()
-      warn("[travel] no route to " .. what .. " on the map - going home and using runto.")
-      rune.send_raw("home\ndown\nrt " .. rt)
-    end)
+    for _, zone in ipairs(zones) do choices[#choices + 1] = zone_choice(zone) end
+    choose("g", choices, function() runto(what, rt) end)
   end
   if #zones == 1 then
     local r = M.here and M.rooms[M.here]
@@ -938,11 +938,9 @@ function T.go_area(zone)
     if is[r.area] then rooms[v] = true end
   end
   try_limited(zone, function()
-    choose("g", { { text = area_label(zone), desc = "area " .. zone, set = rooms, what = "area " .. zone } },
-      function()
-        warn("[travel] no route to " .. area_label(zone) .. " on the map - going home and using runto.")
-        rune.send_raw("home\ndown\nrt " .. rt)
-      end)
+    local c = zone_choice(zone)
+    c.zone, c.set = nil, rooms   -- every zone of the area
+    choose("g", { c }, function() runto(area_label(zone), rt) end)
   end)
 end
 
@@ -968,9 +966,7 @@ end)
 -- areas share (targets/campaign.lua)
 function T.go_area_of(zones, title, on_pick)
   local choices = {}
-  for _, z in ipairs(zones) do
-    choices[#choices + 1] = { text = area_label(z), desc = "area " .. z, zone = z, what = "area " .. z }
-  end
+  for _, z in ipairs(zones) do choices[#choices + 1] = zone_choice(z) end
   choose(title, choices, nil, function(prev, how, v, w)
     on_pick(M.rooms[v].area)
     walk(prev, how, v, w)

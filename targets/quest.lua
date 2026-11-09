@@ -143,8 +143,7 @@ rune.gmcp.on("comm.quest", function(d)
   if type(d) ~= "table" then return end
   qst_update(d)
   local a = d.action
-  if a == "start" then pcall(rune.store.set, START_KEY, os.time()) end
-  if a == "start" then started(d)
+  if a == "start" then pcall(rune.store.set, START_KEY, os.time()); started(d)
   elseif a == "comp" then completed(d)
   elseif a == "timeout" then banner("Quest Timed Out")
   elseif a == "fail" then banner("Quest Failed")

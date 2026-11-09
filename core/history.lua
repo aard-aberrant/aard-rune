@@ -37,18 +37,12 @@ local saved_n, saved_last
 local function mark(h) saved_n, saved_last = #h, h[#h] end
 mark(rune.history.get())
 
--- Written to a .tmp file, then renamed over history.txt
 local function save()
   local h = rune.history.get()
   if #h == saved_n and h[#h] == saved_last then return end
-  local tmp = FILE .. ".tmp"
-  local fh, err = io.open(tmp, "w")
-  if not fh then return util.err("[history] can't write " .. tmp .. ": " .. tostring(err)) end
-  for i = math.max(1, #h - KEEP + 1), #h do fh:write(esc(h[i]), "\n") end
-  fh:close()
-  local ok, rerr = os.rename(tmp, FILE)
-  if not ok then return util.err("[history] can't replace " .. FILE .. ": " .. tostring(rerr)) end
-  mark(h)
+  if util.write_file(FILE, function(fh)
+    for i = math.max(1, #h - KEEP + 1), #h do fh:write(esc(h[i]), "\n") end
+  end, "[history]") then mark(h) end
 end
 
 rune.timer.every(60, save, { name = "history_save" })

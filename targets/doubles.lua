@@ -1,5 +1,6 @@
 -- Double XP / double QP (tt++ modules/doubles.tin): the 2XP and 2QP lights
--- on status row 1, after 3MN - "2XP 15" bright yellow / "2QP 15" bright red
+-- at the end of status row 1 (init.lua loads this after fight/pup) -
+-- "2XP 15" bright yellow / "2QP 15" bright red
 -- with minutes left (rounded up), a dim label when off, always 6 columns.
 -- A bonus going from off to on flashes the info pane yellow for FLASH s
 -- (info.alert warn, titles 2XP / 2QP). The end times are kept in
@@ -29,7 +30,7 @@
 -- up to the first that doesn't (hidden only for ours, with the blank after).
 local util = require("core.util")
 local game = require("core.game")      -- on_login
-local status = require("panes.status") -- the lights (row1_end slots, after 3MN)
+local status = require("panes.status") -- the lights (row1_end slots, last)
 local info = require("panes.info")     -- the flash
 
 local FLASH = 3
@@ -97,7 +98,7 @@ local function info_line(c)
 end
 rune.trigger.starts("INFO: ", function(_, ctx) info_line(ctx.line:clean()) end, { name = "doubles_info" })
 rune.gmcp.on("comm.channel", function(d)
-  if type(d) == "table" and d.chan == "info" and d.msg then info_line((util.strip(d.msg):gsub("@x%d%d?%d?", ""):gsub("@.", ""))) end
+  if type(d) == "table" and d.chan == "info" and d.msg then info_line(util.uncolor(util.strip(d.msg))) end
 end, { name = "doubles_info_chan" })
 
 -- double: the reply, read while it's expected ---------------------------------

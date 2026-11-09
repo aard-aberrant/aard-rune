@@ -67,7 +67,7 @@ local function row_on()
     local id, rest = ctx.line:clean():match("^(%d+),(.*)$")
     if not id then return end
     local name, loc = (rest .. ","):match("^[^,]*,(.-),%-?%d+,%-?%d+,%-?%d+,(%-?%d+),")
-    worn[id] = { name = name and util.trim((name:gsub("@x%d%d?%d?", ""):gsub("@.", ""))),
+    worn[id] = { name = name and util.trim(util.uncolor(name)),
                  loc = tonumber(loc) }
     return false
   end, { name = "eq_row", priority = 5 })
@@ -162,7 +162,6 @@ local function set_keys()
   return keys
 end
 
--- Written to a .tmp file, then renamed over eqsets.lua
 local function save()
   local keys = set_keys()
   local out = { "-- Equipment sets for eqwear: set -> wear location -> { id, name }. A set is",
@@ -180,13 +179,7 @@ local function save()
     out[#out + 1] = "  },"
   end
   out[#out + 1] = "}"
-  local fh, err = io.open(SETS_FILE .. ".tmp", "w")
-  if not fh then return util.err("[eq] can't write eqsets: " .. tostring(err)) end
-  fh:write(table.concat(out, "\n") .. "\n")
-  fh:close()
-  local ok, rerr = os.rename(SETS_FILE .. ".tmp", SETS_FILE)
-  if not ok then util.err("[eq] can't replace eqsets.lua: " .. tostring(rerr)) end
-  return ok
+  return util.write_file(SETS_FILE, function(fh) fh:write(table.concat(out, "\n"), "\n") end, "[eq]")
 end
 
 -- eqsave [level | name]: what you wear now, as that set (default: your level)
