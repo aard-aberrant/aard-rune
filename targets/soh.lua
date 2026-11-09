@@ -38,15 +38,11 @@ local function save()
   local names = {}
   for n in pairs(kw) do names[#names + 1] = n end
   table.sort(names)
-  local tmp = FILE .. ".tmp"
-  local fh, err = io.open(tmp, "w")
-  if not fh then return util.err("[soh] can't write " .. tmp .. ": " .. tostring(err)) end
-  fh:write(HEADER, "return {\n")
-  for _, n in ipairs(names) do fh:write(string.format("  [%q] = %q,\n", n, kw[n])) end
-  fh:write("}\n")
-  fh:close()
-  local ok, rerr = os.rename(tmp, FILE)
-  if not ok then util.err("[soh] can't replace " .. FILE .. ": " .. tostring(rerr)) end
+  util.write_file(FILE, function(fh)
+    fh:write(HEADER, "return {\n")
+    for _, n in ipairs(names) do fh:write(string.format("  [%q] = %q,\n", n, kw[n])) end
+    fh:write("}\n")
+  end, "[soh]")
 end
 
 rune.gmcp.on("comm.channel", function(d)

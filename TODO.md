@@ -27,6 +27,24 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
 
 ## To check
 
+- [ ] Logs in ~/.local/state/rune (2026-11-08, offline-tested): dps.log and pup.log get a line per
+      finished session (dps: reset, area change, /reload, disconnect; pup: 61 s with no pup, /reload,
+      disconnect); dps / pup list the one under way and the last 5 from the log. /log start [foo]
+      writes userlogs/<date>_<time>.log or userlogs/foo.log there. No folder is made: a missing one is an error.
+- [ ] PUP on status row 1 (fight/pup.lua, 2026-11-08, offline-tested): always on - "PUP 23s / 25s (104)",
+      last gap / session average (underlined, SGR 4) / gaps counted; dim once the last pup is over 60 s old;
+      a gap over 60 s ends the session and is the next one's baseline. pup lists the last 5 sessions.
+      Check live: the overline shows (else another mark); the line matches; dim after a minute
+- [ ] DPS time from GMCP (fight/dps.lua, 2026-11-08, offline-tested): combat time is GMCP char.status
+      state 8, plus a second per second you hit outside it (a first blow before the fight is reported, a
+      one-hit kill); walking between fights no longer counts. Check live: a quick room-to-room run - DPS
+      higher than before, the clock only moving in fights; the first blow's damage is in the total
+- [ ] Campaign kills from GMCP (targets/campaign.lua, 2026-11-08; the early message seen working live): at
+      "CAMPAIGN mobs!" GMCP char.status's last enemy, if on the cp list, is struck off - the cn mob: message,
+      pane, target cleared; another (out of order): message and count. No cp check then; one only when the
+      name isn't on the list, and at each cn to another area (fixes a wrong strike, the Dead marks). Check
+      live: debug campaign shows GMCP's name next to cp check's - an aggro mob killed out of order, and a
+      one-hit kill (an earlier fight's name may strike the wrong one; the next cn to another area fixes it)
 - [ ] map record (nav/maprec.lua, offline-tested 2026-11-08): map record, do what gets you past a room
       (say xwxhxfx, look field + enter field, open n + n), map record stop shows the plan, map edit /
       drop fix it, map apply writes the exits. Check live: what a heal or autocast line sent mid-recording
@@ -64,8 +82,9 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
       find confirmed live. Check Ctrl+R, the / list, Esc out of each; Ctrl+F isn't covered
 - [ ] Status row 1: TCK counts down from each tick, QST shows minutes / RD / AC and survives
       a reload (request quest), TNL, LVL (gone at 201), ALN colours
-- [ ] Status row 2 in a fight: " | Enemy 70" (green under 20) and " | DPS 1234  1:23" after
-      MV, the enemy's name (no @-codes) on the right; "dps" / "dps reset"; DPS resets on a new area
+- [ ] Status rows rearranged 2026-11-08: row 1 TCK QST POP 3MN DPS PUP 2XP 2QP ... REC; row 2
+      HP MN MV ALN LVL TNL | AC an akita warrior of… 100 (name cut/padded to 20, green under
+      20%; your state there out of a fight); DPS always shown, dimmed after a reset; "dps" / "dps reset"; DPS resets on a new area
 - [ ] k / kk / aa (fight/combat.lua, offline-tested): attacks from data/classes/<subclass>.lua (shaman,
       bandit, ninja). k <mob>; bare k in a fight = k_fight or pattack; out of one = pattack on
       gm's target by the keyword given to gm. Not ported: autocast's attack.k hook, Ninja spiral
@@ -120,7 +139,7 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
       each tick, the countdown reset when the minutes drop - live: QST reaches RD with the game's message
       (align.tin). TCK QST TNL LVL ALN done (offline-tested) - QST's warning is red, not flashing
 - [x] Status row 2: Enemy, DPS (fight/dps.lua), AC (fight/autocast.lua). PUP left off the bar by
-      choice (2026-11-07): `pup` reports it (fight/pup.lua, offline-tested). The right side is cut to fit
+      choice (2026-11-07), back on it reworked 2026-11-08 (see To check). The right side is cut to fit
 - [x] Mapper phase 1: tools/convert_ttmap.py turns map/map-all.tt into map/aard.map (TAB
       lines: R vnum area terrain data note name / X from to exit flags cmds). 34,801 rooms,
       90,288 exits, every exit command translated, no dangling exits. Re-run to refresh while

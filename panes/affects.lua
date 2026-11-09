@@ -62,12 +62,17 @@ local good_ids, bad_ids, also = {}, {}, {}
 local good_w, bad_w = 0, 0
 local subclass
 
+-- An entry of data/affects.lua for this subclass: no `only`, or it's listed
+local function mine(d)
+  if not d.only then return true end
+  for _, s in ipairs(d.only) do if s == subclass then return true end end
+  return false
+end
+
 local function build()
   good_ids, bad_ids, also, good_w, bad_w = {}, {}, {}, 0, 0
   for id, d in pairs(CFG.track) do
-    local on = not d.only
-    for _, s in ipairs(d.only or {}) do if s == subclass then on = true end end
-    if on then
+    if mine(d) then
       if d.good then
         good_ids[#good_ids + 1] = id
         if #d.label > good_w then good_w = #d.label end
@@ -82,9 +87,7 @@ local function build()
   table.sort(bad_ids)
   recs, rec_by_id, rec_by_sn, rec_by_name = {}, {}, {}, {}
   for _, d in ipairs(CFG.recoveries or {}) do
-    local on = not d.only
-    for _, s in ipairs(d.only or {}) do if s == subclass then on = true end end
-    if on then
+    if mine(d) then
       local r = { d = d, ends = 0 }
       recs[#recs + 1] = r
       if d.id then rec_by_id[d.id] = r end
@@ -126,15 +129,19 @@ local function time_style(left)
 end
 
 
--- A tracked good affect's line, label and timer (4 wide: " 45m")
+-- A label and its minutes left (4 more wide: " 45m"), in `style`
+local function timed(style, label, left)
+  return style(label .. " " .. rjust(math.min(math.max(mins(left), 0), 99), 2) .. "m")
+end
+
+-- A tracked good affect's line, label and timer
 local function good_line(id, now)
   local d = CFG.track[id]
   local label = rjust(d.label, good_w)
   local e = up[id]
   if not e then return (d.important and alert(label) or GRAY(label)) .. "    " end
   if e == 0 then return GRN(label) .. "    " end
-  local left = e - now
-  return time_style(left)(label .. " " .. rjust(math.min(math.max(mins(left), 0), 99), 2) .. "m")
+  return timed(time_style(e - now), label, e - now)
 end
 
 -- A recovery's line, under the good affects: while its spell is up, as a
@@ -144,10 +151,8 @@ local function rec_line(r, now)
   local label = rjust(r.d.label, good_w)
   local e = r.d.sn and up[r.d.sn]
   if e == 0 then return GRN(label) .. "    " end
-  if e and e > now then
-    return time_style(e - now)(label .. " " .. rjust(math.min(mins(e - now), 99), 2) .. "m")
-  end
-  if r.ends > now then return GRAY(label .. " " .. rjust(math.min(mins(r.ends - now), 99), 2) .. "m") end
+  if e and e > now then return timed(time_style(e - now), label, e - now) end
+  if r.ends > now then return timed(GRAY, label, r.ends - now) end
   return GRAY(label) .. "    "
 end
 
@@ -461,13 +466,19 @@ tags.on("recoff", function(rest)
 end)
 
 -- Used too soon: "You are still recovering your Humility abilities (1:23)."
--- (tt++'s pattern) - its time, by name. Create Totem's is the totem's own
--- trigger. Literal in Go, the line checked in Lua
+-- (tt++'s pattern) - its time, by name; Create Totem's is the totem's.
+-- Literal in Go, the line checked in Lua
 rune.trigger.contains("You are still recovering your ", function(_, ctx)
   local name, m, s = ctx.line:clean():match("You are still recovering your (.+) abilities %((%d+):(%d+)%)")
-  local r = name and rec_by_name[name:lower()]
-  if not r then return end
-  r.ends = os.time() + tonumber(m) * 60 + tonumber(s)
+  if not name then return end
+  local ends = os.time() + tonumber(m) * 60 + tonumber(s)
+  if name == "Create Totem" then
+    totem.rec_end, totem.ready = ends, false
+  else
+    local r = rec_by_name[name:lower()]
+    if not r then return end
+    r.ends = ends
+  end
   changed()
 end, { name = "affects_recovering" })
 
@@ -488,8 +499,6 @@ local totem_trig = util.group()   -- on for a Shaman
 local reply_trig = util.group()   -- on only while a totem reply is expected
 local reply_timeout = util.slot()   -- 60 s after the last totem sent
 
-local function set(group, on) group.set(on) end
-local function totem_on(on) totem_trig.set(on) end
 
 -- Send totem and read its reply: hidden (ours) or shown (typed). Queued
 -- like slist above - it may wait behind other commands. A reply that never
@@ -497,12 +506,12 @@ local function totem_on(on) totem_trig.set(on) end
 local function totem_send(hidden)
   totem_q[#totem_q + 1] = hidden
   totem_quiet = totem_q[1]
-  set(reply_trig, true)
+  reply_trig.set(true)
   rune.send_raw("totem")
   reply_timeout.start(60, function()
     if totem_q[1] ~= nil then
       totem_q, totem_quiet = {}, false
-      set(reply_trig, false)
+      reply_trig.set(false)
     end
   end)
 end
@@ -512,7 +521,7 @@ local function totem_query() totem_send(true) end
 local function totem_done(ctx)
   local hidden = table.remove(totem_q, 1)
   totem_quiet = totem_q[1] == true
-  if not totem_q[1] and totem_q[1] ~= false then set(reply_trig, false) end
+  if not totem_q[1] and totem_q[1] ~= false then reply_trig.set(false) end
   if not hidden then return end
   util.eat_blanks(ctx.line:clean())
   return false
@@ -528,12 +537,6 @@ totem_trig.add("regex", "^Your totem has expired\\.", function()
   totem.type, totem.area, totem.ends = nil, "", 0
   changed()
 end, { name = "affects_totem_expired" })
-
-totem_trig.add("regex", 
-  "You are still recovering your Create Totem abilities \\((\\d+):(\\d+)\\)", function(m)
-  totem.rec_end, totem.ready = os.time() + tonumber(m[1]) * 60 + tonumber(m[2]), false
-  changed()
-end, { name = "affects_totem_recovering" })
 
 -- Literal matches checked in Lua: as regexes these cost 1-1.3 us a line
 -- (see core/util.lua's note on triggers)
@@ -571,7 +574,7 @@ rune.gmcp.on("char.base", function()
   if game.subclass and game.subclass ~= subclass then
     subclass = game.subclass
     build()
-    totem_on(subclass == "Shaman")
+    totem_trig.set(subclass == "Shaman")
     changed()
   end
   if not seen and #queue == 0 then

@@ -4,12 +4,13 @@
 -- places them): Rune calls their renderers every 250 ms on its own steady
 -- clock, lines up each row's left and right parts, and redraws only a row
 -- whose text changed (ui/tui/widget/bar.go).
---   row 1: TCK, [row1 slots: QST (targets/quest.lua)], TNL LVL ALN,
---          [row1_end slots: POP (nav/repop.lua), 3MN (nav/moons.lua), 2XP 2QP
---          (targets/doubles.lua)]; REC (Rune's /log) at the right end
---   row 2: HP MN MV, [row2 slots: AC (fight/autocast.lua)], Enemy (its health),
---          [row2_end slots: DPS (fight/dps.lua)] on the left - later PUP; your
---          state, or the enemy's name in red while fighting, on the right
+--   row 1, the game around you: TCK, [row1 slots: QST (targets/quest.lua)],
+--          [row1_end slots: POP (nav/repop.lua), 3MN (nav/moons.lua), DPS
+--          (fight/dps.lua), PUP (fight/pup.lua), 2XP 2QP (targets/doubles.lua)];
+--          REC (Rune's /log) at the right end
+--   row 2, you: HP MN MV ALN LVL TNL | [row2 slots: AC (fight/autocast.lua)]
+--          and the enemy (name and health) - your state out of a fight
+-- A slot's segment is its text alone; the row puts the spaces between
 -- Reads core/game.lua's `game`. Features add their own segments: a slot holds
 -- functions returning text, called at each draw, and a feature whose text
 -- changed calls rune.ui.refresh_bars() to show it at once rather than at the
@@ -19,9 +20,8 @@
 
 local util = require("core.util")
 local game = require("core.game")
-local layout = require("core.layout")   -- the right column's width
 
-local status = { row1 = {}, row1_end = {}, row2 = {}, row2_end = {} }
+local status = { row1 = {}, row1_end = {}, row2 = {} }
 
 local state_names = {
   [1] = "login", [2] = "motd", [3] = "standing", [4] = "afk", [5] = "note",
@@ -52,14 +52,12 @@ local function vlen(s)
   return select(2, plain:gsub("[^\128-\191]", ""))
 end
 
--- Status row 1 (tt++ ticking.tin). Each label plain, its value cyan unless
--- marked, padded so the labels never move:
+-- Status row 1 (tt++ ticking.tin): the game around you. Each label plain,
+-- its value cyan unless marked, padded so the labels never move:
 --   TCK  seconds to the next tick (game.tick()); red under 10. "--" until the
 --        first tick
---   TNL  experience to the next level, red under 300   (char.status)
---   LVL  your level, left out at 201 and up            (char.status)
---   ALN  alignment, red under -875, green over 875     (char.status)
--- Not yet: ALN's lock colour
+-- then the row1 slots (QST) and the row1_end slots (POP 3MN DPS PUP 2XP
+-- 2QP - in load order, init.lua), a space between each
 
 function status.field(label, value, width, style)
   return label .. " " .. (style or rune.style.cyan)(string.format("%-" .. width .. "s", tostring(value)))
@@ -70,24 +68,47 @@ local function status_row1()
   local t = game.tick()
   local f = { t and field("TCK", t, 2, t < 10 and rune.style.red or nil) or field("TCK", "--", 2) }
   for _, seg in ipairs(status.row1) do f[#f + 1] = seg() end
-  if game.tnl then f[#f + 1] = field("TNL", game.tnl, 4, game.tnl < 300 and rune.style.red or nil) end
-  if game.level and game.level < 201 then f[#f + 1] = field("LVL", game.level, 5) end
-  if game.align then
-    local a = game.align
-    f[#f + 1] = field("ALN", a, 5, a < -875 and rune.style.red or a > 875 and rune.style.green or nil)
-  end
   for _, seg in ipairs(status.row1_end) do f[#f + 1] = seg() end
   return table.concat(f, " ")
 end
 
--- Row 2's Enemy segment (tt++ statusbar.tin): " | Enemy 70 " while fighting,
--- green under 20 (nearly dead), red otherwise; blank at the same width
--- out of a fight, so DPS after it never moves
+-- Row 2's last field (tt++ statusbar.tin): the enemy while fighting - its
+-- name (GMCP sends it with the game's @-colour codes, taken out) cut or
+-- padded to ENEMY_W, then its health; green under 20 (nearly dead), red
+-- otherwise. Out of a fight your state ("standing")
+local ENEMY_W = 20
+local function pad(s, w) return s .. string.rep(" ", w - vlen(s)) end
 local function enemy_segment()
-  if game.state ~= 8 then return string.rep(" ", 13) end
+  if game.state ~= 8 then return state_names[game.state or 0] or "?" end
   local pct = game.enemypct or 0
   local style = pct < 20 and rune.style.green or rune.style.red
-  return rune.style.gray(" | ") .. style(string.format("Enemy %-3s", pct)) .. " "
+  local name = util.uncolor(game.enemy or "")
+  if #name > ENEMY_W then name = name:sub(1, ENEMY_W - 1) .. "…" end
+  return style(pad(name, ENEMY_W) .. string.format(" %3s", pct))
+end
+
+-- Row 2: you. HP MN MV (meter, above), then from char.status
+--   ALN  alignment, red under -875, green over 875
+--   LVL  your level, left out at 201 and up
+--   (ALN padded after to 5, room for the minus sign: "ALN 2500  TNL",
+--   "ALN -2500 TNL". LVL unpadded - it changes width seldom)
+--   TNL  experience to the next level, red under 300
+-- then " | ", the row2 slots (AC) and the enemy, a space between each.
+-- Not yet: ALN's lock colour
+local function status_row2()
+  local f = { meter("HP", game.hp, game.maxhp), meter("MN", game.mana, game.maxmana),
+              meter("MV", game.moves, game.maxmoves) }
+  if game.align then
+    local a = game.align
+    f[#f + 1] = field("ALN", a, 5, a < -875 and rune.style.red or a > 875 and rune.style.green or nil)
+  end
+  if game.level and game.level < 201 then f[#f + 1] = field("LVL", game.level, 1) end
+  local tnl = game.tnl
+  f[#f + 1] = tnl and field("TNL", tnl, 4, tnl < 300 and rune.style.red or nil) or field("TNL", "--", 4)
+  local right = {}
+  for _, seg in ipairs(status.row2) do right[#right + 1] = seg() end
+  right[#right + 1] = enemy_segment()
+  return table.concat(f, " ") .. rune.style.gray(" | ") .. table.concat(right, " ")
 end
 
 local SCROLLED = " SCROLLED - Ctrl+End "
@@ -102,6 +123,42 @@ local function rec()
   return "\27[38;2;255;0;0mREC\27[0m"
 end
 
+-- /log's files (Rune's /log start [raw] [file]): in util.state_dir's
+-- userlogs/ (~/.local/state/rune/userlogs), not Rune's config_dir/logs.
+-- The path is taken as if userlogs/ were the root (a chroot): "/tmp/x"
+-- and "tmp/x" both give userlogs/tmp/x.log, "~/y" userlogs/y.log, and ".."
+-- goes up only as far as userlogs/ ("../../etc/passwd" is
+-- userlogs/etc/passwd.log). "\\" splits as "/" does; leading dots go from
+-- every part (no hidden files). No name left: <date>_<time>.log; .log
+-- added if the name has no extension; says whether the file is new or
+-- being appended to (Rune opens it to append). The folder must exist - Rune's Go
+-- side would make it, so a missing one is refused here first, an error
+-- /log shows. Rune's /log calls rune.log.start, so wrapping it covers both
+local log_start = rune.log.start
+function rune.log.start(path, opts)
+  local parts = {}
+  for part in tostring(path or ""):gmatch("[^/\\]+") do
+    if part == ".." then
+      parts[#parts] = nil
+    elseif not (part == "~" and #parts == 0) then
+      local p = part:gsub("^%.+", "")
+      if p ~= "" then parts[#parts + 1] = p end
+    end
+  end
+  if #parts == 0 then parts[1] = os.date("%Y-%m-%d_%H-%M-%S") end
+  if not parts[#parts]:find(".", 1, true) then parts[#parts] = parts[#parts] .. ".log" end
+  local rel = table.concat(parts, "/")   -- what the message shows: the path under userlogs/
+  local file = table.remove(parts)
+  local dir = util.state_dir .. "/userlogs" .. (parts[1] and ("/" .. table.concat(parts, "/")) or "")
+  if not util.dir_exists(dir) then return nil, dir .. " doesn't exist - make it first (mkdir -p)." end
+  local path = dir .. "/" .. file
+  local fh = io.open(path, "r")
+  if fh then fh:close() end
+  local ok, err = log_start(path, opts)
+  if ok then util.say("[log] " .. (fh and "appending to the existing " or "new file ") .. "userlogs/" .. rel .. ".") end
+  return ok, err
+end
+
 -- Row 1: the fields on the left, REC at the right end
 rune.ui.bar("status1", function()
   return { left = status_row1(), right = rec() }
@@ -110,26 +167,10 @@ end)
 -- Row 2. SCROLLED is looked at on each render (rune._state.scroll_mode:
 -- "live" or "scrolled" - nothing tells when it changes)
 rune.ui.bar("status2", function()
-  local left = meter("HP", game.hp, game.maxhp) .. " "
-    .. meter("MN", game.mana, game.maxmana) .. " "
-    .. meter("MV", game.moves, game.maxmoves)
-  for _, seg in ipairs(status.row2) do left = left .. seg() end
-  left = left .. enemy_segment()
-  for _, seg in ipairs(status.row2_end) do left = left .. seg() end
-  -- Right: your state, or in a fight the enemy's name. GMCP sends the name
-  -- with the game's @-colour codes ("@RThe @GRogue"), taken out here
-  local scrolled = rune._state.scroll_mode == "scrolled"
-  local fighting = game.state == 8 and game.enemy ~= ""
-  local right = fighting and (game.enemy:gsub("@x%d%d?%d?", ""):gsub("@.", ""))
-    or state_names[game.state or 0] or "?"
-  -- Cut to the room the left leaves, ending in "…" (Rune would cut the
-  -- row's end off with no mark). The renderer is given the terminal's width,
-  -- not the bar's, so the column's own width is used
-  local room = layout.RIGHT_W - vlen(left) - 1 - (scrolled and #SCROLLED + 1 or 0)
-  if #right > room then right = room > 1 and right:sub(1, room - 1) .. "…" or "" end
-  if fighting then right = rune.style.red(right) end
-  -- The main pane scrolled back: new output is below what you see
-  if scrolled then right = "\27[30;43m" .. SCROLLED .. "\27[0m " .. right end
+  local left = status_row2()
+  -- Right: SCROLLED, when the main pane is scrolled back (new output is
+  -- below what you see)
+  local right = rune._state.scroll_mode == "scrolled" and ("\27[30;43m" .. SCROLLED .. "\27[0m") or ""
   return { left = left, right = right }
 end)
 

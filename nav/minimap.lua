@@ -161,35 +161,30 @@ local function running_layout()
   util.pane("minimap", table.concat(out, "\n"))
 end
 
-local function map_layout()
+-- The map block, made into the pane's rows once, at the block: the room
+-- name, the map (your # marked) and the exits row, each cropped. Drawing
+-- (draw_map) adds the header and note - those come from GMCP room.info,
+-- which can come after the block, and then only they are redone
+local parts   -- { name = { row, ... }, map = { row, ... }, exits = row or nil }
+
+local function build_map()
   local lines = map_buf
   local i, n = 1, #lines
   while i <= n and blank(lines[i]) do i = i + 1 end
-  local out = {}
-  local room = game.room
-  out[1] = header()
+  local p = { name = {}, map = {} }
   -- the room name: up to the first whitespace-only line
   local carry = ""
   while i <= n and not blank(lines[i]) do
     local raw = carry .. lines[i].raw
     carry = last_sgr(raw) or carry
-    out[#out + 1] = crop(raw, W)
+    p.name[#p.name + 1] = crop(raw, W)
     i = i + 1
-  end
-  -- the room's note (rmsg, from the mapper)
-  local mr = room.num and mapper.rooms[room.num]
-  if mr and mr.note ~= "" then
-    for k, l in ipairs(util.wrap(mr.note, W)) do
-      if k > MAP_NOTE then break end
-      out[#out + 1] = rune.style.cyan(l)
-    end
   end
   -- the exits line, if any, is the last non-blank line
   local last = n
   while last >= i and blank(lines[last]) do last = last - 1 end
-  local exits = nil
   if last >= i and lines[last].clean:match("^%s*%[ Exits:") then
-    exits = lines[last].raw
+    p.exits = crop(lines[last].raw, W)
     last = last - 1
   end
   while last >= i and blank(lines[last]) do last = last - 1 end
@@ -201,17 +196,38 @@ local function map_layout()
     if l and not lone_row then lone_row, lone_col = k, l end
   end
   if not me_row then me_row, me_col = lone_row, lone_col end
-  -- the map as sent, as many lines as fit above the exits row
+  -- the map as sent (as many rows as fit are drawn)
   for k = i, last do
-    if #out >= H - 2 then break end
+    if #p.map >= H then break end
     local raw = carry .. lines[k].raw
     carry = last_sgr(raw) or carry
     if k == me_row then raw = replace_at(raw, me_col, MAP_ME) end
-    out[#out + 1] = crop((raw:gsub("<", "▼"):gsub(">", "▲")), W)
+    p.map[#p.map + 1] = crop((raw:gsub("<", "▼"):gsub(">", "▲")), W)
   end
-  if exits then
+  parts = p
+end
+
+local function draw_map()
+  local p = parts
+  local out = { header() }
+  for _, r in ipairs(p.name) do out[#out + 1] = r end
+  -- the room's note (rmsg, from the mapper)
+  local room = game.room
+  local mr = room.num and mapper.rooms[room.num]
+  if mr and mr.note ~= "" then
+    for k, l in ipairs(util.wrap(mr.note, W)) do
+      if k > MAP_NOTE then break end
+      out[#out + 1] = rune.style.cyan(l)
+    end
+  end
+  -- the map, as many rows as fit above the exits row
+  for _, r in ipairs(p.map) do
+    if #out >= H - 2 then break end
+    out[#out + 1] = r
+  end
+  if p.exits then
     while #out < H - 2 do out[#out + 1] = "" end
-    out[#out + 1] = crop(exits, W)
+    out[#out + 1] = p.exits
     out[#out + 1] = ""   -- a blank bottom row under the exits
   end
   util.pane("minimap", table.concat(out, "\n"))
@@ -235,7 +251,8 @@ rune.trigger.exact("<MAPSTART>", function(_, ctx)
     util.eat_blanks("<MAPEND>")
   end
   map_since_info = true
-  map_layout()
+  build_map()
+  draw_map()
 end, { name = "aard_map", priority = 10, gag = true, span = { to = "^<MAPEND>$", max = 120 } })
 
 -- The header and note come from GMCP room.info, which can arrive after the
@@ -247,7 +264,7 @@ rune.gmcp.on("room.info", function()
     return
   end
   map_since_info = false
-  if map_buf[1] then map_layout() end
+  if parts then draw_map() end
 end, { name = "minimap_room" })
 
 -- map: the game's map, shown in the main output too (the minimap takes

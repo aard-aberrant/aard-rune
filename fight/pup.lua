@@ -1,73 +1,98 @@
--- Powerup pace (tt++ modules/pups.tin, without its status segment): average
--- seconds per powerup, timed from the first pup after pup track.
---   pup track   on (waiting for the next pup, which starts the clock) / off
---   pup reset   start over, on
---   pup         report: N s/pup | N pups | M:SS
--- The pace is worked out only when a pup lands, so it holds steady between
--- pups. The game's line (tt++'s pattern):
+-- Powerup pace (tt++ modules/pups.tin, reworked 2026-11-08): always on, on
+-- status row 1 after DPS:
+--   PUP 23s / 25s (104)
+-- the last gap between two pups, the session's average gap (underlined),
+-- and how many gaps the average is over. Dim once the last pup is over a
+-- minute old (the session is over); it stays until the next session's
+-- first gap replaces it.
+-- A session: the first pup is only the baseline; each pup after it within
+-- 60 s of the one before adds its gap. A gap over 60 s ends the session -
+-- that gap isn't counted - and that pup is the next session's baseline.
+--   pup     the sessions, newest first: start, length, pups, average - the
+--           one under way first, then the last 5 from the log
+--   log     each session, once it's over (61 s with no pup, a /reload, a
+--           disconnect), one line in pup.log (util.state_dir:
+--           ~/.local/state/rune), tab-separated: start, seconds, pups,
+--           average gap
+-- The game's line (tt++'s pattern, seen live 2026-11-08):
 --   Congratulations, <name>. You have increased your powerups to <n>.
--- Its trigger exists only while tracking is on - added on, removed off
--- (core/util.lua's note on triggers: off for long, so removed, not disabled).
--- A /reload turns tracking off.
+-- Matched anywhere in the line, not only at its start (a starts match
+-- never fired live, 2026-11-08 - what came before it isn't known yet).
+-- Cost: one literal trigger (contains); the row's
+-- segment is a few string operations each redraw.
 local util = require("core.util")
+local status = require("panes.status")   -- the PUP segment's slot
 
-local say = util.say
+local GAP = 60   -- seconds: a longer gap ends the session
+local W = 15     -- the value's columns on the row, "60s / 60s (999)", so what follows stays put
 
-local state = "off"   -- "off", "armed" (waiting for the first pup), "running"
-local count, start, secs = 0, 0, 0
-local trig
+local prev            -- os.time() of the last pup
+local sess            -- the latest session: { start, last, n, ends, logged }
+local LOG = "pup.log"
+local over = util.slot()   -- fires GAP + 1 s after a counted pup: the session is over
 
-local function each() return count > 0 and math.floor(secs / count) or nil end
+local function avg(s) return math.floor((s.ends - s.start) / s.n + 0.5) end
+local function live() return prev and os.time() - prev <= GAP end
 
-local function report(off)
-  if count == 0 then return false end
-  say(string.format("[pup] %ds/pup | %d pup%s | %d:%02d%s", each(), count, count == 1 and "" or "s",
-    math.floor(secs / 60), secs % 60, off and " (off)" or ""))
-  return true
+local function log_it()
+  if not sess or sess.logged then return end
+  sess.logged = true
+  util.append_log(LOG, table.concat({ os.date("%Y-%m-%d %H:%M:%S", sess.start), sess.ends - sess.start,
+    sess.n, avg(sess) }, "\t"), "[pup]")
 end
+rune.hooks.on("reloading", log_it, { name = "pup_log_reload" })
+rune.hooks.on("disconnected", log_it, { name = "pup_log_disconnect" })
 
-local function on_pup(m)
-  if state == "armed" then
-    state, count, start, secs = "running", 0, os.time(), 0
-    say("[pup] timer started at " .. m[2] .. ".")
-  elseif state == "running" then
-    count = count + 1
-    secs = os.time() - start
+-- debug pup: each line the trigger takes, as it came
+local dbg = require("core.debug").topic("pup", "each powerup line, and the gap it adds")
+
+rune.trigger.contains("You have increased your powerups to ", function(_, ctx)
+  if dbg.on then dbg.log(ctx.line:clean()) end
+  local now = os.time()
+  local gap = prev and now - prev
+  prev = now
+  if not gap or gap > GAP then return end   -- the baseline
+  if not sess or sess.ends ~= now - gap then   -- the first gap of a new session
+    log_it()
+    sess = { start = now - gap, n = 0 }
   end
-end
+  sess.n, sess.last, sess.ends = sess.n + 1, gap, now
+  over.start(GAP + 1, log_it)
+  if dbg.on then dbg.log("gap " .. gap .. "s, " .. sess.n .. " in this session") end
+  rune.ui.refresh_bars()
+end, { name = "pup_line" })
 
-local function track(on)
-  if on and not trig then
-    trig = rune.trigger.regex("^Congratulations, (\\w+)\\. You have increased your powerups to (\\d+)\\.$",
-      on_pup, { name = "pup_line" })
-  elseif not on and trig then
-    trig:remove()
-    trig = nil
+-- "PUP 23s / 25s (104)": "PUP --" before the first session. PUP as DPS's
+-- label, the numbers green as its value (gray once the session is over). The average's
+-- underline is SGR 4 (24 ends it); an overline (53) didn't show live, 2026-11-08
+table.insert(status.row1_end, function()
+  if not sess then return "PUP " .. rune.style.gray("--") .. string.rep(" ", W - 2) end
+  local plain = string.format("%ds / %ds (%d)", sess.last, avg(sess), sess.n)
+  local text = string.format("%ds / \27[4m%ds\27[24m (%d)", sess.last, avg(sess), sess.n)
+  local on = live() and sess.ends == prev
+  return "PUP " .. (on and rune.style.green(text) or rune.style.gray(text)) .. string.rep(" ", W - #plain)
+end)
+
+local function clock(secs) return string.format("%d:%02d", math.floor(secs / 60), secs % 60) end
+
+rune.alias.exact("pup", function()
+  local list = {}
+  if sess and not sess.logged then
+    list[1] = { when = os.date("%Y-%m-%d %H:%M", sess.start), secs = sess.ends - sess.start, n = sess.n,
+                avg = avg(sess), now = true }
   end
-end
-
-rune.alias.exact("pup", function(args)
-  local a = util.trim(args)
-  if a == "reset" or (a == "track" and state == "off") then
-    state, count, secs = "armed", 0, 0
-    track(true)
-    say("[pup] tracking on; the timer starts at your next powerup.")
-  elseif a == "track" then
-    state = "off"
-    track(false)
-    say("[pup] tracking off.")
-    report(true)
-  elseif a ~= "" then
-    util.warn("[pup] pup [track|reset]")
-  elseif state == "running" then
-    if not report() then say("[pup] timer running; no pups since it started.") end
-  elseif state == "armed" then
-    say("[pup] tracking armed; waiting for your next powerup.")
-  elseif not report(true) then
-    say("[pup] tracking is off - pup track to start.")
+  for _, line in ipairs(util.log_tail(LOG, 5)) do
+    local when, t, n, a = line:match("^(%d+%-%d+%-%d+ %d+:%d+):%d+\t(%d+)\t(%d+)\t(%d+)$")
+    if when then list[#list + 1] = { when = when, secs = tonumber(t), n = tonumber(n), avg = tonumber(a) } end
+  end
+  if not list[1] then return util.say("[pup] no sessions yet - two pups within a minute start one.") end
+  util.say("[pup] sessions, newest first:")
+  for _, s in ipairs(list) do
+    rune.echo(string.format("  %s  %6s  %4d pup%s  %3ds avg%s", s.when, clock(s.secs), s.n,
+      s.n == 1 and " " or "s", s.avg, s.now and "  (on now)" or ""))
   end
 end)
 
 -- Help (core/help.lua): /help, xhelp
 local help = require("core.help")
-help.add("pup", "pup [track | reset]", "powerup pace: seconds per powerup; track on/off, reset starts over")
+help.add("pup", "pup", "powerup sessions, newest first: start, length, pups, average gap (logged to ~/.local/state/rune/pup.log; status row 1 shows the current one)")

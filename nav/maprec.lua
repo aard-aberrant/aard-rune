@@ -7,8 +7,8 @@
 --   map plan              show the plan: numbered changes to the map
 --   map edit <n> <cmds>   change an entry's commands (";"-separated); the
 --                         exit's name is the last one
---   map drop <n|all>      take an entry out of the plan
---   map apply [n ...]     write the plan (or those entries) to the map. An
+--   map drop <n|all>      take an entry (or all) out of the plan
+--   map apply             write the plan to the map. An
 --                         entry whose room already has other exits to the
 --                         same place opens a picker: the exit you choose
 --                         sends the commands, the others are removed (a
@@ -24,8 +24,7 @@
 --   - one exit name the map already has going to B: a plain move, nothing
 --   - more lines ending in such an exit ("open n", "n"): update that
 --     exit to send them all
---   - no lines (a run's middle rooms, pushed, followed): nothing if the
---     map has an exit A -> B, else noted as a move with no command
+--   - no lines (a run's middle rooms, pushed, followed): nothing
 --   - a run, home or recall: nothing (the route search has its own)
 --   - anything else: a custom exit named after the last line, sending
 --     all of them ("look field;enter field"); "replaces" if A has an exit
@@ -47,7 +46,6 @@ local mapper = require("nav.mapper")
 local R = {}
 
 local say, warn, trim = util.say, util.warn, util.trim
-local dbg = require("core.debug").topic("maprec", "map record: each line recorded and each move")
 
 local IGNORE = { [""] = true, look = true, l = true, exits = true, map = true, scan = true }
 local DIRS = { north = "n", south = "s", east = "e", west = "w", up = "u", down = "d" }
@@ -55,8 +53,8 @@ local DIRSET = { n = true, s = true, e = true, w = true, u = true, d = true }
 local NOROUTE = { home = true, recall = true }
 
 -- The recording: on, the room you're in, the lines sent there since you
--- came in, the plan ({ from, to, name, cmds }) and moves with no command
-local S = { on = false, room = nil, lines = {}, plan = {}, notes = {} }
+-- came in, and the plan ({ from, to, name, cmds })
+local S = { on = false, room = nil, lines = {}, plan = {} }
 
 local function room_label(v)
   local r = mapper.rooms[v]
@@ -101,13 +99,7 @@ end
 local function move(a, b, lines)
   local r = mapper.rooms[a]
   if not r or not mapper.rooms[b] then return end
-  if dbg.on then dbg.log(string.format("move %d -> %d: %s", a, b, table.concat(lines, ";"))) end
-  if #lines == 0 then
-    if not has_way(a, b) then
-      S.notes[#S.notes + 1] = string.format("%s -> %s with no command", room_label(a), room_label(b))
-    end
-    return
-  end
+  if #lines == 0 then return end
   local last = exit_name(lines[#lines])
   if NOROUTE[last] then return end
   if last:match("^run ") and has_way(a, b) then return end
@@ -128,7 +120,6 @@ local function record(text)
   if text:find("[\r\n]") then return end   -- send_raw calls itself for each line
   local c = trim(text)
   if IGNORE[c:lower()] then return end
-  if dbg.on then dbg.log("sent in " .. tostring(S.room) .. ": " .. c) end
   S.lines[#S.lines + 1] = c
 end
 
@@ -173,11 +164,8 @@ local function others(p)
 end
 
 local function show_plan()
-  if #S.plan == 0 and #S.notes == 0 then
-    say("[map] the plan is empty.")
-    return
-  end
-  if #S.plan > 0 then say("[map] plan - map apply writes it, map edit / map drop change it:") end
+  if #S.plan == 0 then return say("[map] the plan is empty.") end
+  say("[map] plan - map apply writes it, map edit / map drop change it:")
   for i, p in ipairs(S.plan) do
     local r = mapper.rooms[p.from]
     local e = r and r.exits[p.name]
@@ -189,19 +177,6 @@ local function show_plan()
       rune.echo("        also there from here: " .. table.concat(o, ", ") .. " - map apply asks which one to keep")
     end
   end
-  for _, n in ipairs(S.notes) do rune.echo("      not planned: " .. n) end
-end
-
--- The entry numbers in `rest`, highest first (so removing goes from the end)
-local function numbers(rest)
-  local out, seen = {}, {}
-  for n in rest:gmatch("%S+") do
-    local i = tonumber(n)
-    if not i or not S.plan[i] then return nil, n end
-    if not seen[i] then seen[i] = true; out[#out + 1] = i end
-  end
-  table.sort(out, function(x, y) return x > y end)
-  return out
 end
 
 local cmd = {}
@@ -216,7 +191,7 @@ function cmd.record(rest)
   elseif rest == "cancel" then
     S.on = false
     hook(false)
-    S.plan, S.notes, S.lines = {}, {}, {}
+    S.plan, S.lines = {}, {}
     return say("[map] recording and plan thrown away.")
   elseif rest ~= "" then
     return warn("map record [stop|cancel]")
@@ -226,7 +201,7 @@ function cmd.record(rest)
     return show_plan()
   end
   if not mapper.here then return warn("[map] where you are isn't known yet - move once first.") end
-  S.on, S.room, S.lines, S.notes = true, mapper.here, {}, {}
+  S.on, S.room, S.lines = true, mapper.here, {}
   hook(true)
   say("[map] recording from " .. room_label(S.room) .. ".")
 end
@@ -245,12 +220,12 @@ end
 
 function cmd.drop(rest)
   if rest == "all" then
-    S.plan, S.notes = {}, {}
+    S.plan = {}
     return say("[map] plan emptied.")
   end
-  local list, bad = numbers(rest)
-  if not list or #list == 0 then return warn("map drop <n ...|all> - no entry " .. tostring(bad or "")) end
-  for _, i in ipairs(list) do table.remove(S.plan, i) end
+  local i = tonumber(rest)
+  if not i or not S.plan[i] then return warn("map drop <n|all> - n from map plan") end
+  table.remove(S.plan, i)
   show_plan()
 end
 
@@ -312,19 +287,10 @@ local function ask(queue, i)
   })
 end
 
-function cmd.apply(rest)
+function cmd.apply()
   if #S.plan == 0 then return warn("[map] nothing to apply.") end
-  local list, bad
-  if rest == "" then
-    list = {}
-    for i = 1, #S.plan do list[#list + 1] = i end
-  else
-    list, bad = numbers(rest)
-    if not list then return warn("map apply [n ...] - no entry " .. bad) end
-  end
-  table.sort(list)
   local entries, queue = {}, {}
-  for _, i in ipairs(list) do entries[#entries + 1] = S.plan[i] end
+  for i, p in ipairs(S.plan) do entries[i] = p end   -- write() takes them off the plan
   for _, p in ipairs(entries) do
     if not mapper.rooms[p.from] or not mapper.rooms[p.to] or #others(p) == 0 then
       write(p, p.name)
@@ -346,7 +312,7 @@ local help = require("core.help")
 help.add("map record", "map record [stop|cancel]", "record what you do to get past rooms; stop shows the exits it would write")
 help.add("map plan", "map plan", "the exits map record would write")
 help.add("map edit", "map edit <n> <cmds>", "change a planned exit's commands (\";\"-separated, the last one names it)")
-help.add("map drop", "map drop <n ...|all>", "take entries out of the plan")
-help.add("map apply", "map apply [n ...]", "write the plan (or those entries) to the map")
+help.add("map drop", "map drop <n|all>", "take an entry (or all) out of the plan")
+help.add("map apply", "map apply", "write the plan to the map")
 
 return R

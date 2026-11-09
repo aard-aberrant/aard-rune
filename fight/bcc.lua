@@ -98,7 +98,7 @@ end
 local function checks()
   local al = game.align
   if al and (al < -874 or al > 874) then err("[bcc] alignment " .. al .. " isn't neutral (-874 to 874).") end
-  if autocast.on() then err("[bcc] autocast is on - ac off") end
+  if autocast.on() then err("[bcc] autocast is on - ac to switch it off") end
 end
 
 local function on_room(d)

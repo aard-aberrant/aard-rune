@@ -344,9 +344,8 @@ rune.trigger.regex("^A .+ blows from the (?:north|south|east|west|northeast|nort
   function(_, ctx) if not cap then return hide(ctx) end end, { name = "moons_notice_wind" })
 
 -- The 3MN light -----------------------------------------------------------
--- Second in row1_end, after POP: this loads after nav/repop and
--- targets/doubles (a Shaman's module, init.lua), so appending would put it
--- after 2XP 2QP
+-- Second in row1_end, after POP: this loads last (a Shaman's module,
+-- init.lua), so appending would put it after 2XP 2QP
 
 table.insert(status.row1_end, math.min(2, #status.row1_end + 1), function()
   if need() then return status.field("3MN", "??", 7, rune.style.yellow) end

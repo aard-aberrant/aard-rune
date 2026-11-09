@@ -42,8 +42,71 @@ function util.trim(s) return (s or ""):match("^%s*(.-)%s*$") end
 -- tt++'s escaped form ("\27[1\;32m"), so a backslash is allowed in the code
 function util.strip(s) return (s:gsub("\27%[[%d;\\]*m", "")) end
 
+-- Text without Aardwolf's colour codes (@x123, @R) - GMCP's names carry them
+function util.uncolor(s) return (s:gsub("@x%d%d?%d?", ""):gsub("@.", "")) end
+
 -- Nothing but spaces
 function util.blank(s) return s:match("^%s*$") ~= nil end
+
+-- Write a file safely: write(fh) fills a .tmp file, which is then renamed
+-- over `path`, so a failed write never leaves half a file. `who` starts the
+-- error line ("[map]"). Returns true when written
+-- Logs (dps.log, pup.log): one line appended per entry, in
+-- $XDG_STATE_HOME/rune, else ~/.local/state/rune - logs aren't config, so
+-- not in rune.config_dir. The folder isn't made: a missing one is an error
+-- (make it by hand: mkdir -p ~/.local/state/rune).
+--   util.dir_exists(path)              true if path is an existing folder
+--   util.append_log(name, line, who)   true if written
+--   util.log_tail(name, n)             the last n lines, newest first ({} if none)
+util.state_dir = (os.getenv("XDG_STATE_HOME") or ((os.getenv("HOME") or ".") .. "/.local/state")) .. "/rune"
+-- "path/." opens only if path is a folder (Go's os.Rename refuses a
+-- folder onto itself, so the rename trick doesn't work under Rune)
+function util.dir_exists(path)
+  local fh = io.open(path .. "/.", "r")
+  if fh then fh:close() end
+  return fh ~= nil
+end
+function util.append_log(name, line, who)
+  local path = util.state_dir .. "/" .. name
+  if not util.dir_exists(util.state_dir) then
+    util.err(who .. " can't log: " .. util.state_dir .. " doesn't exist (mkdir -p it).")
+    return false
+  end
+  local fh, err = io.open(path, "a")
+  if not fh then
+    util.err(who .. " can't append to " .. path .. ": " .. tostring(err))
+    return false
+  end
+  fh:write(line, "\n")
+  fh:close()
+  return true
+end
+function util.log_tail(name, n)
+  local fh = io.open(util.state_dir .. "/" .. name, "r")
+  if not fh then return {} end
+  local ring, i = {}, 0
+  for line in fh:lines() do
+    if line ~= "" then i = i + 1; ring[(i - 1) % n + 1] = line end
+  end
+  fh:close()
+  local out = {}
+  for k = i, math.max(1, i - n + 1), -1 do out[#out + 1] = ring[(k - 1) % n + 1] end
+  return out
+end
+
+function util.write_file(path, write, who)
+  local tmp = path .. ".tmp"
+  local fh, err = io.open(tmp, "w")
+  if not fh then
+    util.err(who .. " can't write " .. tmp .. ": " .. tostring(err))
+    return false
+  end
+  write(fh)
+  fh:close()
+  local ok, rerr = os.rename(tmp, path)
+  if not ok then util.err(who .. " can't replace " .. path .. ": " .. tostring(rerr)) end
+  return ok == true
+end
 
 -- Half a line, hidden while something hides lines. When a packet ends
 -- mid-line, Rune shows that half at once, as a temporary row at the foot of
