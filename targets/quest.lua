@@ -186,31 +186,41 @@ end)
 -- shows; gulp's is hidden. Its reply has no tag, so it is sent between two
 -- eqdata, and everything from the first {eqdata} to the second {/eqdata}
 -- is hidden, then the blank line(s) after it (the one before stays as the
--- break). Off again after 10 s whatever came
+-- break). Off again whatever came: 30 s after qc is typed (the game can
+-- lag well past 10 s - seen 2026-11-09, after a fight), cut to 10 s once
+-- the first {eqdata} arrives, so a lost {/eqdata} hides 10 s at most
 local qc_closes = nil   -- nil: not hiding; else {/eqdata} lines still to come
 local qc_line = util.group(true)   -- one catch-all, only while qc runs
+local qc_timeout = util.slot()
+local function qc_off() qc_line.set(false); qc_closes = nil end
 qc_line.add("starts", "", function(_, ctx)
   local clean = ctx.line:clean()
   if not qc_closes then
-    if clean == "{eqdata}" then qc_closes = 2; return false end
+    if clean == "{eqdata}" then
+      qc_closes = 2
+      qc_timeout.start(10, qc_off)
+      return false
+    end
     return
   end
   if clean == "{/eqdata}" then
     qc_closes = qc_closes - 1
     if qc_closes == 0 then
-      qc_line.set(false)
-      qc_closes = nil
+      qc_timeout.stop()
+      qc_off()
       util.eat_blanks(clean)
     end
   end
   return false
 end, { name = "quest_qc_quiet", priority = 1 })
 
-local qc_timeout = util.slot()
+-- One at a time, with g's home routine too (nav/travel.lua's note)
+travel.home_busy(qc_line.is_on)
 rune.alias.exact("qc", function()
+  if travel.home_running() then warn("[quest] qc: still finishing the last g or qc."); return end
   qc_closes = nil
   qc_line.set(true)
-  qc_timeout.start(10, function() qc_line.set(false); qc_closes = nil end)
+  qc_timeout.start(30, qc_off)
   rune.send_raw("home\nquest complete\neqdata\ngulp\neqdata")
 end)
 

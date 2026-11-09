@@ -19,8 +19,8 @@
 --             line in dps.log (util.state_dir: ~/.local/state/rune),
 --             tab-separated: start, seconds, damage, hits, area
 -- On status row 1, after 3MN (a row1_end slot): "DPS 1234  1:23",
--- always shown ("--" and 0:00 before any damage; after a reset the last
--- session's numbers, dimmed, until the next damage).
+-- always shown (a gray "--" before any damage, as PUP's, no clock; after a
+-- reset the last session's numbers, dimmed, until the next damage).
 
 local util = require("core.util")
 local game = require("core.game")        -- fighting (char.status state)
@@ -106,12 +106,16 @@ end, { name = "dps_area" })
 rune.hooks.on("reloading", zero, { name = "dps_log_reload" })
 rune.hooks.on("disconnected", zero, { name = "dps_log_disconnect" })
 
--- Always shown, " | DPS --     0:00" before any damage. After a reset the
--- last session's numbers stay, dimmed, until the next damage (the status
--- pane redraws each 250 ms, so it keeps up without being told)
+-- Always shown, the same 11 columns: a gray "--" before any damage (no
+-- clock - nothing is running), as PUP's. After a reset the last session's
+-- numbers stay, dimmed, until the next damage (the status pane redraws
+-- each 250 ms, so it keeps up without being told)
 function dps.segment()
   local s, vs, cs = session(), rune.style.green, rune.style.cyan
-  if d.damage == 0 and last then s, vs, cs = last, rune.style.gray, rune.style.gray end
+  if d.damage == 0 then
+    if not last then return "DPS " .. rune.style.gray("--") .. string.rep(" ", 9) end
+    s, vs, cs = last, rune.style.gray, rune.style.gray
+  end
   local v, c = value(s.damage, s.secs), s.secs < 6000 and clock(s.secs) or ">100m"   -- 5 columns at most
   return "DPS " .. vs(string.format("%-5s", v)) .. " " .. cs(string.format("%-5s", c))
 end

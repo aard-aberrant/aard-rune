@@ -1,16 +1,19 @@
 -- Command history across restarts. Rune keeps the last 10,000 commands
 -- (Up/Down) and they survive a /reload, but not quitting Rune - there's no
--- history file. So it's kept in history.txt here: loaded at start (only
--- into an empty history - after a /reload it's still there), and written
+-- history file. So it's kept in history.log in util.state_dir
+-- (~/.local/state/rune; until 2026-11-08 history.txt in the config
+-- folder). The folder isn't made: missing, each save is an error. Loaded
+-- at start (only into an
+-- empty history - after a /reload it's still there), and written
 -- once a minute when it changed, before a /reload and at a disconnect.
 -- Rune has no hook for quitting, so at worst the last minute is lost.
 -- One command a line, with \ and newlines escaped (a multi-line entry).
--- Everything you type, as plain text - git-ignored; the password isn't in
+-- Everything you type, as plain text - outside the repo; the password isn't in
 -- it (core/login.lua answers from .env, which isn't typed).
 
 local util = require("core.util")
 
-local FILE = rune.config_dir .. "/history.txt"
+local FILE = util.state_dir .. "/history.log"
 local KEEP = 10000   -- Rune's own limit
 
 local function esc(s) return (s:gsub("\\", "\\\\"):gsub("\n", "\\n")) end

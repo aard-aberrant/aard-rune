@@ -27,6 +27,15 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
 
 ## To check
 
+- [ ] /copy <n> [chat] (core/copy.lua, 2026-11-08, offline-tested): the last n main-pane lines
+      (or, with chat, the chats pane's) reach the clipboard through tmux (OSC 52); a /reload
+      keeps both; a big n (1000) isn't cut short. Typed commands show in place as "> qc"
+      (echo hook, 2026-11-09, untested); a password at login doesn't. Our messages ([eq] ...)
+      show too (rune.echo wrapped, 2026-11-09, untested): once each, also after a /reload.
+- [ ] Chats in /log (panes/chats.lua, 2026-11-08, offline-tested; chats.log retired): a normal
+      /log start gets chat lines among the game's; /log start chat [raw] [file] gets only chats
+      (and the start/stop stamps), still after a /reload; /log stop puts the game lines back.
+      The chats pane starts empty after a Rune restart.
 - [ ] Logs in ~/.local/state/rune (2026-11-08, offline-tested): dps.log and pup.log get a line per
       finished session (dps: reset, area change, /reload, disconnect; pup: 61 s with no pup, /reload,
       disconnect); dps / pup list the one under way and the last 5 from the log. /log start [foo]
@@ -214,6 +223,12 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
       "on whom?" (game text, like dps - GMCP can't tell which spell landed), or after 6 s.
       AC light on status row 2. (ac trace removed 2026-11-06 - a general logging mechanism comes later)
 - [x] qc (targets/quest.lua): home, quest complete, gulp - gulp hidden between two eqdata tags. Confirmed live 2026-11-06
+- [ ] qc timeout (2026-11-09, untested): 30 s from typing, cut to 10 s at the first {eqdata} - after
+      a fight the replies came past the old 10 s and showed. Check a qc right after a fight hides gulp
+      and both eqdata; also explain the quest-complete reply missing from that /copy
+- [ ] g / qc one at a time (nav/travel.lua T.home_running, 2026-11-09, untested): rapid g used to switch
+      the first g's hiding off (bank lines showed). Now a g or qc while either runs only says "still
+      finishing the last g or qc." Check: rapid g shows one routine's room and nothing else; qc then g
 - [x] Affects pane (panes/affects.lua, data/affects.lua; confirmed live 2026-11-06, totem line not yet seen): tracked good/bad
       lights, sk/sp, expiry histogram, next 3 to expire, totem line (Shaman). From {affon}/{affoff}
       and {recon}/{recoff}65, plus a hidden slist affected (char.base at login/reload, a new spell

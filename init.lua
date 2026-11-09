@@ -75,6 +75,7 @@ require("core.login")        -- answers the login prompts from .env
 require("core.history")      -- command history kept in history.txt across restarts
 require("core.tags")         -- the game's tag lines, hidden or cut out
 require("core.aliases")      -- one-line aliases: su, sq, qs, gh ...
+require("core.copy")         -- /copy <n>: the last n lines of the main pane to the clipboard
 require("panes.group")       -- the group pane
 require("panes.chats")       -- the chats pane: channels, tells, remote socials
 require("panes.status")      -- the status bars (TCK, HP/MN/MV, the enemy ...)

@@ -23,6 +23,7 @@
 -- stays until target clear - nothing else says reliably that it died.
 -- target.on_change(fn): fn(t) whenever it's set, cleared, or learns its
 -- room, keyword or area (targets/campaign.lua's pane row shows the room)
+-- target.learn_kw(kw): a keyword found elsewhere, kept if it has none
 
 local util = require("core.util")
 local game = require("core.game")       -- the area you're in
@@ -63,6 +64,12 @@ function target.set(t)
   pending = true
   say("[target] " .. label(t) .. (t.zone and (" in " .. area_name(t.zone)) or "") .. ".")
   changed()
+end
+
+-- A keyword found for the target elsewhere (fight/hunt.lua's probe): kept
+-- if it has none yet
+function target.learn_kw(kw)
+  if cur and not cur.kw and kw then cur.kw = kw; changed() end
 end
 
 -- Drops the target - with `src`, only one that source set
