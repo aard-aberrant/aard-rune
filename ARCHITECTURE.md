@@ -4,7 +4,8 @@ The Aardwolf setup for the [Rune](https://github.com/mmcdole/rune) MUD client, p
 from the tt++ setup in `aardwolf-tintin`. Rune is the only client (tt++ retired
 2026-11-06). Rune reads this directory as `~/.config/rune`.
 
-This file is the map: how the pieces fit and the rules they follow. Each file's
+This file is the map: how the pieces fit and the rules they follow. `README.md`
+has the setup, the screen and the main commands. Each file's
 header comment documents its own commands and the game messages it reads.
 `TODO.md` tracks what's ported, what's been confirmed live, and what's next.
 
