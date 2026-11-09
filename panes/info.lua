@@ -273,7 +273,7 @@ rune.alias.exact("infopane", function(args)
     .. ". infopane reset to undo.")
 end)
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("infopane", "infopane [<name>|reset]", "list what can show in the info pane; <name>: pin one (it shows whenever it has something, beating all but an alert); reset: the normal order again")
 help.add("infomsg", "infomsg [-t secs] [text]", "your own text on the info pane (| starts a line, 4 lines); -t: gone after secs; bare clears it")

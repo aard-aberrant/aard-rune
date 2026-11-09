@@ -63,6 +63,6 @@ rune.alias.exact("h", function(args)
   end
 end)
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("h", "h [target | stop]", "your heal spell (class file's heal, default incomplete healing): now out of a fight, else queued for the gap after a kill; stop drops a queued one")

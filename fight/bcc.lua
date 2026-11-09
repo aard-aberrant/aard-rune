@@ -186,7 +186,7 @@ rune.alias.exact("bcc", function(args)
   end
 end)
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("bcc", "bcc [find|stop]", "Black Claw Crag epic. find: go to room 25035, walk the mist path, back up to the mist and enter it (warns if alignment isn't neutral or autocast is on); stop: cancel a find; bare: the state. In the crag, the breath grid shows in the info pane, and rr / rrs move you")
 

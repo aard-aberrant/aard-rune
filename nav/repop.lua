@@ -117,6 +117,6 @@ rune.alias.exact("pop", function()
   for _, l in ipairs(stats) do rune.echo("  " .. l) end
 end)
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("pop", "pop", "how the last 5 exact repop countdowns (POP) compared with the repops")

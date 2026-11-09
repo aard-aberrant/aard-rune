@@ -32,6 +32,11 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
       keeps both; a big n (1000) isn't cut short. Typed commands show in place as "> qc"
       (echo hook, 2026-11-09, untested); a password at login doesn't. Our messages ([eq] ...)
       show too (rune.echo wrapped, 2026-11-09, untested): once each, also after a /reload.
+- [ ] /act, /unact (core/act.lua, 2026-11-09, untested): a text, ^start, ^line$ and /regex/ act each fire
+      (%1 filled; "a;b" sends both); /act lists them; /unact by number and by pattern; /unact
+      can't remove anything else; a bad regex is refused with Rune's error; a /reload and a restart
+      keep them (acts.txt in the config folder, one "pattern = commands" a line), an /unact stays gone
+      after a restart, a hand edit counts at /reload, a bad line is reported with its number.
 - [ ] Chats in /log (panes/chats.lua, 2026-11-08, offline-tested; chats.log retired): a normal
       /log start gets chat lines among the game's; /log start chat [raw] [file] gets only chats
       (and the start/stop stamps), still after a /reload; /log stop puts the game lines back.
@@ -52,7 +57,7 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
       "CAMPAIGN mobs!" GMCP char.status's last enemy, if on the cp list, is struck off - the cn mob: message,
       pane, target cleared; another (out of order): message and count. No cp check then; one only when the
       name isn't on the list, and at each cn to another area (fixes a wrong strike, the Dead marks). Check
-      live: debug campaign shows GMCP's name next to cp check's - an aggro mob killed out of order, and a
+      live: /debug campaign shows GMCP's name next to cp check's - an aggro mob killed out of order, and a
       one-hit kill (an earlier fight's name may strike the wrong one; the next cn to another area fixes it)
 - [ ] map record (nav/maprec.lua, offline-tested 2026-11-08): map record, do what gets you past a room
       (say xwxhxfx, look field + enter field, open n + n), map record stop shows the plan, map edit /
@@ -68,11 +73,18 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
       last stretch inside the destination area one step at a time, each sent when GMCP confirms the room
       before it, so the minimap follows it and a fight (char.status) stops the walk there. Check live: cn
       inside an area shows each room's map; a long g shows RUNNING then the area's rooms; no RUNNING flicker
-      on ordinary moves; an aborted run redraws the map
+      on ordinary moves; an aborted run redraws the map.
+- [ ] Minimap RUNNING by GMCP state 12 (2026-11-09, untested since the switch): the /debug minimap log
+      (rt, g sanctum, run 5s/5n, 5s/5n, run 10w, plain steps, blind) showed 12 on every run and never
+      otherwise, so a room.info at state 12 now shows RUNNING and every map block draws the map (the
+      map-less room.info rule is gone). Check: runs show RUNNING then the arrival's map; heighten in a
+      dark room keeps the map; an aborted run (not in that log) still redraws via minimap.refresh
+- [ ] Our messages in /log (core/copy.lua's rune.echo wrapper, 2026-11-09, untested): [debug ...] and [eq] ...
+      lines appear in a /log, colored in /log start raw, not in /log start chat; each once
 - [ ] infopane (panes/info.lua, offline-tested 2026-11-08): ported from tt++ - list, pin a provider (e.g.
       infopane account during a campaign break), reset; an alert still beats the pin
 - [ ] panes/group.lua markers (offline-tested 2026-11-08): L leader (GMCP group.leader - a guess, check with
-      "debug group on"), F whom you follow (game text, ~/groupinfo), E both; no mark for a follow outside the group
+      "/debug group on"), F whom you follow (game text, ~/groupinfo), E both; no mark for a follow outside the group
 - fight/quiet.lua (confirmed live 2026-11-07): a fight's xp/gold/tax added up, one line
       "+xp, +gold (N kills)" when GMCP state leaves fighting (live order checked 2026-11-07); tells reminder only when the count changes; skinning
       (makes / drops / crumbles into dust) hidden with its blank line. Watch for a reward line shape

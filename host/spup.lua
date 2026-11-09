@@ -283,7 +283,7 @@ local function open()
   S.phase = "run"
   local h = tonumber(os.date("!%H", os.time() - 5 * 3600))
   S.tod = (h >= 2 and h < 12) and "morning" or (h >= 12 and h < 18) and "afternoon" or "evening"
-  gossip("Good " .. S.tod .. "! Spellups in the @r-=Masaki=-@w clan hall (n u of recall) for the next couple of minutes. "
+  gossip("Good " .. S.tod .. "! Spellups in the @r-=Masaki=-@w clan hall (n u from recall) for the next couple of minutes. "
     .. "Sit for cancel, smile at me when ready. @YYou MUST@w '@Gsmile " .. me() .. "@w'.")
   at(120, check_last)
   drain()
@@ -397,7 +397,7 @@ rune.alias.exact("spup", function(args)
   say("[spup] off. spup on starts a session.")
 end)
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("spup", "spup [on | off | resume | test [off]]", "a spellup session at Muranooyashiro: walk, announce, spell up everyone who smiles; bare: its state; test: gossips only shown")
 help.add("spn", "spn", "spellup next: the first in the queue")

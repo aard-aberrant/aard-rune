@@ -7,7 +7,7 @@
 -- every one recorded so leaving the zone removes it:
 --   A.trigger.regex/exact/starts/contains, A.alias.exact/regex,
 --   A.timer.after/every, A.gmcp.on, A.hooks.on
---   A.help(name, usage, desc)  a command of the script's in /help and xhelp
+--   A.help(name, usage, desc)  a command of the script's in /help
 --                    (core/help.lua) while the script is loaded
 --   A.on_unload(fn)  fn() just before the script goes (stop things, give
 --                    up the info pane)
@@ -61,7 +61,7 @@ local function context(rec)
     timer = { after = wrap("timer", "after"), every = wrap("timer", "every") },
     gmcp = { on = wrap("gmcp", "on") },
     hooks = { on = wrap("hooks", "on") },
-    -- its commands in /help and xhelp (core/help.lua), gone when it goes
+    -- its commands in /help (core/help.lua), gone when it goes
     help = function(name, usage, desc)
       help.add(name, usage, desc)
       rec.handles[#rec.handles + 1] = { remove = function() help.remove(name) end }

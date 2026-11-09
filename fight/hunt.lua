@@ -173,7 +173,7 @@ rune.alias.exact("hqof", function()
   stop("given up")
 end)
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("autohunt", "autohunt [mob]", "hunt and follow its directions until you arrive or it can't lead you there; a fight pauses it; no mob: the target")
 help.add("hunt", "hunt [mob]", "the game's hunt; no mob: the target (its keyword, found with where if it has only a name)")

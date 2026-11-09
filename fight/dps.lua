@@ -45,9 +45,7 @@ local function value(damage, t)
   return tostring(math.floor(damage / t))
 end
 
-local function clock(t)
-  return string.format("%d:%02d", math.floor(t / 60), t % 60)
-end
+local clock = util.clock
 
 local function session()
   return { start = d.start, secs = secs(), damage = d.damage, hits = d.hits, area = d.area }
@@ -149,7 +147,7 @@ rune.alias.exact("dps", function(args)
   end
 end)
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("dps", "dps [reset]", "damage per second: the sessions, newest first - start, length, DPS, damage, hits, area (logged to ~/.local/state/rune/dps.log); reset starts over (moving to another area resets too)")
 

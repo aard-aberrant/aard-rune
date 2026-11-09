@@ -92,7 +92,7 @@ function soh.label(name, zone)
   return k and (name .. " (" .. k .. ")") or name
 end
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("soh", "soh [mob]", "School of Horror mob keywords: how many are saved, or a mob's (any name containing it)")
 

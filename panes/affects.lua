@@ -23,7 +23,7 @@
 -- and a hidden "totem" reads its time and area.
 --   saf / aff / affects [args]   the game's command, then a hidden slist
 --   affectsreset                 just the hidden slist
---   debug recov [on|off]         show the {recon}/{recoff} tags as they come (core/debug.lua)
+--   /debug recov [on|off]        show the {recon}/{recoff} tags as they come (core/debug.lua)
 -- core/tags.lua hides the affon, affoff, sfail, recon and recoff lines.
 
 local util = require("core.util")
@@ -606,7 +606,7 @@ end)
 
 build()
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("saf", "saf / aff / affects [args]", "the game's command, then a hidden slist that resets the affects pane")
 help.add("slist", "slist [args]", "the game's slist; a typed slist affected also resets the affects pane")

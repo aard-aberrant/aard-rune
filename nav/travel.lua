@@ -1167,7 +1167,7 @@ rune.alias.exact("labels", function()
   end
 end)
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("g", "g [area]", "bare: the home routine; with an area: go there (a picker if several match)")
 help.add("ga", "ga <text>", "this area: the nearest room labelled or named <text>, walked")

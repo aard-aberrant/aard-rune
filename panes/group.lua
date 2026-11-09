@@ -16,7 +16,7 @@ local layout = require("core.layout")   -- the pane's height, for the columns
 --
 -- The marker (new - the user's design, 2026-11-08), yellow, one column:
 --   L   the group's leader: GMCP group's "leader" field (a guess from
---       Aardwolf's GMCP docs, not yet seen here - "debug group on" shows it)
+--       Aardwolf's GMCP docs, not yet seen here - "/debug group on" shows it)
 --   F   the one you follow
 --   E   both: the leader, and you follow them (L and F laid over each other)
 -- Someone you follow who isn't in the group gets no mark (the user,

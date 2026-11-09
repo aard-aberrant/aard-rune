@@ -35,17 +35,18 @@ if #rune.history.get() == 0 then
   end
 end
 
--- The history as it was last written: its size and last entry
-local saved_n, saved_last
-local function mark(h) saved_n, saved_last = #h, h[#h] end
-mark(rune.history.get())
+-- Something typed since the last write: Rune's input hook sets it, so the
+-- minute's check is a flag, not a copy of the whole history out of Go.
+-- (A line typed that Rune doesn't keep - a repeat - only costs a write)
+local typed = false
+rune.hooks.on("input", function() typed = true end, { name = "history_typed" })
 
 local function save()
+  if not typed then return end
   local h = rune.history.get()
-  if #h == saved_n and h[#h] == saved_last then return end
   if util.write_file(FILE, function(fh)
     for i = math.max(1, #h - KEEP + 1), #h do fh:write(esc(h[i]), "\n") end
-  end, "[history]") then mark(h) end
+  end, "[history]") then typed = false end
 end
 
 rune.timer.every(60, save, { name = "history_save" })

@@ -42,7 +42,7 @@ function aliases.run(name, args)
   return true
 end
 
--- Each in /help and xhelp (core/help.lua) as what it sends - no list to
+-- Each in /help (core/help.lua) as what it sends - no list to
 -- keep: a new one here gets its help too
 local help = require("core.help")
 for name, body in pairs(A) do

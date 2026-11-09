@@ -94,7 +94,7 @@ function combat.heal()
   return C and C.heal or "incomplete healing"
 end
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("k", "k [mob]", "your primary attack: on <mob>; bare in a fight: your enemy; bare out of one: the target, by its keyword (set one with target <kw>, gm <mob> or qx)")
 help.add("kk", "kk [mob]", "your secondary attack")

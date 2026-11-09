@@ -153,6 +153,6 @@ end
 rune.alias.exact("double", function() send(false) end)
 game.on_login(function() send(true) end)
 
--- Help (core/help.lua): /help, xhelp
+-- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("double", "double", "the game's double; its reply also sets the 2XP and 2QP lights")
