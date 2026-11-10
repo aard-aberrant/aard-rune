@@ -117899,7 +117899,7 @@ X	43819	43823	n
 R	43820	crynn	hellinside	1		Screaming Ascent
 X	43820	43818	s		
 X	43820	43816	e		
-R	43821	crynn	hellinside	1		Screaming Ascent
+R	43821	crynn	hellinside	3		Screaming Ascent
 X	43821	43819	e		
 X	43821	43818	n		
 R	43822	crynn	hellinside			Screaming Ascent
@@ -120802,10 +120802,10 @@ X	46019	46026	w
 X	46019	45987	u		
 X	46019	46015	e		
 X	46019	46018	n		
-R	46020	dungeon	rocks			A Deadly End
+R	46020	dungeon	rocks	2		A Deadly End
 X	46020	46021	s		
 X	46020	45988	u		
-R	46021	dungeon	rocks			A Dry Basin
+R	46021	dungeon	rocks	2		A Dry Basin
 X	46021	46023	s		
 X	46021	45989	u		
 X	46021	46020	n		
@@ -120930,7 +120930,7 @@ X	46049	46048	w
 X	46049	46050	s		
 X	46049	46063	e		
 X	46049	46055	n		
-R	46050	dungeon	fountain			A Confluence of Power
+R	46050	dungeon	fountain	2		A Confluence of Power
 X	46050	46047	w		
 X	46050	46051	s		
 X	46050	46059	e		
