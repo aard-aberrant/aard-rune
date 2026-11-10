@@ -23,6 +23,7 @@
 -- reset the last session's numbers, dimmed, until the next damage).
 
 local util = require("core.util")
+local theme = require("core.theme")
 local game = require("core.game")        -- fighting (char.status state)
 local status = require("panes.status")   -- the DPS segment's slot
 
@@ -109,12 +110,13 @@ rune.hooks.on("disconnected", zero, { name = "dps_log_disconnect" })
 -- numbers stay, dimmed, until the next damage (the status pane redraws
 -- each 250 ms, so it keeps up without being told)
 function dps.segment()
-  local s, vs, cs = session(), rune.style.green, rune.style.cyan
+  local s, vs, cs = session(), theme.on, theme.value
   if d.damage == 0 then
-    if not last then return "DPS " .. rune.style.gray("--") .. string.rep(" ", 9) end
-    s, vs, cs = last, rune.style.gray, rune.style.gray
+    if not last then return "DPS " .. theme.unavailable("--") .. string.rep(" ", 9) end
+    s, vs, cs = last, theme.muted, theme.muted
   end
   local v, c = value(s.damage, s.secs), s.secs < 6000 and clock(s.secs) or ">100m"   -- 5 columns at most
+  if v == "--" then vs = theme.unavailable end   -- under 5 s: no rate yet
   return "DPS " .. vs(string.format("%-5s", v)) .. " " .. cs(string.format("%-5s", c))
 end
 

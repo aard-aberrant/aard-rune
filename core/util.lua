@@ -2,12 +2,12 @@
 
 local util = {}
 
--- Messages: cyan for news, a muted amber for a problem (xterm-256 179,
--- #d7af5f - plain yellow was bright and jarring, the user 2026-11-08), red
--- for an error
-function util.say(s) rune.echo(rune.style.cyan(s)) end
-function util.warn(s) rune.echo("\27[38;5;179m" .. s .. "\27[0m") end
-function util.err(s) rune.echo(rune.style.red(s)) end
+-- Messages: news, a problem, an error - their colors are theme.news,
+-- warn and error (data/theme.lua)
+local theme = require("core.theme")
+function util.say(s) rune.echo(theme.news(s)) end
+function util.warn(s) rune.echo(theme.warn(s)) end
+function util.err(s) rune.echo(theme.error(s)) end
 
 -- Replace a pane's text - only when it differs from what was last put
 -- there, so a redraw that changes nothing costs one string compare
@@ -37,26 +37,6 @@ function util.beep() io.write("\7"); io.flush() end
 
 -- Text without leading and trailing spaces ("" for nil)
 function util.trim(s) return (s or ""):match("^%s*(.-)%s*$") end
-
--- Text without its colour codes. A few room names in the converted map carry
--- tt++'s escaped form ("\27[1\;32m"), so a backslash is allowed in the code
-function util.strip(s) return (s:gsub("\27%[[%d;\\]*m", "")) end
-
--- Text without Aardwolf's colour codes (@x123, @R) - GMCP's names carry them
-function util.uncolor(s) return (s:gsub("@x%d%d?%d?", ""):gsub("@.", "")) end
-
--- Aardwolf's color codes made terminal colors, to show text as the game
--- will: @r..@w dark (31-37), @R..@W bright (91-97), @D dark gray, @x123
--- the 256-color one, @@ a plain @. Anything else is left as it is
-local AARD = { r = 31, g = 32, y = 33, b = 34, m = 35, c = 36, w = 37,
-               R = 91, G = 92, Y = 93, B = 94, M = 95, C = 96, W = 97, D = 90 }
-function util.aard_ansi(s)
-  s = s:gsub("@x(%d%d?%d?)", "\27[38;5;%1m"):gsub("@(.)", function(c)
-    if c == "@" then return "@" end
-    return AARD[c] and ("\27[" .. AARD[c] .. "m") or nil
-  end)
-  return s .. "\27[0m"
-end
 
 -- Nothing but spaces
 function util.blank(s) return s:match("^%s*$") ~= nil end

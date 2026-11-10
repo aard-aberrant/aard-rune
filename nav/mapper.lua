@@ -23,6 +23,7 @@
 -- Always on - tt++'s $mapping switch was never used by hand, so it's gone.
 
 local util = require("core.util")
+local colors = require("core.colors")
 
 local M = {}
 
@@ -128,7 +129,7 @@ local dbg = require("core.debug").topic("rooms", "each GMCP room.info (vnum, zon
 
 rune.gmcp.on("room.info", function(d)
   if type(d) ~= "table" then return end
-  if dbg.on then dbg.log(tostring(d.num) .. " " .. tostring(d.zone) .. " " .. util.strip(tostring(d.name))) end
+  if dbg.on then dbg.log(tostring(d.num) .. " " .. tostring(d.zone) .. " " .. colors.strip(tostring(d.name))) end
   M.room_info(d)
 end, { name = "aard_mapper" })
 rune.gmcp.on("room.wrongdir", function(d)
@@ -181,7 +182,7 @@ function M.set_exit(from, name, to, cmds)
   r.exits[name] = { to = to, flags = flags, cmds = cmds }
   M.dirty = true
   return string.format("[map] exit \"%s\" from room %d to %d (%s)%s %s.", name, from, to,
-    util.strip(M.rooms[to].name), cmds ~= "" and (" sends " .. cmds) or "",
+    colors.strip(M.rooms[to].name), cmds ~= "" and (" sends " .. cmds) or "",
     old and "replaced" or "added"), true
 end
 

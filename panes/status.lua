@@ -19,6 +19,8 @@
 --   status.field(label, value, width, style)   a "LBL value" segment
 
 local util = require("core.util")
+local colors = require("core.colors")
+local theme = require("core.theme")
 local game = require("core.game")
 
 local status = { row1 = {}, row1_end = {}, row2 = {} }
@@ -35,14 +37,14 @@ local state_names = {
 -- coloured together - yellow, red under 20 (util.tin's ||pct_color)
 local function meter(label, cur, max)
   if not cur or not max or max == 0 then
-    return rune.style.gray(label .. " --") .. "   "
+    return theme.unavailable(label .. " --") .. "   "
   end
   local pct = cur * 100 / max
   local num = string.format("%.1f", pct)
   local pad = string.rep(" ", 5 - #num)
-  if pct < 20 then return rune.style.red(label .. " " .. num) .. pad end
-  if pct < 60 then return rune.style.yellow(label .. " " .. num) .. pad end
-  return label .. " " .. rune.style.green(num) .. pad
+  if pct < 20 then return theme.danger(label .. " " .. num) .. pad end
+  if pct < 60 then return theme.caution(label .. " " .. num) .. pad end
+  return label .. " " .. theme.good(num) .. pad
 end
 
 -- Status row 1 (tt++ ticking.tin): timers and running measures - clocks
@@ -54,15 +56,21 @@ end
 --        first tick
 -- then the row1 slots (QST) and the row1_end slots (POP 3MN DPS PUP 2XP
 -- 2QP - in load order, init.lua), a space between each
+--
+-- status.field: a value of "--" is always theme.unavailable, whatever
+-- style is passed - so every placeholder looks the same without each
+-- segment asking
 
 function status.field(label, value, width, style)
-  return label .. " " .. (style or rune.style.cyan)(string.format("%-" .. width .. "s", tostring(value)))
+  value = tostring(value)
+  if value == "--" then style = theme.unavailable end
+  return label .. " " .. (style or theme.value)(string.format("%-" .. width .. "s", value))
 end
 local field = status.field
 
 local function status_row1()
   local t = game.tick()
-  local f = { t and field("TCK", t, 2, t < 10 and rune.style.red or nil) or field("TCK", "--", 2) }
+  local f = { t and field("TCK", t, 2, t < 10 and theme.danger or nil) or field("TCK", "--", 2) }
   for _, seg in ipairs(status.row1) do f[#f + 1] = seg() end
   for _, seg in ipairs(status.row1_end) do f[#f + 1] = seg() end
   return table.concat(f, " ")
@@ -76,8 +84,8 @@ local ENEMY_W = 20
 local function enemy_segment()
   if game.state ~= 8 then return state_names[game.state or 0] or "?" end
   local pct = game.enemypct or 0
-  local style = pct < 20 and rune.style.green or rune.style.red
-  local name = util.uncolor(game.enemy or "")
+  local style = pct < 20 and theme.good or theme.danger
+  local name = colors.uncolor(game.enemy or "")
   if #name > ENEMY_W then name = name:sub(1, ENEMY_W - 1) .. "…" end
   return style(string.format("%3s ", pct) .. name)
 end
@@ -95,15 +103,15 @@ local function status_row2()
               meter("MV", game.moves, game.maxmoves) }
   if game.align then
     local a = game.align
-    f[#f + 1] = field("ALN", a, 5, a < -875 and rune.style.red or a > 875 and rune.style.green or nil)
+    f[#f + 1] = field("ALN", a, 5, a < -875 and theme.danger or a > 875 and theme.good or nil)
   end
   if game.level and game.level < 201 then f[#f + 1] = field("LVL", game.level, 1) end
   local tnl = game.tnl
-  f[#f + 1] = tnl and field("TNL", tnl, 4, tnl < 300 and rune.style.red or nil) or field("TNL", "--", 4)
+  f[#f + 1] = tnl and field("TNL", tnl, 4, tnl < 300 and theme.danger or nil) or field("TNL", "--", 4)
   local right = {}
   for _, seg in ipairs(status.row2) do right[#right + 1] = seg() end
   right[#right + 1] = enemy_segment()
-  return table.concat(f, " ") .. rune.style.gray(" | ") .. table.concat(right, " ")
+  return table.concat(f, " ") .. theme.muted(" | ") .. table.concat(right, " ")
 end
 
 local SCROLLED = " SCROLLED - Ctrl+End "
@@ -113,9 +121,9 @@ local SCROLLED = " SCROLLED - Ctrl+End "
 -- show in tt++); dim when not logging. rune.log.status() is the open log's
 -- path or nil
 local function rec()
-  if not rune.log.status() then return rune.style.gray("REC") end
-  if os.time() % 2 == 0 then return "\27[30;41mREC\27[0m" end
-  return "\27[38;2;255;0;0mREC\27[0m"
+  if not rune.log.status() then return theme.off("REC") end
+  if os.time() % 2 == 0 then return theme.rec.on("REC") end
+  return theme.rec.flash("REC")
 end
 
 -- /log's files (Rune's /log start [raw] [file]): in util.state_dir's
@@ -165,7 +173,7 @@ rune.ui.bar("status2", function()
   local left = status_row2()
   -- Right: SCROLLED, when the main pane is scrolled back (new output is
   -- below what you see)
-  local right = rune._state.scroll_mode == "scrolled" and ("\27[30;43m" .. SCROLLED .. "\27[0m") or ""
+  local right = rune._state.scroll_mode == "scrolled" and theme.scrolled(SCROLLED) or ""
   return { left = left, right = right }
 end)
 

@@ -23,6 +23,7 @@
 -- Also here: hiding the rooms a walk passes through (tags.hide_rooms, below).
 
 local util = require("core.util")
+local colors = require("core.colors")
 local game = require("core.game")   -- fighting (a fight ends a walk's hiding)
 
 local tags = {}
@@ -114,7 +115,7 @@ end, { name = "tags_room_hide", priority = 95 })   -- after the tag rewrites
 local function show_held()
   local prev_blank = false
   for _, raw in ipairs(held) do
-    local b = blank(util.strip(raw))
+    local b = blank(colors.strip(raw))
     if not (b and prev_blank) then rune.echo(raw) end
     prev_blank = b
   end

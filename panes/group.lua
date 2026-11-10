@@ -1,5 +1,7 @@
 -- The group pane (tt++ modules/group.tin), from GMCP group.
 local util = require("core.util")
+local colors = require("core.colors")
+local theme = require("core.theme")
 local game = require("core.game")   -- your name, shown cyan
 local layout = require("core.layout")   -- the pane's height, for the columns
 
@@ -12,11 +14,11 @@ local layout = require("core.layout")   -- the pane's height, for the columns
 -- group looks like one column. The second only when the pane is 44 wide
 -- (layout.left_w()); narrower, one column, and what doesn't fit is cut.
 -- Every line is 21 wide, so they line up. Above them, the group's title on
--- one row, cyan on dim grey and cut to the pane's width (the user,
--- 2026-11-09) - it takes a row from the members.
+-- one row, in its own colors on a dim grey band, cut to the pane's width
+-- (the user, 2026-11-09) - it takes a row from the members.
 -- Redrawn whole (util.pane - only when it changed), so no flicker.
 --
--- The marker (new - the user's design, 2026-11-08), yellow, one column:
+-- The marker (new - the user's design, 2026-11-08), green, one column:
 --   L   the group's leader: GMCP group's "leader" field (a guess from
 --       Aardwolf's GMCP docs, not yet seen here - "/debug group on" shows it)
 --   F   the one you follow
@@ -40,9 +42,9 @@ local function marker(name)
   name = (name or ""):lower()
   local l = leader and leader == name
   local f = following and following:lower() == name
-  if l and f then return rune.style.yellow("E") end   -- L and F on top of each other
-  if l then return rune.style.yellow("L") end
-  if f then return rune.style.yellow("F") end
+  if l and f then return theme.group.marker("E") end   -- L and F on top of each other
+  if l then return theme.group.marker("L") end
+  if f then return theme.group.marker("F") end
   return " "
 end
 
@@ -55,14 +57,14 @@ local function group_line(m)
   local lvl_name = string.format("%3s %-12s", tostring(info.lvl or "?"), name)
   local hp_text = string.format("%3d", pct)
   if not here then
-    return pct + 1000, marker(m.name) .. rune.style.dim(lvl_name .. " " .. hp_text)
+    return pct + 1000, marker(m.name) .. theme.unavailable(lvl_name .. " " .. hp_text)
   end
   if (m.name or ""):lower() == game.name then
-    lvl_name = rune.style.cyan(lvl_name)
+    lvl_name = theme.self(lvl_name)
   end
-  if pct < 20 then hp_text = rune.style.red(hp_text)
-  elseif pct < 60 then hp_text = rune.style.yellow(hp_text)
-  else hp_text = rune.style.green(hp_text) end
+  if pct < 20 then hp_text = theme.danger(hp_text)
+  elseif pct < 60 then hp_text = theme.caution(hp_text)
+  else hp_text = theme.good(hp_text) end
   return pct, marker(m.name) .. lvl_name .. " " .. hp_text
 end
 
@@ -89,7 +91,7 @@ end
 local function draw(d)
   if type(d) ~= "table" or type(d.members) ~= "table" then
     leader = nil
-    util.pane("group", rune.style.gray("not in a group"))
+    util.pane("group", theme.muted("not in a group"))
     return
   end
   leader = type(d.leader) == "string" and d.leader:lower() or nil
@@ -104,12 +106,18 @@ local function draw(d)
   end)
   local h, w, out = layout.group_h(), layout.left_w(), {}
   -- the title row: GMCP group's "groupname" (a guess from Aardwolf's GMCP
-  -- docs - "/debug group on" shows the real field), cyan on dim grey
-  -- (xterm-256 236), cut and padded to the pane's width; none, no row
+  -- docs - "/debug group on" shows the real field), in the game's colors
+  -- (theme.group.title where it sets none), cut to the pane's width and centered
+  -- in it - an odd column over goes on the right - on theme.group.title_band
+  -- across the row (the game's codes set only the text color, so it holds
+  -- under them); none, no row
   local title = type(d.groupname) == "string" and util.trim(d.groupname) or ""
   if title ~= "" then
-    title = title:sub(1, w)
-    out[1] = "\27[36;48;5;236m" .. title .. string.rep(" ", w - #title) .. "\27[0m"
+    local BG = theme.group.title_band.on
+    local t = colors.crop(theme.group.title.on .. colors.aard_ansi(title), w)
+    local pad = w - colors.width(t)
+    local left = math.floor(pad / 2)
+    out[1] = BG .. string.rep(" ", left) .. t .. BG .. string.rep(" ", pad - left) .. colors.RESET
     h = math.max(h - 1, 1)
   end
   if w < 2 * 21 + 2 then h = #rows end   -- two don't fit: one column

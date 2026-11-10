@@ -26,6 +26,8 @@
 -- forgets it.
 
 local util = require("core.util")
+local colors = require("core.colors")
+local theme = require("core.theme")
 local game = require("core.game")       -- char.worth, char.stats (account)
 local layout = require("core.layout")   -- the pane's width
 
@@ -65,14 +67,14 @@ end           -- and an alias's return value is run as a command
 -- A target's view, shared by quest and campaign: the first line as given,
 -- then area (cyan), room (blue, or `gone` in red instead), mob (magenta).
 -- Missing ones are left out
-local C = { area = "\27[36m", room = "\27[34m", mob = "\27[35m", gone = "\27[31m" }
+local C = { area = theme.target.area.on, room = theme.target.room.on, mob = theme.target.mob.on, gone = theme.target.gone.on }
 function info.target_rows(first, area, room, mob, gone)
   local rows = { first }
   if area then rows[#rows + 1] = C.area .. area end
   if gone then rows[#rows + 1] = C.gone .. gone
   elseif room then rows[#rows + 1] = C.room .. room end
   if mob then rows[#rows + 1] = C.mob .. mob end
-  return table.concat(rows, "\27[0m\n") .. "\27[0m"
+  return table.concat(rows, colors.RESET .. "\n") .. colors.RESET
 end
 
 -- Alerts ----------------------------------------------------------------
@@ -80,8 +82,8 @@ end
 -- Flashing, a second each: black text (24-bit - plain 30 shows grey) on
 -- red, then red text; on yellow, then yellow text for a warn
 local LEVEL = {
-  crit = { prio = 20, on = "\27[0;38;2;0;0;0;41m", off = "\27[0;31m" },
-  warn = { prio = 25, on = "\27[0;38;2;0;0;0;43m", off = "\27[0;33m" },
+  crit = { prio = 20, on = theme.alert.on, off = theme.danger.on },
+  warn = { prio = 25, on = theme.alert_caution.on, off = theme.caution.on },
 }
 local queue = { crit = {}, warn = {} }   -- level -> list of { title, text, left }
 local ticking = false
@@ -95,7 +97,7 @@ local function alert_text(lvl, a)
   local rows = { a.title }
   if #body < 3 then rows[2] = "" end
   for i = 1, math.min(#body, 3) do rows[#rows + 1] = body[i] end
-  for i, r in ipairs(rows) do rows[i] = col .. pad(r) .. "\27[0m" end
+  for i, r in ipairs(rows) do rows[i] = col .. pad(r) .. colors.RESET end
   return table.concat(rows, "\n")
 end
 
@@ -160,7 +162,7 @@ local function commas(n)
   return s
 end
 
-local LABEL, VALUE, RED = "\27[0m", "\27[36m", "\27[31m"
+local LABEL, VALUE, RED = theme.default.on, theme.value.on, theme.danger.on
 
 local function account()
   local w, s = game.worth, game.stats
@@ -185,7 +187,7 @@ local function account()
     if v and v < STAT_MIN then low[#low + 1] = (k == "luck" and "LCK" or k:upper()) .. " " .. v end
   end
   if #low > 0 then rows[#rows + 1] = RED .. table.concat(low, "  ") end
-  info.set("account", 90, table.concat(rows, "\27[0m\n") .. "\27[0m")
+  info.set("account", 90, table.concat(rows, colors.RESET .. "\n") .. colors.RESET)
 end
 
 for _, pkg in ipairs({ "char.worth", "char.stats" }) do

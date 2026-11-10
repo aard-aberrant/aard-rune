@@ -33,6 +33,8 @@
 -- Exits flagged avoid (2) are never used.
 
 local util = require("core.util")
+local colors = require("core.colors")
+local theme = require("core.theme")
 local game = require("core.game")         -- tier and level (portals)
 local tags = require("core.tags")         -- hiding the rooms a walk passes
 local eq = require("gear.eq")             -- g's hidden eqdata (the end of its chores)
@@ -378,12 +380,12 @@ local function show(prev, how, to, what)
     all[k] = step_text(step)
     local r = M.rooms[rooms[k]]
     rune.echo(string.format("  %2d %-8s %d %s", k, all[k], rooms[k],
-      r and rune.style.gray(util.strip(r.name) .. ", " .. r.area) or ""))
+      r and theme.muted(colors.strip(r.name) .. ", " .. r.area) or ""))
   end
   rune.echo("  " .. table.concat(all, ";"))
   local line = speedwalk(chain)
   rune.clipboard.set(line)
-  rune.echo(rune.style.gray("  copied: " .. line))
+  rune.echo(theme.muted("  copied: " .. line))
 end
 
 local room_desc   -- below
@@ -472,7 +474,7 @@ end, { name = "travel_walk_fight" })
 
 function room_desc(v)
   local r = v and M.rooms[v]
-  return tostring(v) .. (r and r.name ~= "" and (" (" .. util.strip(r.name) .. ")") or "")
+  return tostring(v) .. (r and r.name ~= "" and (" (" .. colors.strip(r.name) .. ")") or "")
 end
 
 -- The first step that didn't go where the map said, as a sentence, or nil
@@ -542,7 +544,7 @@ rune.gmcp.on("room.wrongdir", function(d)
     -- (seen live 2026-11-09: a test exit, and the run's 3s took you away)
     if r and r.exits[dir] then
       warn(string.format("[travel] the map has a %s exit from room %d (%s) that the game refused - if it's wrong, stand there and: map unlink %s",
-        dir, M.here, util.strip(r.name), dir))
+        dir, M.here, colors.strip(r.name), dir))
     end
     return
   end
@@ -639,7 +641,7 @@ end
 -- A room's name without colour codes (a few have them). The find first,
 -- since this runs for every room on the map
 local function plain_name(r)
-  return r.name:find("\27", 1, true) and util.strip(r.name) or r.name
+  return colors.has(r.name) and colors.strip(r.name) or r.name
 end
 
 -- Rooms whose name contains `text` (all rooms if text == ""), in `zone` or

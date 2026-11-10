@@ -29,6 +29,8 @@
 -- currently running." The reply is read as every line starting "Double "
 -- up to the first that doesn't (hidden only for ours, with the blank after).
 local util = require("core.util")
+local colors = require("core.colors")
+local theme = require("core.theme")
 local game = require("core.game")      -- on_login
 local status = require("panes.status") -- the lights (row1_end slots, last)
 local info = require("panes.info")     -- the flash
@@ -53,14 +55,13 @@ end
 local function light(k, label, style)
   return function()
     local left = ends[k] - os.time()
-    if left <= 0 then return rune.style.gray(label) .. "   " end
+    if left <= 0 then return theme.unavailable(label) .. "   " end
     return style(string.format("%s %-2d", label, math.ceil(left / 60)))
   end
 end
 -- 24-bit, as tt++'s <FFFFF00> / <FFF0000>
-local function rgb(r, g, b) return function(t) return string.format("\27[38;2;%d;%d;%dm", r, g, b) .. t .. "\27[0m" end end
-table.insert(status.row1_end, light("dxp", "2XP", rgb(255, 255, 0)))
-table.insert(status.row1_end, light("dqp", "2QP", rgb(255, 0, 0)))
+table.insert(status.row1_end, light("dxp", "2XP", theme.double.xp))
+table.insert(status.row1_end, light("dqp", "2QP", theme.double.qp))
 
 -- The game's lines -------------------------------------------------------------
 
@@ -98,7 +99,7 @@ local function info_line(c)
 end
 rune.trigger.starts("INFO: ", function(_, ctx) info_line(ctx.line:clean()) end, { name = "doubles_info" })
 rune.gmcp.on("comm.channel", function(d)
-  if type(d) == "table" and d.chan == "info" and d.msg then info_line(util.uncolor(util.strip(d.msg))) end
+  if type(d) == "table" and d.chan == "info" and d.msg then info_line(colors.uncolor(colors.strip(d.msg))) end
 end, { name = "doubles_info_chan" })
 
 -- double: the reply, read while it's expected ---------------------------------

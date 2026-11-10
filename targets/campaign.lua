@@ -27,6 +27,8 @@
 -- earlier fight's name, at a one-hit kill).
 
 local util = require("core.util")
+local colors = require("core.colors")
+local theme = require("core.theme")
 local game = require("core.game")       -- the area you're in (cn's order)
 local info = require("panes.info")       -- the campaign's rows
 local target = require("targets.target")   -- cn sets it, a kill drops it
@@ -79,7 +81,7 @@ end
 
 -- The info pane ----------------------------------------------------------
 
-local CYAN, RED = "\27[36m", "\27[31m"
+local CYAN, RED = theme.value.on, theme.danger.on
 local tick = util.slot()   -- the info row's minute redraw
 
 local function row()
@@ -297,7 +299,7 @@ end, "cp_kill")
 rune.gmcp.on("char.status", function(d)
   local e = type(d) == "table" and d.enemy
   if type(e) == "string" and e ~= "" then
-    last_enemy = util.uncolor(e):lower()
+    last_enemy = colors.uncolor(e):lower()
   end
 end, { name = "campaign_enemy" })
 sync()

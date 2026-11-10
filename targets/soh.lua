@@ -15,6 +15,8 @@
 --                              quest and campaign rows on the info pane
 
 local util = require("core.util")
+local colors = require("core.colors")
+local theme = require("core.theme")
 local travel = require("nav.travel")   -- same_area: soh and sohtwo are one area
 
 local say, warn = util.say, util.warn
@@ -47,7 +49,7 @@ end
 
 rune.gmcp.on("comm.channel", function(d)
   if type(d) ~= "table" or type(d.msg) ~= "string" or not d.msg:find("Keyword for", 1, true) then return end
-  local name, key = util.strip(d.msg):match("Bambot.-Keyword for \"([^\"]-)\": (.-)'%s*$")
+  local name, key = colors.strip(d.msg):match("Bambot.-Keyword for \"([^\"]-)\": (.-)'%s*$")
   if not name or key:find("^Found nothing") then return end
   name, key = short(name), key:gsub('"', "")
   if not name:match("^[a-z][a-z0-9'%-]*$") or key == "" or kw[name] == key then return end
@@ -56,7 +58,7 @@ rune.gmcp.on("comm.channel", function(d)
   end
   kw[name] = key
   save()
-  rune.echo(rune.style.gray("[soh] saved " .. name .. " = " .. key))
+  rune.echo(theme.muted("[soh] saved " .. name .. " = " .. key))
 end, { name = "soh_capture" })
 
 rune.alias.exact("soh", function(args)
@@ -66,13 +68,13 @@ rune.alias.exact("soh", function(args)
     for _ in pairs(kw) do n = n + 1 end
     return say("[soh] " .. n .. " mob keywords saved. soh <mob> looks one up.")
   end
-  if kw[q] then return rune.echo(q .. ": " .. rune.style.green(kw[q])) end
+  if kw[q] then return rune.echo(q .. ": " .. theme.found(kw[q])) end
   local hits = {}
   for n in pairs(kw) do if n:find(q, 1, true) then hits[#hits + 1] = n end end
   if #hits == 0 then return warn("[soh] nothing saved for \"" .. q .. "\".") end
   table.sort(hits)
-  for i = 1, math.min(#hits, 20) do rune.echo(hits[i] .. ": " .. rune.style.green(kw[hits[i]])) end
-  if #hits > 20 then rune.echo(rune.style.gray("[soh] ... and " .. (#hits - 20) .. " more - type more of the name.")) end
+  for i = 1, math.min(#hits, 20) do rune.echo(hits[i] .. ": " .. theme.found(kw[hits[i]])) end
+  if #hits > 20 then rune.echo(theme.muted("[soh] ... and " .. (#hits - 20) .. " more - type more of the name.")) end
 end)
 
 local soh = {}

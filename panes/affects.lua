@@ -27,6 +27,7 @@
 -- core/tags.lua hides the affon, affoff, sfail, recon and recoff lines.
 
 local util = require("core.util")
+local theme = require("core.theme")
 local game = require("core.game")       -- the subclass (tracked affects, the totem)
 local layout = require("core.layout")   -- the pane's width
 local tags = require("core.tags")       -- the slist and affect tags
@@ -39,8 +40,9 @@ local ICONS = CFG.totem_icons or {}
 local BAD_EXTRA = CFG.bad_extra or {}
 
 local RED, YEL, GRN, GRAY, CYAN =
-  rune.style.red, rune.style.yellow, rune.style.green, rune.style.gray, rune.style.cyan
-local function alert(s) return "\27[0;38;2;0;0;0;41m" .. s .. "\27[0m" end
+  theme.danger, theme.caution, theme.good, theme.muted, theme.target.area
+local alert = theme.alert
+local OFF = theme.unavailable   -- off: a spell not up, a bad one not on you, an empty timer band, no totem
 
 -- State -----------------------------------------------------------------
 
@@ -139,7 +141,7 @@ local function good_line(id, now)
   local d = CFG.track[id]
   local label = rjust(d.label, good_w)
   local e = up[id]
-  if not e then return (d.important and alert(label) or GRAY(label)) .. "    " end
+  if not e then return (d.important and alert(label) or OFF(label)) .. "    " end
   if e == 0 then return GRN(label) .. "    " end
   return timed(time_style(e - now), label, e - now)
 end
@@ -153,12 +155,12 @@ local function rec_line(r, now)
   if e == 0 then return GRN(label) .. "    " end
   if e and e > now then return timed(time_style(e - now), label, e - now) end
   if r.ends > now then return timed(GRAY, label, r.ends - now) end
-  return GRAY(label) .. "    "
+  return OFF(label) .. "    "
 end
 
 local function bad_light(id, lit)
   local label = rjust(CFG.track[id].label, bad_w)
-  return lit and alert(label) or GRAY(label)
+  return lit and alert(label) or OFF(label)
 end
 
 local EIGHTHS = { "▏", "▎", "▍", "▌", "▋", "▊", "▉" }
@@ -176,7 +178,7 @@ local function hist_row(band, n)
     bar = bar .. string.rep(" ", 10 - full - (rem > 0 and 1 or 0))
   end
   local text = rjust(band[1], 3) .. " " .. bar .. " " .. rjust(n, 2)
-  return n == 0 and GRAY(text) or band[3](text)
+  return n == 0 and OFF(text) or band[3](text)
 end
 
 local function totem_line(now, width)
@@ -195,9 +197,9 @@ local function totem_line(now, width)
     end
     return GRN(icon or totem.type) .. "     " .. CYAN(area)
   end
-  if totem.rec_end > now then return GRAY("totem ready in " .. mins(totem.rec_end - now) .. "m") end
+  if totem.rec_end > now then return OFF("totem ready in " .. mins(totem.rec_end - now) .. "m") end
   if totem.ready or totem.rec_end > 0 then return GRN("totem ready") end
-  if totem.none then return GRAY("no totem") end
+  if totem.none then return OFF("no totem") end
   return nil
 end
 

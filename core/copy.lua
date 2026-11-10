@@ -20,6 +20,7 @@
 -- per message (a table store); nothing on a timer.
 
 local util = require("core.util")
+local colors = require("core.colors")
 
 local copy = {}
 
@@ -48,7 +49,7 @@ local main, chat = ring("copy_lines", 1000), ring("copy_chat_lines", 500)
 
 rune.hooks.on("output", function(line) main.push(line:clean()) end, { name = "copy_keep", priority = 200 })
 -- After Rune's own echo handler (priority 100), which adds the "> "
-rune.hooks.on("echo", function(text) main.push(util.strip(text)) end, { name = "copy_keep_echo", priority = 200 })
+rune.hooks.on("echo", function(text) main.push(colors.strip(text)) end, { name = "copy_keep_echo", priority = 200 })
 
 -- Our messages: rune.echo (lua/core/00_init.lua) is a plain function with
 -- no hook, so it's wrapped. Every file calls rune.echo at the time (none
@@ -64,7 +65,7 @@ rune._copy_echo = rune._copy_echo or rune.echo
 local echo = rune._copy_echo
 function rune.echo(text)
   text = tostring(text)
-  local plain = util.strip(text)
+  local plain = colors.strip(text)
   for piece in (plain .. "\n"):gmatch("([^\n]*)\n") do main.push(piece) end
   if rune.log.status() and not rune.session.get("log_chat_only") then
     local out = rune.session.get("log_raw") and text or plain
@@ -74,7 +75,7 @@ function rune.echo(text)
 end
 
 -- panes/chats.lua: each line it writes to the chats pane
-function copy.keep(text) chat.push((text:gsub("\27%[[%d;]*m", ""))) end
+function copy.keep(text) chat.push(colors.strip(text)) end
 
 rune.command.add("copy", function(args)
   local n, which = (args or ""):match("^%s*(%d+)%s*(%a*)%s*$")

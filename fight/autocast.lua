@@ -24,6 +24,7 @@
 -- Off at every load. The AC light on status row 2, after "|": green on, gray off.
 
 local util = require("core.util")
+local theme = require("core.theme")
 local game = require("core.game")
 local status = require("panes.status")   -- the AC light, in a row-2 slot
 local combat = require("fight.combat")   -- the attack, and k's hook
@@ -87,7 +88,7 @@ combat.k_hook = function(mob)
 end
 
 table.insert(status.row2, function()
-  return on and rune.style.green("AC") or rune.style.gray("AC")
+  return on and theme.on("AC") or theme.off("AC")
 end)
 
 local function show()

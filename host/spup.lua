@@ -33,6 +33,7 @@
 -- These gossips are the only channel messages a script here sends - only
 -- because you typed spup on.
 local util = require("core.util")
+local colors = require("core.colors")
 local game = require("core.game")      -- name, mana, room
 local tags = require("core.tags")      -- spn's look: the room's people
 local travel = require("nav.travel")   -- the walk there
@@ -55,11 +56,12 @@ local function mana_pct()
   return game.mana * 100 / game.maxmana
 end
 
--- A gossip, with Aardwolf's color codes as written (@Y bright yellow, @G
--- bright green, @r dark red, @w back to white - a guess that white is
--- what follows in a gossip). Test mode shows it in those colors
+-- A gossip, with Aardwolf's color codes (colors.aard: bright yellow,
+-- bright green, dark red, back to white - a guess that white is what
+-- follows in a gossip). Test mode shows it in those colors
+local A = colors.aard
 local function gossip(msg)
-  if test then say("[spup test] would gossip: "); rune.echo("  " .. util.aard_ansi(msg))
+  if test then say("[spup test] would gossip: "); rune.echo("  " .. colors.aard_ansi(msg))
   else rune.send_raw("gossip " .. msg) end
 end
 
@@ -176,7 +178,7 @@ tags.on("roomchars", function(rest)
   chars = { rest }
   if stop_chars then stop_chars() end
   stop_chars = reader(function(clean)
-    if not clean:find("^{") then chars[#chars + 1] = util.strip(clean) end
+    if not clean:find("^{") then chars[#chars + 1] = colors.strip(clean) end
   end, "spup_chars")
 end)
 tags.on("/roomchars", function()
@@ -269,8 +271,8 @@ end
 local function check_last()
   if S.phase ~= "run" then return end
   if idle() then
-    gossip("Last call for spellups in the @r-=Masaki=-@w clan hall, n u from recall. I don't know you're here if you don't smile at me ('@Gsmile "
-      .. me() .. "@w').")
+    gossip("Last call for spellups in the " .. A.red .. "-=Masaki=-" .. A.white .. " clan hall, n u from recall. I don't know you're here if you don't smile at me ('"
+      .. A.bright_green .. "smile " .. me() .. A.white .. "').")
     S.phase = "last"
     at(30, check_done)
   else
@@ -283,8 +285,8 @@ local function open()
   S.phase = "run"
   local h = tonumber(os.date("!%H", os.time() - 5 * 3600))
   S.tod = (h >= 2 and h < 12) and "morning" or (h >= 12 and h < 18) and "afternoon" or "evening"
-  gossip("Good " .. S.tod .. "! Spellups in the @r-=Masaki=-@w clan hall (n u from recall) for the next couple of minutes. "
-    .. "Sit for cancel, smile at me when ready. @YYou MUST@w '@Gsmile " .. me() .. "@w'.")
+  gossip("Good " .. S.tod .. "! Spellups in the " .. A.red .. "-=Masaki=-" .. A.white .. " clan hall (n u from recall) for the next couple of minutes. "
+    .. "Sit for cancel, smile at me when ready. " .. A.bright_yellow .. "You MUST" .. A.white .. " '" .. A.bright_green .. "smile " .. me() .. A.white .. "'.")
   at(120, check_last)
   drain()
 end
