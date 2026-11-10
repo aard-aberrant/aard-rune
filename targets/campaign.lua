@@ -374,8 +374,14 @@ rune.alias.exact("cn", function(args)
   elseif not cur.zone and cur.where and #cur.where > 1 then
     return aim(cur)   -- the picker again: none chosen yet
   else
+    -- The same mob already targeted - by cn, or found by hqq (its keyword
+    -- and room are the right one of several; seen live 2026-11-09: cn
+    -- replaced hqq's 25.gardening student, and the probe walked to the
+    -- first student instead) - is kept
     local t = target.get()
-    if not (t and t.src == "campaign" and t.name == cur.mob) then
+    local same = t and t.name and t.name:lower() == cur.mob:lower()
+      and (not t.zone or not cur.zone or travel.same_area(t.zone, cur.zone))
+    if not same then
       target.set({ name = cur.mob, zone = cur.zone, room = cur.room, src = "campaign" })
     end
   end

@@ -269,7 +269,7 @@ end
 local function check_last()
   if S.phase ~= "run" then return end
   if idle() then
-    gossip("Last call for spellups - n u of recall. I don't know you're here if you don't smile at me ('@Gsmile "
+    gossip("Last call for spellups in the @r-=Masaki=-@w clan hall, n u from recall. I don't know you're here if you don't smile at me ('@Gsmile "
       .. me() .. "@w').")
     S.phase = "last"
     at(30, check_done)

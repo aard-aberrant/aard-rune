@@ -16,7 +16,7 @@
 --   the [ Exits: ... ] line, on the row above the pane's bottom one, which
 --     stays blank
 -- Every line is cut at the pane's width (layout.MINIMAP_W). Down and up exits (< and >) become arrows,
--- as in map.tin, and your # becomes MAP_ME.
+-- as in map.tin, your # becomes MAP_ME and other players' * MAP_PLAYER.
 --
 -- Running (the user, 2026-11-08): a run - the game's run, runto - sends no
 -- map block for the rooms it passes, while GMCP room.info still comes for
@@ -28,9 +28,9 @@
 -- shows the last map a moment) - and back to 3 around the arrival's map
 -- block; plain steps, g home and looks never did. It replaced a guess (a
 -- room.info with no map block since the last one), which a look in the
--- dark, then heighten, set off while standing still. A run the game
--- aborts ("Too many run errors.") ends with no room shown, so
--- nav/travel.lua calls minimap.refresh(): a silent map, as at login.
+-- dark, then heighten, set off while standing still. A run that ends with
+-- no room shown (a fight, a wall, "Too many run errors.") leaves RUNNING
+-- up: a failed step or the fight's end asks for a map (minimap_stale below).
 -- Cost: nothing per line - one state read at each room.info.
 
 local util = require("core.util")
@@ -46,10 +46,14 @@ local MAP_NOTE = 2      -- most lines a room note may take
 -- bright green (1;92) looked white. rune.style has only the basic colours,
 -- so the code is written out, with a reset after it
 local MAP_ME = "\27[38;2;0;255;0m●\27[0m"
+-- drawn in place of another player's *: a red square (ff0000), the user's
+-- pick - the game's own red * was too hard to see
+local MAP_PLAYER = "\27[38;2;255;0;0m■\27[0m"
 
 local map_buf = {}   -- { raw = ..., clean = ... } for each line of the block
 local show_next = false   -- the next block answers a map you typed: show it
 local quiet_next = false  -- the next block answers the login map: hide a blank after it
+local dark = false        -- in a room you can't see: DARKNESS until the next block
 
 local function blank(line) return util.blank(line.clean) end
 
@@ -70,8 +74,16 @@ local function each_token(raw, f)
   end
 end
 
--- Cut a raw line to w visible columns, keeping its colour codes
+-- Cut a raw line to w visible columns, keeping its colour codes. A line
+-- that fits - every map row (the game's map is 29 wide, the pane 31) - is
+-- only counted, by two native gsubs (codes out, then UTF-8 continuation
+-- bytes), not walked a character at a time in Lua. Measured on lunar
+-- (2026-11-09, real blocks): ~37 us a map block, was ~220 us; a line too
+-- long (a long room name) still costs its walk, ~20 us each
 local function crop(raw, w)
+  local vis = raw:gsub("\27%[[%d;]*m", "")
+  vis = vis:gsub("[\128-\191]", "")
+  if #vis <= w then return raw .. "\27[0m" end
   local out, cols = {}, 0
   each_token(raw, function(kind, t)
     if kind == "esc" then
@@ -84,53 +96,19 @@ local function crop(raw, w)
   return table.concat(out) .. "\27[0m"
 end
 
--- Your own # on a map line: column of the # drawn in magenta (35 or 95 in
--- its colour code - you show pink). Shops and the like are drawn "##", so
--- failing a magenta one, a lone # (no # beside it). nil if neither
-local function find_me(raw)
-  local sgr, col, prev = "", 0, ""
-  local magenta, lone = nil, nil
-  local cand = {}
-  each_token(raw, function(kind, t)
-    if kind == "esc" then
-      sgr = t
-    else
-      col = col + 1
-      if t == "#" then
-        cand[#cand + 1] = { col = col, sgr = sgr }
-      end
-    end
-  end)
-  for k, c in ipairs(cand) do
-    if not magenta and (c.sgr:match("[%[;]35[;m]") or c.sgr:match("[%[;]95[;m]")) then
-      magenta = c.col
-    end
-    local left = cand[k - 1] and cand[k - 1].col == c.col - 1
-    local right = cand[k + 1] and cand[k + 1].col == c.col + 1
-    if not lone and not left and not right then lone = c.col end
-  end
-  return magenta, lone
-end
-
--- Put text in place of the character at visible column col, then restore
--- the colour that was on, so the rest of the line keeps its colours
-local function replace_at(raw, col, text)
-  local out, c, sgr = {}, 0, ""
-  each_token(raw, function(kind, t)
-    if kind == "esc" then
-      sgr = t
-      out[#out + 1] = t
-    else
-      c = c + 1
-      if c == col then
-        out[#out + 1] = text .. sgr
-      else
-        out[#out + 1] = t
-      end
-    end
-  end)
-  return table.concat(out)
-end
+-- Your #, by its colour code (the game's help map key, and raw map blocks
+-- /logged 2026-11-09): a bold magenta #, \27[1;35m#, the only one on the
+-- map (the user). The code comes right in front of it - the game sends a
+-- code before nearly every coloured character - so a plain find for code
+-- and character does it, and the swap puts the code back after the dot.
+-- Measured on lunar (2026-11-09, real blocks): ~6 us a map block; the old
+-- walk, a Lua step per character, cost ~340 us. Another player
+-- is a bold red *, \27[1;31m* (shops' and forests' * are other colours):
+-- per row a plain find, and a gsub only on a row that has one (~1 us a row)
+local ME_CODE = "\27[1;35m#"
+local ME_SWAP = "\27[1;35m" .. MAP_ME .. "\27[1;35m"
+local PLAYER_CODE, PLAYER_PAT = "\27[1;31m*", "\27%[1;31m%*"
+local PLAYER_SWAP = "\27[1;31m" .. MAP_PLAYER .. "\27[1;31m"
 
 -- The last colour code in a raw line, or nil if it has none. The game sets
 -- a colour once and lets it run on into the next line, as a terminal would
@@ -151,10 +129,13 @@ local function header()
   return rune.style.yellow(head)
 end
 
--- On a run: the header, and RUNNING in the middle of the pane
-local function running_layout()
+-- On a run: the header, and RUNNING in the middle of the pane (FIGHTING
+-- when a fight broke the run, DARKNESS in a room you can't see)
+local stale = false   -- RUNNING or FIGHTING is up: no map block for this room yet
+local block_seen = false   -- a map block came since the last room.info
+local function word_layout(word)
+  stale = word ~= "DARKNESS"
   local out = { header() }
-  local word = "RUNNING"
   local mid = math.floor(H / 2)
   while #out < mid do out[#out + 1] = "" end
   out[#out + 1] = string.rep(" ", math.floor((W - #word) / 2)) .. rune.style.bold(word)
@@ -188,20 +169,20 @@ local function build_map()
     last = last - 1
   end
   while last >= i and blank(lines[last]) do last = last - 1 end
-  -- your #: the magenta one anywhere, else the first lone one
-  local me_row, me_col, lone_row, lone_col
-  for k = i, last do
-    local m, l = find_me(lines[k].raw)
-    if m and not me_row then me_row, me_col = k, m end
-    if l and not lone_row then lone_row, lone_col = k, l end
-  end
-  if not me_row then me_row, me_col = lone_row, lone_col end
-  -- the map as sent (as many rows as fit are drawn)
+  -- the map as sent (as many rows as fit are drawn), your # and other
+  -- players marked
+  local marked = false
   for k = i, last do
     if #p.map >= H then break end
     local raw = carry .. lines[k].raw
     carry = last_sgr(raw) or carry
-    if k == me_row then raw = replace_at(raw, me_col, MAP_ME) end
+    if not marked then
+      local h = raw:find(ME_CODE, 1, true)
+      if h then
+        raw, marked = raw:sub(1, h - 1) .. ME_SWAP .. raw:sub(h + #ME_CODE), true
+      end
+    end
+    if raw:find(PLAYER_CODE, 1, true) then raw = raw:gsub(PLAYER_PAT, PLAYER_SWAP) end
     p.map[#p.map + 1] = crop((raw:gsub("<", "▼"):gsub(">", "▲")), W)
   end
   parts = p
@@ -266,6 +247,7 @@ rune.trigger.exact("<MAPSTART>", function(_, ctx)
     quiet_next = false
     util.eat_blanks("<MAPEND>")
   end
+  dark, stale, block_seen = false, false, true
   build_map()
   draw_map()
   if dbg.on then
@@ -273,17 +255,40 @@ rune.trigger.exact("<MAPSTART>", function(_, ctx)
   end
 end, { name = "aard_map", priority = 10, gag = true, span = { to = "^<MAPEND>$", max = 120 } })
 
+-- A room you can't see (heighten senses off) shows "You see nothing but
+-- darkness..." and sends no map block (seen live 2026-11-09), so the last
+-- room's map stayed up. That line blanks the pane to DARKNESS until the
+-- next map block; a room.info in between keeps DARKNESS
+rune.trigger.regex("^You see nothing but darkness\\.\\.\\.\\s*$", function()
+  dark = true
+  if dbg.on then
+    dbg.log(string.format("darkness line in %s %s (state %s)", tostring(game.room.num),
+      tostring(game.room.name), tostring(game.state)))
+  end
+  if game.state ~= 12 then word_layout("DARKNESS") end
+end, { name = "minimap_dark" })
+
 -- The header and note come from GMCP room.info, which can arrive after the
 -- map block: drawn again then, so they never show the room you just left
 -- (core/game.lua has stored it already). Running (state 12): RUNNING
+-- Fighting (state 8) with no block since the last room.info: FIGHTING. A
+-- fight that breaks a run on its first step (seen live 2026-11-09: 3 to 8,
+-- no 12, two room.info at 8 and no map block) drew the new header over the
+-- old map. If the block comes after its room.info (a plain step into an
+-- aggressive mob), it replaces FIGHTING with the map at once. Nothing is
+-- sent mid-fight (the user: a command can queue and disrupt the fight);
+-- the fight's end asks for the map (minimap_stale_fight)
 rune.gmcp.on("room.info", function()
-  local running = game.state == 12
+  local s = game.state
+  local fighting = s == 8 and not block_seen
+  block_seen = false
+  local word = s == 12 and "RUNNING" or dark and "DARKNESS" or fighting and "FIGHTING" or nil
   if dbg.on then
     dbg.log(string.format("room.info %s %s (state %s) -> %s", tostring(game.room.num),
-      tostring(game.room.name), tostring(game.state), running and "RUNNING" or "map"))
+      tostring(game.room.name), tostring(s), word or "map"))
   end
-  if running then
-    running_layout()
+  if word then
+    word_layout(word)
   elseif parts then
     draw_map()
   end
@@ -326,6 +331,39 @@ function minimap.refresh()
   rune.send_raw("map")
 end
 game.on_login(minimap.refresh)
+
+-- A run that stops with no room shown leaves RUNNING up (seen live
+-- 2026-11-09: a run stopped at a lamia, and the steps typed after it hit a
+-- wall). The rule (the user, 2026-11-09): with RUNNING up, a failed step
+-- asks for a silent map - by GMCP room.wrongdir, not the wall's text (each
+-- failed step of a run sends one: 2n into a wall, seen live 2026-11-09). Not
+-- counted to the game's three ("Too many run errors."): the first one does
+-- it, and the next room.info at 12 brings RUNNING back if the run goes on.
+-- Cost: one flag check per room.wrongdir
+rune.gmcp.on("room.wrongdir", function()
+  if not stale or game.state == 8 then return end   -- mid-fight: the fight's end asks
+  stale = false
+  if dbg.on then dbg.log("room.wrongdir with RUNNING up: silent map") end
+  minimap.refresh()
+end, { name = "minimap_stale" })
+
+-- A fight that breaks a run ("Your journey was broken by the need to
+-- defend yourself.", seen live 2026-11-09) sends no map block. RUNNING up
+-- when the fight starts (12 to 8) becomes FIGHTING. Nothing is sent during
+-- the fight (the user, 2026-11-09: a command can queue and disrupt it):
+-- the moment it ends (8 to anything else), still no block, a silent map.
+-- Cost: one compare per char.status
+local fight_prev
+rune.gmcp.on("char.status", function()
+  local s, was = game.state, fight_prev
+  fight_prev = s
+  if stale and s == 8 and was ~= 8 then
+    word_layout("FIGHTING")
+  elseif stale and was == 8 and s ~= 8 then
+    if dbg.on then dbg.log("fight over (8 -> " .. tostring(s) .. ") with the pane stale: silent map") end
+    minimap.refresh()
+  end
+end, { name = "minimap_stale_fight" })
 
 -- Help (core/help.lua): /help
 local help = require("core.help")

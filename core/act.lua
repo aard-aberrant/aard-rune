@@ -18,6 +18,10 @@
 -- <commands> go as if typed (rune.send): through aliases, split at ";".
 -- A slash line reaches its command whole (Rune splits only game lines at
 -- ";"), so:  /act You are hungry = get bread bag;eat bread
+-- A tag line works too, though the game's tags are hidden: a hidden line
+-- still reaches every trigger. /act ^{recoff}52$ = c humility casts it as
+-- its recovery ends (52: humility's id, learned live 2026-11-07; /debug
+-- recov shows the tags as they come, with their ids).
 -- Only these: /unact looks in this file's own list, so it can't remove any
 -- other trigger. The same pattern again replaces its commands.
 -- Cost: each act is matched against every line while it exists - a few ns
@@ -26,6 +30,8 @@
 
 local util = require("core.util")
 local say, warn = util.say, util.warn
+-- /debug act: each act as it fires, with the commands it sends
+local dbg = require("core.debug").topic("act", "each /act as it fires, and what it sends")
 
 local acts = {}   -- { kind, pattern, cmds, handle }, in the order made
 local FILE = rune.config_dir .. "/acts.txt"
@@ -54,7 +60,12 @@ end
 -- Make (or replace) one; nil and the error if Rune refuses it (a bad regex)
 local function add(kind, pattern, cmds)
   seq = seq + 1
-  local ok, h = pcall(rune.trigger[kind], pattern, cmds, { name = "act_" .. seq, group = "act" })
+  local function fire(m)
+    local out = rune.substitute_captures(cmds, m or {})
+    if dbg.on then dbg.log(label({ kind = kind, pattern = pattern }) .. " -> " .. out) end
+    rune.send(out)
+  end
+  local ok, h = pcall(rune.trigger[kind], pattern, fire, { name = "act_" .. seq, group = "act" })
   if not ok then return nil, tostring(h) end
   local a = { kind = kind, pattern = pattern, cmds = cmds, handle = h }
   local i = find(kind, pattern)

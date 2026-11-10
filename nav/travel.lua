@@ -35,7 +35,6 @@
 local util = require("core.util")
 local game = require("core.game")         -- tier and level (portals)
 local tags = require("core.tags")         -- hiding the rooms a walk passes
-local minimap = require("nav.minimap")    -- a fresh map after an aborted run
 local eq = require("gear.eq")             -- g's hidden eqdata (the end of its chores)
 local M = require("nav.mapper")          -- the map
 local aliases = require("core.aliases")   -- speedwalk lets an alias go first
@@ -533,10 +532,20 @@ rune.gmcp.on("room.wrongdir", function(d)
   tags.walk_stopped()   -- print the room the walk stopped in, if it was hidden
   local bad = bad_step()
   plan = nil
-  if bad then return warn("[travel] the walk went wrong: " .. bad .. ".") end
   local dir = type(d) == "table" and (d.dir or d[1]) or d
   dir = tostring(dir or "?")
   local r = M.here and M.rooms[M.here]
+  if bad then
+    warn("[travel] the walk went wrong: " .. bad .. ".")
+    -- The map's exit the game refused: the way to drop it, with the room -
+    -- the rest of a run goes on from there, so you're seldom still in it
+    -- (seen live 2026-11-09: a test exit, and the run's 3s took you away)
+    if r and r.exits[dir] then
+      warn(string.format("[travel] the map has a %s exit from room %d (%s) that the game refused - if it's wrong, stand there and: map unlink %s",
+        dir, M.here, util.strip(r.name), dir))
+    end
+    return
+  end
   if r and r.exits[dir] then
     warn(string.format("[travel] the map has a %s exit from room %d (%s) that the game doesn't. Remove it with: map unlink %s",
       dir, M.here, r.name, dir))
@@ -555,7 +564,6 @@ rune.trigger.exact("Alas, you cannot go that way.", function()
   if plan then alas = true end
 end, { name = "travel_run_alas" })
 rune.trigger.exact("Too many run errors. Aborting speedwalk.", function()
-  minimap.refresh()   -- no room is shown, so no map came: ask for one (any run, typed too)
   local was_alas = alas
   alas = false
   if not plan or tags.walk_owner() then return end
@@ -859,7 +867,9 @@ end
 -- chores' output is everything between the {/roomchars} tag that ends
 -- home's room and the {/eqdata} tag that ends eqdata's reply - found by
 -- the tags, not the replies' wording. Already home: no room, but "You are
--- already in your home!" (seen live 2026-11-07), shown, then the same. No
+-- already in your home!" (seen live 2026-11-07), shown, then the same.
+-- Home in the dark (heighten senses off): no room tags, but "You see
+-- nothing but darkness..." (seen live 2026-11-09), shown, then the same. No
 -- room otherwise (home refused): nothing is hidden but eqdata. It ends at {/eqdata}; 10 s if that never comes
 local quiet_line = util.group(true)   -- one catch-all, only while it's needed
 local quiet = { hiding = false, timer = util.slot() }
@@ -870,7 +880,8 @@ quiet_line.add("starts", "", function(_, ctx)
     return   -- gear/eq.lua hides it, and the blank after
   end
   if not quiet.hiding then
-    if clean == "{/roomchars}" or clean == "You are already in your home!" then
+    if clean == "{/roomchars}" or clean == "You are already in your home!"
+      or clean:find("^You see nothing but darkness%.%.%.%s*$") then
       quiet.hiding, quiet.first = true, true
     end
     return
