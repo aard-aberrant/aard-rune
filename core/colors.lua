@@ -44,6 +44,12 @@ function colors.mix(...)
   return { kind = "mix", args = args, expr = "mix(" .. table.concat(ex, ", ") .. ")" }
 end
 
+-- The same codes under another name (the theme's palette: theme.yellow is
+-- colors.yellow, shown as "theme.yellow")
+function colors.named(c, expr)
+  return setmetatable({ on = c.on, bg = c.bg, off = c.off, expr = expr }, MT)
+end
+
 -- x worked out to a color: a color as is, a ref by lookup(name), bg / mix
 -- of those. nil if it can't be (not a color, an unknown name, the
 -- background of a style that has none)

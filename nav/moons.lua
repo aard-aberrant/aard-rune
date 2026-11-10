@@ -31,6 +31,15 @@
 -- Not ported: tt++'s trace log and its edge check (debug aids).
 local util = require("core.util")
 local theme = require("core.theme")
+local colors = require("core.colors")
+local mix, bg = colors.mix, colors.bg
+-- This module's colors: theme.moon.* - /theme lists them, data/theme.lua
+-- changes them (core/theme.lua)
+local T = theme.define("moon", "3MN, the moons (status bar)", {
+  { "soon",     theme.cyan,                    "a three-moon window soon" },
+  { "up",       mix(theme.bold, theme.yellow), "all three up now" },
+  { "unknown",  theme.yellow,                  "??: not known yet" },
+})
 local game = require("core.game")       -- state, room, tick, at login
 local tags = require("core.tags")       -- no reading while walking
 local status = require("panes.status")  -- the 3MN light (a row1_end slot)
@@ -349,15 +358,15 @@ rune.trigger.regex("^A .+ blows from the (?:north|south|east|west|northeast|nort
 -- init.lua), so appending would put it after 2XP 2QP
 
 table.insert(status.row1_end, math.min(2, #status.row1_end + 1), function()
-  if need() then return status.field("3MN", "??", 7, theme.moon.unknown) end
+  if need() then return status.field("3MN", "??", 7, T.unknown) end
   if allup then
     return status.field("3MN", setleft >= 0 and ((setleft + 1) .. "t") or "--", 7,
-      theme.moon.up)
+      T.up)
   end
   if not span.ok then return status.field("3MN", "--", 7, theme.unavailable) end
   local soon = span.lo <= 4
   local v = (span.lo > 0 and (math.min(span.lo, 999) .. "t") or "now") .. "/" .. span.len .. "t"
-  return status.field("3MN", v, 7, soon and theme.moon.soon or theme.muted)
+  return status.field("3MN", v, 7, soon and T.soon or theme.muted)
 end)
 
 -- The command -------------------------------------------------------------

@@ -1,22 +1,33 @@
 -- The theme (require("core.theme")): every color the config shows.
 -- Modules use it and nothing else - never core/colors.lua directly.
--- /theme lists it all: each name as you'd override it, in its own colors,
--- what it's made of, and where it shows.
+-- /theme lists it all: each name as you'd set it in data/theme.lua, in its
+-- own colors, what it's made of, and where it shows.
 --
--- Two layers, both overridable in data/theme.lua:
+-- Three parts, all overridable in data/theme.lua:
 --   the palette  theme.yellow, theme.gray, theme.green_tc ... - the colors
 --                the theme works with (core/colors.lua's). Change one and
---                every role built on it follows.
---   the roles    theme.caution, theme.value, theme.quest.ready ... - what a
---                color is FOR, built from the palette. Change one and only
---                it changes. A module's own roles are in a group:
---                theme.map.me, theme.reward.xp ...
--- Built at load in that order - the palette with data/theme.lua's changes,
--- then the roles from it, with its changes - so a role always uses the
--- palette as changed. After load every name is a plain field.
+--                everything built on it follows.
+--   the roles    theme.caution, theme.value, theme.alert ... - shared: what
+--                a color is FOR, built from the palette. Change one and only
+--                it changes.
+--   the groups   theme.map.me, theme.bcc.hot1 ... - a module's own roles,
+--                defined in the module with theme.define (below), built
+--                from the palette and the roles. An area's group exists only
+--                while the area is loaded.
+-- The palette is built at load with data/theme.lua's changes, then the
+-- roles from it; a group when its module defines it. So everything uses
+-- the palette as changed. After that every name is a plain field.
 --
 -- Each is called on text - theme.value("12") - or gives its bare code as
 -- .on, for text that runs on into other colors (colors.RESET ends it).
+--
+-- A module's group:
+--   local T = theme.define("bcc", "Blackclaw", {
+--     { "hot1", theme.yellow,               "a square's count: 1" },
+--     { "kill", mix(theme.bold, theme.red), "KILL KILL KILL" },
+--   })
+--   T.hot1.on, T.kill("KILL")         - or theme.bcc.hot1 anywhere
+-- and an area's unload calls theme.undefine("bcc").
 local colors = require("core.colors")
 local bg, mix = colors.bg, colors.mix
 
@@ -31,11 +42,12 @@ local PALETTE = {
 local IS_PALETTE = {}
 for _, n in ipairs(PALETTE) do IS_PALETTE[n] = true end
 
--- A palette name as a ref: worked out once the palette is built
+-- A palette name as a ref, for the roles below and data/theme.lua: worked
+-- out once the palette is built
 local P = setmetatable({}, { __index = function(_, k) return { ref = k, expr = "theme." .. k } end })
 
--- The roles: name, default, where it shows. A dotted name is a module's
--- group. { "Heading" } starts a section of /theme
+-- The shared roles: name, default, where it shows. { "Heading" } starts a
+-- section of /theme
 local ROLES = {
   { "Not themed" },
   { "default_bg", bg(P.default), "the terminal's own background" },
@@ -62,84 +74,36 @@ local ROLES = {
   { "alert",         mix(P.black_tc, bg(P.red)),    "info pane alerts, an important affect off" },
   { "alert_caution", mix(P.black_tc, bg(P.yellow)), "info pane warnings" },
   { "scrolled",      mix(P.black_tc, bg(P.yellow)), "SCROLLED: the main pane scrolled back" },
-  { "REC (status bar)" },
-  { "rec.on",    mix(P.black_tc, bg(P.red)), "REC while a log is open, flashing with rec.flash" },
-  { "rec.flash", P.red,                      "REC's other flash" },
-  { "QST and the quest lines" },
-  { "quest.ready",  mix(P.black_tc, bg(P.green)), "QST RD: a quest can be had" },
-  { "quest.active", P.yellow, "QST AC: on a quest" },
-  { "quest.frame",  P.yellow, "the quest request / complete lines: brackets" },
-  { "quest.text",   P.red,    "the same: the values" },
-  { "quest.label",  P.white,  "the same: labels" },
-  { "Quest and campaign targets (info pane)" },
-  { "target.area", P.cyan,    "the area" },
-  { "target.room", P.blue,    "the room" },
-  { "target.mob",  P.magenta, "the mob" },
-  { "target.gone", P.red,     "the room, when the target is killed or gone" },
-  { "The group pane" },
-  { "group.marker",     P.green,       "L / F / E: leader, followed, both" },
-  { "group.title",      P.yellow,      "the group's name, where the game sets no color" },
-  { "group.title_band", bg(P.default), "the name's row background" },
-  { "The minimap" },
-  { "map.header", P.yellow,   "zone | vnum" },
-  { "map.word",   P.bold,     "RUNNING / FIGHTING / DARKNESS" },
-  { "map.note",   P.cyan,     "the room's note" },
-  { "map.me",     P.green_tc, "your dot" },
-  { "map.player", P.red,      "another player's square" },
-  { "The fight's reward tab" },
-  { "reward.tab",  P.dark,     "the triangle" },
-  { "reward.bg",   bg(P.dark), "the tab" },
-  { "reward.xp",   P.green,    "the xp" },
-  { "reward.gold", P.yellow,   "the gold" },
-  { "reward.text", P.white,    "the kills" },
-  { "2XP / 2QP (status bar)" },
-  { "double.xp", P.yellow, "2XP, while on" },
-  { "double.qp", P.red,    "2QP, while on" },
-  { "3MN, the moons (status bar)" },
-  { "moon.soon",    P.cyan,              "a three-moon window soon" },
-  { "moon.up",      mix(P.bold, P.yellow), "all three up now" },
-  { "moon.unknown", P.yellow,            "??: not known yet" },
-  { "Blackclaw" },
-  { "bcc.safe",  P.green,              "a safe square, the safe direction" },
-  { "bcc.quiet", P.dark,               "an empty square" },
-  { "bcc.hot1",  P.yellow,             "a square's count: 1" },
-  { "bcc.hot2",  P.orange_tc,          "2" },
-  { "bcc.hot3",  P.red,                "3 and up" },
-  { "bcc.label", P.gray,               "Axaldra: / safe:" },
-  { "bcc.value", mix(P.bold, P.white), "the direction, the center" },
-  { "bcc.note",  P.cyan,               "\"The direction ... is now safe!\"" },
-  { "bcc.move",  mix(P.bold, P.yellow), "MOVE MOVE MOVE" },
-  { "bcc.kill",  mix(P.bold, P.red),   "KILL KILL KILL" },
 }
-local IS_ROLE, GROUPS = {}, {}
-for _, r in ipairs(ROLES) do
-  if r[2] then
-    IS_ROLE[r[1]] = true
-    local g = r[1]:match("^(.-)%.")
-    if g then GROUPS[g] = true end
-  end
-end
+local IS_ROLE = {}
+for _, r in ipairs(ROLES) do if r[2] then IS_ROLE[r[1]] = true end end
 
--- data/theme.lua's changes, by full name ("yellow", "quest.ready"). The file
--- is run with a table to set them on - theme.yellow = ..., theme.quest.ready
--- = ... - that knows every name: an unknown one is warned about and
--- ignored. Reading a palette name there (theme.yellow) gives a ref, so a
--- change can be built on the palette as changed
+-- data/theme.lua's changes, by full name ("yellow", "caution",
+-- "bcc.hot1"). The file is run with a table to set them on. A palette or
+-- role name it doesn't know is warned about here; a group's names are
+-- checked when its module defines it (a group never defined - an area not
+-- loaded, or a typo - shows in /theme). Reading a name there - theme.yellow,
+-- theme.caution, theme.map.me - gives a ref: worked out once that name is
+-- built, so a change can follow the palette, a role or a group's color as
+-- changed
+local function ref(name) return { ref = name, expr = "theme." .. name } end
 local set = {}
-local function setter(prefix)
-  return function(_, k, v)
-    local name = prefix .. tostring(k)
-    if not (IS_PALETTE[name] or IS_ROLE[name]) then
-      return warn("data/theme.lua sets theme." .. name .. ", which isn't a theme name - ignored")
-    end
-    set[name] = v
-  end
-end
 local proxies = {}
-for g in pairs(GROUPS) do proxies[g] = setmetatable({}, { __newindex = setter(g .. ".") }) end
 local proxy = setmetatable({}, {
-  __index = function(_, k) return proxies[k] or (IS_PALETTE[k] and P[k]) or nil end,
-  __newindex = setter(""),
+  __index = function(_, k)
+    if IS_PALETTE[k] or IS_ROLE[k] then return ref(k) end
+    if not proxies[k] then
+      proxies[k] = setmetatable({}, {
+        __index = function(_, m) return ref(k .. "." .. tostring(m)) end,
+        __newindex = function(_, m, v) set[k .. "." .. tostring(m)] = v end,
+      })
+    end
+    return proxies[k]
+  end,
+  __newindex = function(_, k, v)
+    if IS_PALETTE[k] or IS_ROLE[k] then set[k] = v
+    else warn("data/theme.lua sets theme." .. tostring(k) .. ", which isn't a theme name - ignored") end
+  end,
 })
 do
   local chunk, err = loadfile(rune.config_dir .. "/data/theme.lua")
@@ -155,7 +119,8 @@ end
 local shown = {}
 
 -- The palette: core/colors.lua's, with data/theme.lua's changes (a ref
--- there means core/colors.lua's color of that name)
+-- there means core/colors.lua's color of that name). Each is named
+-- theme.<name>, so what's built on it shows as such
 local pal = {}
 for _, n in ipairs(PALETTE) do
   local v, c = set[n], nil
@@ -163,38 +128,105 @@ for _, n in ipairs(PALETTE) do
     c = colors.resolve(v, function(k) return colors[k] end)
     if not c then warn("data/theme.lua: theme." .. n .. " isn't a color - ignored") end
   end
-  pal[n] = c or colors[n]
+  pal[n] = colors.named(c or colors[n], "theme." .. n)
   shown[n] = { expr = c and v.expr or colors[n].expr, changed = c ~= nil }
 end
-local function from_palette(k) return pal[k] end
 
--- The theme: the palette, then the roles - grouped ones in their group
 local theme = {}
 for n, c in pairs(pal) do theme[n] = c end
-for _, r in ipairs(ROLES) do
-  local name, default, desc = r[1], r[2], r[3]
-  if default then
-    local v, c = set[name], nil
-    if v ~= nil then
-      c = colors.resolve(v, from_palette)
-      if not c then warn("data/theme.lua: theme." .. name .. " isn't a color - ignored") end
-    end
-    local changed = c ~= nil
-    c = c or colors.resolve(default, from_palette)
-    local g, m = name:match("^(.-)%.(.+)$")
-    if g then
-      theme[g] = theme[g] or {}
-      theme[g][m] = c
-    else
-      theme[name] = c
-    end
-    shown[name] = { expr = changed and v.expr or default.expr, desc = desc, changed = changed }
+
+-- Building names: each from data/theme.lua's change if it has one, else
+-- its default. A ref is worked out by lookup - the palette, a role, a
+-- group's color - building that name first if it isn't yet, so the order
+-- of names doesn't matter. A loop (caution = theme.danger, danger =
+-- theme.caution) can't be built: warned about, and the defaults used
+local building = {}
+local function make(name, default, desc, lookup)
+  if building[name] then return nil end
+  building[name] = true
+  local v, c = set[name], nil
+  if v ~= nil then
+    c = colors.resolve(v, lookup)
+    if not c then warn("data/theme.lua: theme." .. name .. " isn't a color, or loops back on itself - its default is used") end
   end
+  local changed = c ~= nil
+  c = c or colors.resolve(default, lookup)
+  building[name] = nil
+  shown[name] = { expr = changed and v.expr or default.expr, desc = desc, changed = changed }
+  return c and colors.named(c, "theme." .. name)
 end
+
+-- The shared roles
+local ROLE = {}
+for _, r in ipairs(ROLES) do if r[2] then ROLE[r[1]] = r end end
+local function role(k)
+  if theme[k] then return theme[k] end
+  local r = ROLE[k]
+  if not r then return nil end
+  local c = make(k, r[2], r[3], function(n) return pal[n] or role(n) end)
+  theme[k] = c
+  return c
+end
+for _, r in ipairs(ROLES) do if r[2] then role(r[1]) end end
+
+-- Groups ------------------------------------------------------------------
+
+local groups = {}   -- defined: name -> { title, names }
+local order = {}    -- their names, in definition order
+
+-- theme.define(group, title, { { name, default, desc }, ... }) - a module's
+-- roles as theme.<group>.<name>; returns the group. A default is built from
+-- the palette, the roles and other groups (theme.yellow, theme.caution,
+-- mix(theme.bold, theme.red)). Defining it again (an area loaded again)
+-- replaces it
+function theme.define(group, title, list)
+  if IS_PALETTE[group] or IS_ROLE[group] or group == "define" or group == "undefine" then
+    error("theme.define: \"" .. group .. "\" is a theme name already", 2)
+  end
+  local T, names, known, spec = {}, {}, {}, {}
+  for _, r in ipairs(list) do
+    names[#names + 1] = r[1]
+    known[r[1]] = true
+    spec[r[1]] = r
+  end
+  local function member(m)
+    if T[m] then return T[m] end
+    local r = spec[m]
+    if not r then return nil end
+    T[m] = make(group .. "." .. m, r[2], r[3], function(n)
+      local g, mm = n:match("^(.-)%.(.+)$")
+      if not g then return theme[n] end              -- the palette, a role
+      if g == group then return member(mm) end       -- this group's own
+      return theme[g] and theme[g][mm] or nil        -- another group, if defined
+    end)
+    return T[m]
+  end
+  for _, m in ipairs(names) do member(m) end
+  for k in pairs(set) do
+    local g, m = k:match("^(.-)%.(.+)$")
+    if g == group and not known[m] then
+      warn("data/theme.lua sets theme." .. k .. ", which the " .. group .. " group doesn't have - ignored")
+    end
+  end
+  if not groups[group] then order[#order + 1] = group end
+  groups[group] = { title = title, names = names }
+  theme[group] = T
+  return T
+end
+
+-- theme.undefine(group) - an area's group, when the area unloads
+function theme.undefine(group)
+  if not groups[group] then return end
+  groups[group] = nil
+  theme[group] = nil
+  for i, g in ipairs(order) do if g == group then table.remove(order, i); break end end
+end
+
+-- /theme ------------------------------------------------------------------
 
 -- /theme [text]: every name - or those containing text - as you'd set it
 -- in data/theme.lua, in its own colors, what it's made of, where it shows,
--- and "changed" where data/theme.lua sets it
+-- and "(changed)" where data/theme.lua sets it
 local function line(name, c)
   local s = shown[name]
   local label = c(string.format("%-24s", "theme." .. name))
@@ -206,24 +238,44 @@ rune.command.add("theme", function(args)
   local q = (args or ""):match("^%s*(.-)%s*$"):lower()
   local function want(name) return q == "" or name:find(q, 1, true) end
   local out = {}
-  local any = false
+  local function section(title, note)
+    out[#out + 1] = theme.heading("[" .. title .. "]") .. (note and theme.muted(" - " .. note) or "")
+  end
+  local first = true
   for _, n in ipairs(PALETTE) do
     if want(n) then
-      if not any then out[#out + 1] = theme.heading("[theme palette]") .. theme.muted(" - change one and every role built on it follows"); any = true end
+      if first then section("theme palette", "change one and everything built on it follows"); first = false end
       out[#out + 1] = line(n, pal[n])
     end
   end
-  local section
+  local pending
   for _, r in ipairs(ROLES) do
-    if not r[2] then section = r[1]
+    if not r[2] then pending = r[1]
     elseif want(r[1]) then
-      if section then
-        out[#out + 1] = theme.heading("[" .. section .. "]")
-        section = nil
-      end
-      local g, m = r[1]:match("^(.-)%.(.+)$")
-      out[#out + 1] = line(r[1], g and theme[g][m] or theme[r[1]])
+      if pending then section(pending); pending = nil end
+      out[#out + 1] = line(r[1], theme[r[1]])
     end
+  end
+  for _, g in ipairs(order) do
+    local G, head = groups[g], true
+    for _, m in ipairs(G.names) do
+      local name = g .. "." .. m
+      if want(name) or want(G.title:lower()) then
+        if head then section(G.title); head = false end
+        out[#out + 1] = line(name, theme[g][m])
+      end
+    end
+  end
+  -- data/theme.lua's changes to groups not defined now
+  local idle = {}
+  for k in pairs(set) do
+    local g = k:match("^(.-)%.")
+    if g and not groups[g] and want(k) then idle[#idle + 1] = k end
+  end
+  if #idle > 0 then
+    table.sort(idle)
+    section("not loaded", "data/theme.lua sets these; their module isn't loaded (an area out of its zone), or the group is misspelled")
+    for _, k in ipairs(idle) do out[#out + 1] = "  " .. theme.muted("theme." .. k .. " = " .. tostring(type(set[k]) == "table" and set[k].expr or set[k])) end
   end
   if #out == 0 then return rune.echo(theme.muted("[theme] no name contains \"" .. q .. "\".")) end
   out[#out + 1] = theme.muted("Change any of these in data/theme.lua, then /reload.")

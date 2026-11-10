@@ -2,6 +2,14 @@
 local util = require("core.util")
 local colors = require("core.colors")
 local theme = require("core.theme")
+local mix, bg = colors.mix, colors.bg
+-- This module's colors: theme.group.* - /theme lists them, data/theme.lua
+-- changes them (core/theme.lua)
+local T = theme.define("group", "The group pane", {
+  { "marker",      theme.green,       "L / F / E: leader, followed, both" },
+  { "title",       theme.yellow,      "the group's name, where the game sets no color" },
+  { "title_band",  bg(theme.default), "the name's row background" },
+})
 local game = require("core.game")   -- your name, shown cyan
 local layout = require("core.layout")   -- the pane's height, for the columns
 
@@ -42,9 +50,9 @@ local function marker(name)
   name = (name or ""):lower()
   local l = leader and leader == name
   local f = following and following:lower() == name
-  if l and f then return theme.group.marker("E") end   -- L and F on top of each other
-  if l then return theme.group.marker("L") end
-  if f then return theme.group.marker("F") end
+  if l and f then return T.marker("E") end   -- L and F on top of each other
+  if l then return T.marker("L") end
+  if f then return T.marker("F") end
   return " "
 end
 
@@ -113,8 +121,8 @@ local function draw(d)
   -- under them); none, no row
   local title = type(d.groupname) == "string" and util.trim(d.groupname) or ""
   if title ~= "" then
-    local BG = theme.group.title_band.on
-    local t = colors.crop(theme.group.title.on .. colors.aard_ansi(title), w)
+    local BG = T.title_band.on
+    local t = colors.crop(T.title.on .. colors.aard_ansi(title), w)
     local pad = w - colors.width(t)
     local left = math.floor(pad / 2)
     out[1] = BG .. string.rep(" ", left) .. t .. BG .. string.rep(" ", pad - left) .. colors.RESET

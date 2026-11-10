@@ -31,6 +31,12 @@
 local util = require("core.util")
 local colors = require("core.colors")
 local theme = require("core.theme")
+-- This module's colors: theme.double.* - /theme lists them, data/theme.lua
+-- changes them (core/theme.lua)
+local T = theme.define("double", "2XP / 2QP (status bar)", {
+  { "xp",  theme.yellow, "2XP, while on" },
+  { "qp",  theme.red,    "2QP, while on" },
+})
 local game = require("core.game")      -- on_login
 local status = require("panes.status") -- the lights (row1_end slots, last)
 local info = require("panes.info")     -- the flash
@@ -60,8 +66,8 @@ local function light(k, label, style)
   end
 end
 -- 24-bit, as tt++'s <FFFFF00> / <FFF0000>
-table.insert(status.row1_end, light("dxp", "2XP", theme.double.xp))
-table.insert(status.row1_end, light("dqp", "2QP", theme.double.qp))
+table.insert(status.row1_end, light("dxp", "2XP", T.xp))
+table.insert(status.row1_end, light("dqp", "2QP", T.qp))
 
 -- The game's lines -------------------------------------------------------------
 

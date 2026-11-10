@@ -49,6 +49,21 @@ local A = ...
 local util = require("core.util")
 local colors = require("core.colors")
 local theme = require("core.theme")
+local mix, bg = colors.mix, colors.bg
+-- This module's colors: theme.bcc.* - /theme lists them, data/theme.lua
+-- changes them (core/theme.lua)
+local T = theme.define("bcc", "Blackclaw", {
+  { "safe",   theme.green,                   "a safe square, the safe direction" },
+  { "quiet",  theme.dark,                    "an empty square" },
+  { "hot1",   theme.yellow,                  "a square's count: 1" },
+  { "hot2",   theme.orange_tc,               "2" },
+  { "hot3",   theme.red,                     "3 and up" },
+  { "label",  theme.gray,                    "Axaldra: / safe:" },
+  { "value",  mix(theme.bold, theme.white),  "the direction, the center" },
+  { "note",   theme.cyan,                    "\"The direction ... is now safe!\"" },
+  { "move",   mix(theme.bold, theme.yellow), "MOVE MOVE MOVE" },
+  { "kill",   mix(theme.bold, theme.red),    "KILL KILL KILL" },
+})
 local game = require("core.game")   -- room, state
 local info = require("panes.info")  -- the grid
 local bcc = require("fight.bcc")    -- the run count
@@ -93,8 +108,8 @@ local move_note = util.slot()
 local function clear_hot() for _, c in ipairs(ALL) do hot[c] = 0 end end
 clear_hot()
 
-local RED, ORANGE, YELLOW = theme.bcc.hot3.on, theme.bcc.hot2.on, theme.bcc.hot1.on
-local GREEN, DIM, GRAY, WHITE, R = theme.bcc.safe.on, theme.bcc.quiet.on, theme.bcc.label.on, theme.bcc.value.on, colors.RESET
+local RED, ORANGE, YELLOW = T.hot3.on, T.hot2.on, T.hot1.on
+local GREEN, DIM, GRAY, WHITE, R = T.safe.on, T.quiet.on, T.label.on, T.value.on, colors.RESET
 local PAD = string.rep(" ", 10)
 local last_key
 
@@ -152,9 +167,9 @@ local plan   -- forward: plan, send and go call each other
 local function arrive()
   local cell = RING[rr.c].cell
   if dir and on_side(NEXT_OF[dir], cell) then
-    rune.echo(theme.bcc.move("MOVE MOVE MOVE"))
+    rune.echo(T.move("MOVE MOVE MOVE"))
   else
-    rune.echo(theme.bcc.kill("KILL KILL KILL"))   -- in the safe room: the cue to fight
+    rune.echo(T.kill("KILL KILL KILL"))   -- in the safe room: the cue to fight
   end
 end
 
@@ -308,7 +323,7 @@ local function move_check(side)
       rr_begin()
     end
   elseif on_side(NEXT_OF[side], cell) then
-    move_note.start(5, function() rune.echo(theme.bcc.move("MOVE MOVE MOVE")) end)
+    move_note.start(5, function() rune.echo(T.move("MOVE MOVE MOVE")) end)
   end
 end
 
@@ -319,7 +334,7 @@ A.trigger.starts("Axaldra, the Eternal One lifts off from her perch and flies ",
   local untl = os.time() + 16
   for _, c in ipairs(CELLS[side]) do hot[c] = untl end
   safe_note.start(3, function()
-    if safe then rune.echo(theme.bcc.note.on .. "The direction " .. GREEN .. safe .. theme.bcc.note.on .. " is now safe!" .. R) end
+    if safe then rune.echo(T.note.on .. "The direction " .. GREEN .. safe .. T.note.on .. " is now safe!" .. R) end
   end)
   if not rr.on then move_check(side) end   -- a moving rr sees the hot room at its next plan
   draw()
@@ -343,6 +358,7 @@ A.trigger.exact("The lingering flames lick at your skin, burning you!", function
 -- Leaving the crag ----------------------------------------------------------------
 
 A.on_unload(function()
+  theme.undefine("bcc")   -- its colors go with it
   bcc.watch_whisper()   -- the run count
   rr_stop()
   rrs_wait = false

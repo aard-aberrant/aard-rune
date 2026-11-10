@@ -28,6 +28,14 @@
 local util = require("core.util")
 local colors = require("core.colors")
 local theme = require("core.theme")
+-- This module's colors: theme.target.* - /theme lists them, data/theme.lua
+-- changes them (core/theme.lua)
+local T = theme.define("target", "Quest and campaign targets (info pane)", {
+  { "area",  theme.cyan,    "the area" },
+  { "room",  theme.blue,    "the room" },
+  { "mob",   theme.magenta, "the mob" },
+  { "gone",  theme.red,     "the room, when the target is killed or gone" },
+})
 local game = require("core.game")       -- char.worth, char.stats (account)
 local layout = require("core.layout")   -- the pane's width
 
@@ -67,7 +75,7 @@ end           -- and an alias's return value is run as a command
 -- A target's view, shared by quest and campaign: the first line as given,
 -- then area (cyan), room (blue, or `gone` in red instead), mob (magenta).
 -- Missing ones are left out
-local C = { area = theme.target.area.on, room = theme.target.room.on, mob = theme.target.mob.on, gone = theme.target.gone.on }
+local C = { area = T.area.on, room = T.room.on, mob = T.mob.on, gone = T.gone.on }
 function info.target_rows(first, area, room, mob, gone)
   local rows = { first }
   if area then rows[#rows + 1] = C.area .. area end
