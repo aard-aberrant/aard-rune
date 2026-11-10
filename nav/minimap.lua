@@ -36,6 +36,15 @@
 local util = require("core.util")
 local colors = require("core.colors")
 local theme = require("core.theme")
+-- This module's colors: theme.map.* - /theme lists them, data/theme.lua
+-- changes them (core/theme.lua)
+local T = theme.define("map", "The minimap", {
+  { "header",  theme.yellow,   "zone | vnum" },
+  { "word",    theme.bold,     "RUNNING / FIGHTING / DARKNESS" },
+  { "note",    theme.cyan,     "the room's note" },
+  { "me",      theme.green_tc, "your dot" },
+  { "player",  theme.red,      "another player's square" },
+})
 local game = require("core.game")       -- the room's zone and vnum
 local mapper = require("nav.mapper")   -- the room's note
 local maprec = require("nav.maprec")   -- map record / plan / edit / drop / apply
@@ -45,10 +54,10 @@ local minimap = {}
 local W, H = layout.MINIMAP_W, layout.MINIMAP_H
 local MAP_NOTE = 2      -- most lines a room note may take
 -- drawn in place of your #: a dot (theme.map.me)
-local MAP_ME = theme.map.me("●")
+local MAP_ME = T.me("●")
 -- drawn in place of another player's *: a square (theme.map.player),
 -- the user's pick - the game's own red * was too hard to see
-local MAP_PLAYER = theme.map.player("■")
+local MAP_PLAYER = T.player("■")
 
 local map_buf = {}   -- { raw = ..., clean = ... } for each line of the block
 local show_next = false   -- the next block answers a map you typed: show it
@@ -85,7 +94,7 @@ local function header()
   local room = game.room
   local head = room.zone or ""
   if room.num and room.num ~= -1 then head = head .. " | " .. room.num end
-  return theme.map.header(head)
+  return T.header(head)
 end
 
 -- On a run: the header, and RUNNING in the middle of the pane (FIGHTING
@@ -97,7 +106,7 @@ local function word_layout(word)
   local out = { header() }
   local mid = math.floor(H / 2)
   while #out < mid do out[#out + 1] = "" end
-  out[#out + 1] = string.rep(" ", math.floor((W - #word) / 2)) .. theme.map.word(word)
+  out[#out + 1] = string.rep(" ", math.floor((W - #word) / 2)) .. T.word(word)
   util.pane("minimap", table.concat(out, "\n"))
 end
 
@@ -157,7 +166,7 @@ local function draw_map()
   if mr and mr.note ~= "" then
     for k, l in ipairs(util.wrap(mr.note, W)) do
       if k > MAP_NOTE then break end
-      out[#out + 1] = theme.map.note(l)
+      out[#out + 1] = T.note(l)
     end
   end
   -- the map, as many rows as fit above the exits row

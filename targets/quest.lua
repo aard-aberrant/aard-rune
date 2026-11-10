@@ -20,6 +20,16 @@
 local util = require("core.util")
 local colors = require("core.colors")
 local theme = require("core.theme")
+local mix, bg = colors.mix, colors.bg
+-- This module's colors: theme.quest.* - /theme lists them, data/theme.lua
+-- changes them (core/theme.lua)
+local T = theme.define("quest", "QST and the quest lines", {
+  { "ready",   mix(theme.black_tc, bg(theme.green)), "QST RD: a quest can be had" },
+  { "active",  theme.yellow,                         "QST AC: on a quest" },
+  { "frame",   theme.yellow,                         "the quest request / complete lines: brackets" },
+  { "text",    theme.red,                            "the same: the values" },
+  { "label",   theme.white,                          "the same: labels" },
+})
 local status = require("panes.status")   -- QST, in a row-1 slot
 local info = require("panes.info")       -- the quest's rows
 local target = require("targets.target")   -- qx sets it, a kill or the end drops it
@@ -65,8 +75,8 @@ end
 -- shows): when the answer drops (3 to 2), a minute has just turned, and the
 -- countdown is reset from it - good to a tick. The game's "ready" wins
 local qst = { state = nil, ready_at = 0, warn = false, last = nil }   -- state: nil, "wait", "ready", "active"
-local QST_RD = theme.quest.ready("RD")
-local QST_AC = theme.quest.active("AC")
+local QST_RD = T.ready("RD")
+local QST_AC = T.active("AC")
 
 table.insert(status.row1, function()
   if qst.state == "wait" then
@@ -118,7 +128,7 @@ end, { name = "quest_tick" })
 
 -- The event lines (tt++ quest.tin, its colours: red brackets and numbers,
 -- yellow words, white labels)
-local R, Y, W, X = theme.quest.text.on, theme.quest.frame.on, theme.quest.label.on, colors.RESET
+local R, Y, W, X = T.text.on, T.frame.on, T.label.on, colors.RESET
 local function banner(text) rune.echo(W .. "{-=" .. R .. text .. W .. "=-}" .. X) end
 
 local function started(d)

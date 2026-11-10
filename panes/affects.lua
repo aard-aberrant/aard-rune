@@ -28,6 +28,11 @@
 
 local util = require("core.util")
 local theme = require("core.theme")
+-- This module's colors: theme.affects.* - /theme lists them, data/theme.lua
+-- changes them (core/theme.lua)
+local T = theme.define("affects", "The affects pane", {
+  { "totem_area",  theme.cyan, "the totem's area" },
+})
 local game = require("core.game")       -- the subclass (tracked affects, the totem)
 local layout = require("core.layout")   -- the pane's width
 local tags = require("core.tags")       -- the slist and affect tags
@@ -40,7 +45,7 @@ local ICONS = CFG.totem_icons or {}
 local BAD_EXTRA = CFG.bad_extra or {}
 
 local RED, YEL, GRN, GRAY, CYAN =
-  theme.danger, theme.caution, theme.good, theme.muted, theme.target.area
+  theme.danger, theme.caution, theme.good, theme.muted, T.totem_area
 local alert = theme.alert
 local OFF = theme.unavailable   -- off: a spell not up, a bad one not on you, an empty timer band, no totem
 

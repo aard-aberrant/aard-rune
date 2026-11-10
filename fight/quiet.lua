@@ -34,6 +34,16 @@
 local util = require("core.util")
 local colors = require("core.colors")
 local theme = require("core.theme")
+local mix, bg = colors.mix, colors.bg
+-- This module's colors: theme.reward.* - /theme lists them, data/theme.lua
+-- changes them (core/theme.lua)
+local T = theme.define("reward", "The fight's reward tab", {
+  { "tab",   theme.dark,     "the triangle" },
+  { "bg",    bg(theme.dark), "the tab" },
+  { "xp",    theme.green,    "the xp" },
+  { "gold",  theme.yellow,   "the gold" },
+  { "text",  theme.white,    "the kills" },
+})
 
 local function num(s) return tonumber((s:gsub(",", ""))) or 0 end
 local function commas(n)
@@ -59,7 +69,7 @@ local t            -- this fight's: { xp, gold, kills } or nil
 -- background too
 local layout = require("core.layout")
 local TRI = "\238\130\178"   -- U+E0B2, one column
-local XP, GOLD, DIM = theme.reward.xp.on, theme.reward.gold.on, theme.reward.text.on
+local XP, GOLD, DIM = T.xp.on, T.gold.on, T.text.on
 -- The icons, before their amounts: emoji, two columns each (U+1F9E0 brain,
 -- U+1F4B0 money bag - the coin, U+1FA99, drew like a moon - U+1F480 skull)
 local BRAIN, BAG, SKULL = "\240\159\167\160", "\240\159\146\176", "\240\159\146\128"
@@ -82,7 +92,7 @@ local function show()
   if not parts[1] then return end
   if kills > 0 then part(SKULL, DIM, tostring(kills)) end
   rune.echo(string.rep(" ", math.max(0, layout.RIGHT_W - width))
-    .. theme.reward.tab.on .. TRI .. theme.reward.bg.on .. table.concat(parts) .. " " .. colors.RESET)
+    .. T.tab.on .. TRI .. T.bg.on .. table.concat(parts) .. " " .. colors.RESET)
 end
 
 local function tot()

@@ -21,6 +21,13 @@
 local util = require("core.util")
 local colors = require("core.colors")
 local theme = require("core.theme")
+local mix, bg = colors.mix, colors.bg
+-- This module's colors: theme.rec.* - /theme lists them, data/theme.lua
+-- changes them (core/theme.lua)
+local T = theme.define("rec", "REC (status bar)", {
+  { "on",     mix(theme.black_tc, bg(theme.red)), "REC while a log is open, flashing with rec.flash" },
+  { "flash",  theme.red,                          "REC's other flash" },
+})
 local game = require("core.game")
 
 local status = { row1 = {}, row1_end = {}, row2 = {} }
@@ -122,8 +129,8 @@ local SCROLLED = " SCROLLED - Ctrl+End "
 -- path or nil
 local function rec()
   if not rune.log.status() then return theme.off("REC") end
-  if os.time() % 2 == 0 then return theme.rec.on("REC") end
-  return theme.rec.flash("REC")
+  if os.time() % 2 == 0 then return T.on("REC") end
+  return T.flash("REC")
 end
 
 -- /log's files (Rune's /log start [raw] [file]): in util.state_dir's
