@@ -22,6 +22,7 @@
 -- Per area, by GMCP zone; kept in rune.session, so a /reload keeps it.
 
 local util = require("core.util")
+local theme = require("core.theme")
 local game = require("core.game")
 local status = require("panes.status")   -- POP, first of the row1_end slots
 
@@ -108,7 +109,7 @@ table.insert(status.row1_end, 1, function()
     return status.field("POP", "--", 5)
   end
   local v = left > 5999 and "99:99" or string.format("%02d:%02d", math.floor(left / 60), left % 60)
-  return status.field("POP", v, 5, left <= 10 and rune.style.red or not a.sure and rune.style.gray or nil)
+  return status.field("POP", v, 5, left <= 10 and theme.danger or not a.sure and theme.muted or nil)
 end)
 
 rune.alias.exact("pop", function()

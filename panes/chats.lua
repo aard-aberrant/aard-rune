@@ -1,6 +1,8 @@
 -- The chats pane: channels and tells (GMCP comm.channel), remote socials,
 -- and its scroll keys.
 local util = require("core.util")
+local colors = require("core.colors")
+local theme = require("core.theme")
 local game = require("core.game")   -- at login
 local copy = require("core.copy")   -- /copy chat: each line the pane gets
 
@@ -20,7 +22,7 @@ local function chat(text)
   rune.pane.write("chats", text)
   copy.keep(text)
   if rune.log.status() then
-    rune.log.write(rune.session.get("log_raw") and text or (text:gsub("\27%[[%d;]*m", "")))
+    rune.log.write(rune.session.get("log_raw") and text or colors.strip(text))
   end
 end
 
@@ -85,7 +87,7 @@ rune.gmcp.on("comm.channel", function(d)
   if d.chan == "mobsay" then
     rune.echo(d.msg)
   else
-    chat(rune.style.gray(os.date("%H:%M")) .. " " .. d.msg)
+    chat(theme.muted(os.date("%H:%M")) .. " " .. d.msg)
   end
 end, { name = "aard_channel" })
 
@@ -102,17 +104,17 @@ end, { name = "aard_channel" })
 -- check runs only on lines that start with a *.
 -- debug chats: each line that starts with a *, raw (\e for escape), and
 -- what was done with it
-local CYAN_STAR = "\27[0;36m"
+local CYAN_STAR = colors.game.social
 local dbg = require("core.debug").topic("chats", "lines starting with *: raw, and moved to chats or left")
 rune.trigger.starts("*", function(_, ctx)
   local raw = ctx.line:raw()
   local lead = raw:match("^(.-)%*") or ""
-  local social = lead:sub(-#CYAN_STAR) == CYAN_STAR and lead:gsub("\27%[[%d;]*m", "") == ""
+  local social = lead:sub(-#CYAN_STAR) == CYAN_STAR and colors.strip(lead) == ""
   if dbg.on then
-    dbg.log((social and "moved: " or "left: ") .. raw:gsub("\27", "\\e"))
+    dbg.log((social and "moved: " or "left: ") .. colors.show(raw))
   end
   if not social then return end
-  chat(rune.style.gray(os.date("%H:%M")) .. " " .. raw)
+  chat(theme.muted(os.date("%H:%M")) .. " " .. raw)
   util.eat_blanks(ctx.line:clean())
   return false
 end, { name = "remote_social" })

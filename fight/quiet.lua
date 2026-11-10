@@ -14,7 +14,9 @@
 -- while your GMCP state is fighting (8), and added up. When the state
 -- changes, one line shows - the last kill's lines come before the change
 -- (debug quiet, live 2026-11-07; the game sends no prompt Rune sees):
---   +1,234 xp, +5,678 gold (4 kills)
+--   🧠 +1,234  💰 +5,678  💀 4
+-- (a brain for xp, a money bag for gold, a skull for kills - the user,
+-- 2026-11-10)
 -- Gold is what you keep: the coins you got, less what you shared away, plus
 -- your share of others', less the clan's tax. Every other line shows as it
 -- comes (campaign, banish, an item from the corpse ...), and so do these
@@ -30,6 +32,8 @@
 -- (an item in a room - "... skinned from X lies here" - still shows)
 
 local util = require("core.util")
+local colors = require("core.colors")
+local theme = require("core.theme")
 
 local function num(s) return tonumber((s:gsub(",", ""))) or 0 end
 local function commas(n)
@@ -48,38 +52,37 @@ local t            -- this fight's: { xp, gold, kills } or nil
 -- The line: right-justified in the main pane (its width: layout.RIGHT_W),
 -- as a powerline-style tab - a left-pointing triangle in the tab's colour,
 -- then the text on that colour, up against it:
---                                           <|+314 xp, +13,458 gold (2 kills)
+--                                           <|🧠 +314  💰 +13,458  💀 2
 -- The triangle is the powerline glyph U+E0B2, which fills its cell (needs
 -- a terminal or font that draws it); "◀" (U+25C0) is the plain stand-in.
--- Colour codes written out - rune.style's end in a reset, which would end
--- the background too
+-- Codes run on (.on) - a call ends in a reset, which would end the
+-- background too
 local layout = require("core.layout")
-local ESC = string.char(27)
 local TRI = "\238\130\178"   -- U+E0B2, one column
-local TAB = { 75, 100, 160 }    -- the tab's colour (r, g, b)
-local function rgb(kind, c) return string.format("%s[%d;2;%d;%d;%dm", ESC, kind, c[1], c[2], c[3]) end
-local XP, GOLD, DIM = rgb(38, { 130, 225, 130 }), rgb(38, { 240, 210, 90 }), rgb(38, { 215, 220, 230 })
+local XP, GOLD, DIM = theme.reward.xp.on, theme.reward.gold.on, theme.reward.text.on
+-- The icons, before their amounts: emoji, two columns each (U+1F9E0 brain,
+-- U+1F4B0 money bag - the coin, U+1FA99, drew like a moon - U+1F480 skull)
+local BRAIN, BAG, SKULL = "\240\159\167\160", "\240\159\146\176", "\240\159\146\128"
 
 local function show()
   if not t then return end
   if dbg.on then dbg.log("show") end
-  local parts, plain = {}, {}
-  local function part(code, text)
-    parts[#parts + 1] = code .. text
-    plain[#plain + 1] = text
+  -- each part: an icon (two columns), a space, its amount (ASCII - a
+  -- column a byte); two spaces between parts
+  local parts, width = {}, 2   -- the triangle, and a space at the right end
+  local function part(icon, code, amount)
+    if parts[1] then parts[#parts + 1] = "  "; width = width + 2 end
+    parts[#parts + 1] = icon .. " " .. code .. amount
+    width = width + 3 + #amount
   end
-  if t.xp > 0 then part(XP, "+" .. commas(t.xp) .. " xp") end
-  if t.gold ~= 0 then
-    if parts[1] then part(DIM, ", ") end
-    part(GOLD, (t.gold > 0 and "+" or "") .. commas(t.gold) .. " gold")
-  end
+  if t.xp > 0 then part(BRAIN, XP, "+" .. commas(t.xp)) end
+  if t.gold ~= 0 then part(BAG, GOLD, (t.gold > 0 and "+" or "") .. commas(t.gold)) end
   local kills = t.kills
   t = nil
   if not parts[1] then return end
-  if kills > 0 then part(DIM, " (" .. kills .. (kills == 1 and " kill)" or " kills)")) end
-  local width = 1 + #table.concat(plain)   -- the triangle, the text
+  if kills > 0 then part(SKULL, DIM, tostring(kills)) end
   rune.echo(string.rep(" ", math.max(0, layout.RIGHT_W - width))
-    .. rgb(38, TAB) .. TRI .. rgb(48, TAB) .. table.concat(parts) .. ESC .. "[0m")
+    .. theme.reward.tab.on .. TRI .. theme.reward.bg.on .. table.concat(parts) .. " " .. colors.RESET)
 end
 
 local function tot()

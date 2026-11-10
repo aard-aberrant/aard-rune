@@ -10,6 +10,7 @@
 -- file for your subclass: these say so and send nothing.
 
 local util = require("core.util")
+local theme = require("core.theme")
 local game = require("core.game")       -- the subclass (its attacks), fighting or not
 local target = require("targets.target")   -- a bare k attacks it
 
@@ -63,7 +64,7 @@ rune.alias.exact("k", function(args)
     elseif t then
       warn("[combat] k: no keyword for " .. t.name .. " - k <mob>.")
     else
-      rune.echo("\27[38;5;246mk: no target\27[0m")   -- quiet gray (the user, 2026-11-08); help k has the rest
+      rune.echo(theme.quiet("k: no target"))   -- quiet gray (the user, 2026-11-08); help k has the rest
     end
   end
 end)

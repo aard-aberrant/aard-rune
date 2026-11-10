@@ -18,6 +18,8 @@
 -- doesn't lose it.
 
 local util = require("core.util")
+local colors = require("core.colors")
+local theme = require("core.theme")
 local status = require("panes.status")   -- QST, in a row-1 slot
 local info = require("panes.info")       -- the quest's rows
 local target = require("targets.target")   -- qx sets it, a kill or the end drops it
@@ -32,7 +34,7 @@ local tick = util.slot()   -- the info row's minute redraw
 
 -- The info pane (panes/info.lua), priority 50: time left (red under 5 minutes, or
 -- "killed, return to QM"), area, room, mob. Redrawn each minute
-local CYAN, RED = "\27[36m", "\27[31m"
+local CYAN, RED = theme.value.on, theme.danger.on
 local function row()
   if not q then return info.set("quest", 50, nil) end
   local first
@@ -63,17 +65,17 @@ end
 -- shows): when the answer drops (3 to 2), a minute has just turned, and the
 -- countdown is reset from it - good to a tick. The game's "ready" wins
 local qst = { state = nil, ready_at = 0, warn = false, last = nil }   -- state: nil, "wait", "ready", "active"
-local QST_RD = "\27[30;42mRD\27[0m"              -- black on green
-local QST_AC = "\27[38;2;255;204;170mAC\27[0m"   -- peach
+local QST_RD = theme.quest.ready("RD")
+local QST_AC = theme.quest.active("AC")
 
 table.insert(status.row1, function()
   if qst.state == "wait" then
     local mins = math.ceil((qst.ready_at - os.time()) / 60)
     if mins <= 0 then qst.state = "ready"
-    else return status.field("QST", mins, 2, mins < 3 and rune.style.red or nil) end
+    else return status.field("QST", mins, 2, mins < 3 and theme.danger or nil) end
   end
   if qst.state == "ready" then return "QST " .. QST_RD end
-  if qst.state == "active" then return "QST " .. (qst.warn and rune.style.red("AC") or QST_AC) end
+  if qst.state == "active" then return "QST " .. (qst.warn and theme.danger("AC") or QST_AC) end
   return status.field("QST", "--", 2)
 end)
 
@@ -116,7 +118,7 @@ end, { name = "quest_tick" })
 
 -- The event lines (tt++ quest.tin, its colours: red brackets and numbers,
 -- yellow words, white labels)
-local R, Y, W, X = "\27[31m", "\27[33m", "\27[37m", "\27[0m"
+local R, Y, W, X = theme.quest.text.on, theme.quest.frame.on, theme.quest.label.on, colors.RESET
 local function banner(text) rune.echo(W .. "{-=" .. R .. text .. W .. "=-}" .. X) end
 
 local function started(d)

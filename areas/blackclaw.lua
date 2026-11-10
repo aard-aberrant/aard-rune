@@ -47,6 +47,8 @@
 -- timer only while a cell counts down.
 local A = ...
 local util = require("core.util")
+local colors = require("core.colors")
+local theme = require("core.theme")
 local game = require("core.game")   -- room, state
 local info = require("panes.info")  -- the grid
 local bcc = require("fight.bcc")    -- the run count
@@ -91,8 +93,8 @@ local move_note = util.slot()
 local function clear_hot() for _, c in ipairs(ALL) do hot[c] = 0 end end
 clear_hot()
 
-local RED, ORANGE, YELLOW = "\27[31m", "\27[38;2;255;128;0m", "\27[38;2;255;255;0m"
-local GREEN, DIM, GRAY, WHITE, R = "\27[32m", "\27[38;5;240m", "\27[90m", "\27[1;37m", "\27[0m"
+local RED, ORANGE, YELLOW = theme.bcc.hot3.on, theme.bcc.hot2.on, theme.bcc.hot1.on
+local GREEN, DIM, GRAY, WHITE, R = theme.bcc.safe.on, theme.bcc.quiet.on, theme.bcc.label.on, theme.bcc.value.on, colors.RESET
 local PAD = string.rep(" ", 10)
 local last_key
 
@@ -150,9 +152,9 @@ local plan   -- forward: plan, send and go call each other
 local function arrive()
   local cell = RING[rr.c].cell
   if dir and on_side(NEXT_OF[dir], cell) then
-    rune.echo("\27[1;33mMOVE MOVE MOVE" .. R)
+    rune.echo(theme.bcc.move("MOVE MOVE MOVE"))
   else
-    rune.echo("\27[1;31mKILL KILL KILL" .. R)   -- in the safe room: the cue to fight
+    rune.echo(theme.bcc.kill("KILL KILL KILL"))   -- in the safe room: the cue to fight
   end
 end
 
@@ -306,7 +308,7 @@ local function move_check(side)
       rr_begin()
     end
   elseif on_side(NEXT_OF[side], cell) then
-    move_note.start(5, function() rune.echo("\27[1;33mMOVE MOVE MOVE" .. R) end)
+    move_note.start(5, function() rune.echo(theme.bcc.move("MOVE MOVE MOVE")) end)
   end
 end
 
@@ -317,7 +319,7 @@ A.trigger.starts("Axaldra, the Eternal One lifts off from her perch and flies ",
   local untl = os.time() + 16
   for _, c in ipairs(CELLS[side]) do hot[c] = untl end
   safe_note.start(3, function()
-    if safe then rune.echo("\27[36mThe direction " .. GREEN .. safe .. "\27[36m is now safe!" .. R) end
+    if safe then rune.echo(theme.bcc.note.on .. "The direction " .. GREEN .. safe .. theme.bcc.note.on .. " is now safe!" .. R) end
   end)
   if not rr.on then move_check(side) end   -- a moving rr sees the hot room at its next plan
   draw()

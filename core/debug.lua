@@ -19,6 +19,7 @@
 -- it in front of building the message, as above.
 -- Output: gray, "15:40:12 [debug recov] ...".
 local util = require("core.util")
+local theme = require("core.theme")
 
 local M = {}
 local topics, order = {}, {}
@@ -41,7 +42,7 @@ function M.topic(name, desc, status)
   if not t then
     t = { name = name, on = saved[name] == true }
     function t.log(msg)
-      rune.echo(rune.style.gray(os.date("%H:%M:%S") .. " [debug " .. name .. "] " .. msg))
+      rune.echo(theme.muted(os.date("%H:%M:%S") .. " [debug " .. name .. "] " .. msg))
     end
     topics[name] = t
     order[#order + 1] = name
@@ -57,10 +58,10 @@ local function list()
   for _, name in ipairs(order) do
     local t = topics[name]
     rune.echo(string.format("  %-8s %s  %s", name,
-      t.on and rune.style.green("on ") or rune.style.gray("off"), t.desc or ""))
+      t.on and theme.on("on ") or theme.off("off"), t.desc or ""))
     if t.status then
       local ok, s = pcall(t.status)
-      if ok and s then rune.echo(rune.style.gray("           " .. s)) end
+      if ok and s then rune.echo(theme.muted("           " .. s)) end
     end
   end
 end
@@ -85,7 +86,7 @@ rune.command.add("debug", function(args)
   util.say("[debug] " .. name .. " " .. (t.on and "on" or "off") .. ".")
   if t.on and t.status then
     local ok, s = pcall(t.status)
-    if ok and s then rune.echo(rune.style.gray("  " .. s)) end
+    if ok and s then rune.echo(theme.muted("  " .. s)) end
   end
 end, "debug topics: list them, switch one (bare toggles), give one a filter (/debug gmcp char.status), or all off")
 

@@ -34,6 +34,8 @@
 -- Cost: nothing per line - one state read at each room.info.
 
 local util = require("core.util")
+local colors = require("core.colors")
+local theme = require("core.theme")
 local game = require("core.game")       -- the room's zone and vnum
 local mapper = require("nav.mapper")   -- the room's note
 local maprec = require("nav.maprec")   -- map record / plan / edit / drop / apply
@@ -42,13 +44,11 @@ local layout = require("core.layout")   -- the pane's size
 local minimap = {}
 local W, H = layout.MINIMAP_W, layout.MINIMAP_H
 local MAP_NOTE = 2      -- most lines a room note may take
--- drawn in place of your #: pure green as 24-bit colour (00ff00) - bold
--- bright green (1;92) looked white. rune.style has only the basic colours,
--- so the code is written out, with a reset after it
-local MAP_ME = "\27[38;2;0;255;0m●\27[0m"
--- drawn in place of another player's *: a red square (ff0000), the user's
--- pick - the game's own red * was too hard to see
-local MAP_PLAYER = "\27[38;2;255;0;0m■\27[0m"
+-- drawn in place of your #: a dot (theme.map.me)
+local MAP_ME = theme.map.me("●")
+-- drawn in place of another player's *: a square (theme.map.player),
+-- the user's pick - the game's own red * was too hard to see
+local MAP_PLAYER = theme.map.player("■")
 
 local map_buf = {}   -- { raw = ..., clean = ... } for each line of the block
 local show_next = false   -- the next block answers a map you typed: show it
@@ -57,76 +57,35 @@ local dark = false        -- in a room you can't see: DARKNESS until the next bl
 
 local function blank(line) return util.blank(line.clean) end
 
--- Split a raw line into colour codes and characters (one UTF-8 character
--- each). Calls f(kind, text) with kind "esc" or "char"
-local function each_token(raw, f)
-  local i = 1
-  while i <= #raw do
-    local esc = raw:match("^\27%[[%d;]*m", i)
-    if esc then
-      f("esc", esc)
-      i = i + #esc
-    else
-      local ch = raw:match("^[\1-\127\194-\244][\128-\191]*", i) or raw:sub(i, i)
-      f("char", ch)
-      i = i + #ch
-    end
-  end
-end
+local crop = colors.crop   -- a raw line cut to w visible columns, codes kept
 
--- Cut a raw line to w visible columns, keeping its colour codes. A line
--- that fits - every map row (the game's map is 29 wide, the pane 31) - is
--- only counted, by two native gsubs (codes out, then UTF-8 continuation
--- bytes), not walked a character at a time in Lua. Measured on lunar
--- (2026-11-09, real blocks): ~37 us a map block, was ~220 us; a line too
--- long (a long room name) still costs its walk, ~20 us each
-local function crop(raw, w)
-  local vis = raw:gsub("\27%[[%d;]*m", "")
-  vis = vis:gsub("[\128-\191]", "")
-  if #vis <= w then return raw .. "\27[0m" end
-  local out, cols = {}, 0
-  each_token(raw, function(kind, t)
-    if kind == "esc" then
-      out[#out + 1] = t
-    elseif cols < w then
-      out[#out + 1] = t
-      cols = cols + 1
-    end
-  end)
-  return table.concat(out) .. "\27[0m"
-end
-
--- Your #, by its colour code (the game's help map key, and raw map blocks
--- /logged 2026-11-09): a bold magenta #, \27[1;35m#, the only one on the
--- map (the user). The code comes right in front of it - the game sends a
+-- Your #, by its colour code (colors.game.me): a bold magenta #, the only
+-- one on the map (the user). The code comes right in front of it - the game sends a
 -- code before nearly every coloured character - so a plain find for code
 -- and character does it, and the swap puts the code back after the dot.
 -- Measured on lunar (2026-11-09, real blocks): ~6 us a map block; the old
 -- walk, a Lua step per character, cost ~340 us. Another player
--- is a bold red *, \27[1;31m* (shops' and forests' * are other colours):
+-- is a bold red * (colors.game.player; shops' and forests' * are other colours):
 -- per row a plain find, and a gsub only on a row that has one (~1 us a row)
-local ME_CODE = "\27[1;35m#"
-local ME_SWAP = "\27[1;35m" .. MAP_ME .. "\27[1;35m"
-local PLAYER_CODE, PLAYER_PAT = "\27[1;31m*", "\27%[1;31m%*"
-local PLAYER_SWAP = "\27[1;31m" .. MAP_PLAYER .. "\27[1;31m"
+local ME, PLAYER = colors.game.me, colors.game.player
+local ME_CODE = ME .. "#"
+local ME_SWAP = ME .. MAP_ME .. ME
+local PLAYER_CODE, PLAYER_PAT = PLAYER .. "*", colors.pattern(PLAYER .. "*")
+local PLAYER_SWAP = PLAYER .. MAP_PLAYER .. PLAYER
 
 -- The last colour code in a raw line, or nil if it has none. The game sets
 -- a colour once and lets it run on into the next line, as a terminal would
 -- (a wrapped room name's second line has no code of its own), but crop ends
 -- every line with a reset - so the colour still on at the end of one line
 -- is put in front of the next
-local function last_sgr(raw)
-  local found = nil
-  for esc in raw:gmatch("\27%[[%d;]*m") do found = esc end
-  return found
-end
+local last_sgr = colors.last
 
 -- The header: zone | vnum, in yellow
 local function header()
   local room = game.room
   local head = room.zone or ""
   if room.num and room.num ~= -1 then head = head .. " | " .. room.num end
-  return rune.style.yellow(head)
+  return theme.map.header(head)
 end
 
 -- On a run: the header, and RUNNING in the middle of the pane (FIGHTING
@@ -138,7 +97,7 @@ local function word_layout(word)
   local out = { header() }
   local mid = math.floor(H / 2)
   while #out < mid do out[#out + 1] = "" end
-  out[#out + 1] = string.rep(" ", math.floor((W - #word) / 2)) .. rune.style.bold(word)
+  out[#out + 1] = string.rep(" ", math.floor((W - #word) / 2)) .. theme.map.word(word)
   util.pane("minimap", table.concat(out, "\n"))
 end
 
@@ -198,7 +157,7 @@ local function draw_map()
   if mr and mr.note ~= "" then
     for k, l in ipairs(util.wrap(mr.note, W)) do
       if k > MAP_NOTE then break end
-      out[#out + 1] = rune.style.cyan(l)
+      out[#out + 1] = theme.map.note(l)
     end
   end
   -- the map, as many rows as fit above the exits row
@@ -251,7 +210,7 @@ rune.trigger.exact("<MAPSTART>", function(_, ctx)
   build_map()
   draw_map()
   if dbg.on then
-    dbg.log("map block: " .. util.trim(util.strip(parts.name[1] or "?")) .. " (state " .. tostring(game.state) .. ")")
+    dbg.log("map block: " .. util.trim(colors.strip(parts.name[1] or "?")) .. " (state " .. tostring(game.state) .. ")")
   end
 end, { name = "aard_map", priority = 10, gag = true, span = { to = "^<MAPEND>$", max = 120 } })
 

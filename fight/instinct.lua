@@ -22,6 +22,7 @@
 -- here.
 
 local util = require("core.util")
+local theme = require("core.theme")
 
 local NAME = "instinct_table"
 local expire = util.slot()
@@ -53,11 +54,11 @@ local function done(_, ctx)
     end
   end
   util.eat_blanks(ctx.lines[#ctx.lines]:clean())
-  if #out == 0 then return rune.echo(rune.style.gray("[inst] no instinct above 0")) end
+  if #out == 0 then return rune.echo(theme.muted("[inst] no instinct above 0")) end
   local line = table.concat(out, " ")
   rune.echo(line)
   rune.clipboard.set(line)
-  rune.echo(rune.style.gray("[inst] copied to the clipboard as one line"))
+  rune.echo(theme.muted("[inst] copied to the clipboard as one line"))
 end
 
 rune.alias.exact("inst", function()

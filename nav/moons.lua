@@ -30,6 +30,7 @@
 --                 possible to tell (over 30 combinations)
 -- Not ported: tt++'s trace log and its edge check (debug aids).
 local util = require("core.util")
+local theme = require("core.theme")
 local game = require("core.game")       -- state, room, tick, at login
 local tags = require("core.tags")       -- no reading while walking
 local status = require("panes.status")  -- the 3MN light (a row1_end slot)
@@ -348,15 +349,15 @@ rune.trigger.regex("^A .+ blows from the (?:north|south|east|west|northeast|nort
 -- init.lua), so appending would put it after 2XP 2QP
 
 table.insert(status.row1_end, math.min(2, #status.row1_end + 1), function()
-  if need() then return status.field("3MN", "??", 7, rune.style.yellow) end
+  if need() then return status.field("3MN", "??", 7, theme.moon.unknown) end
   if allup then
     return status.field("3MN", setleft >= 0 and ((setleft + 1) .. "t") or "--", 7,
-      function(s) return rune.style.bold(rune.style.yellow(s)) end)
+      theme.moon.up)
   end
-  if not span.ok then return status.field("3MN", "--", 7, rune.style.gray) end
+  if not span.ok then return status.field("3MN", "--", 7, theme.unavailable) end
   local soon = span.lo <= 4
   local v = (span.lo > 0 and (math.min(span.lo, 999) .. "t") or "now") .. "/" .. span.len .. "t"
-  return status.field("3MN", v, 7, soon and rune.style.cyan or rune.style.gray)
+  return status.field("3MN", v, 7, soon and theme.moon.soon or theme.muted)
 end)
 
 -- The command -------------------------------------------------------------

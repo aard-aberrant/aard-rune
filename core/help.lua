@@ -13,6 +13,7 @@
 -- goes to the game, as ever. Costs nothing per line: a table filled at
 -- load, read when asked.
 local util = require("core.util")
+local theme = require("core.theme")
 
 local M = {}
 local entries = {}   -- name -> { usage, desc }
@@ -33,10 +34,10 @@ local function ours(q)
   end
   table.sort(names)
   if not names[1] then return false end
-  rune.echo(rune.style.green("[Aardwolf commands]") .. rune.style.gray(" (" .. #names .. ")"))
+  rune.echo(theme.heading("[Aardwolf commands]") .. theme.muted(" (" .. #names .. ")"))
   for _, name in ipairs(names) do
     local e = entries[name]
-    rune.echo("  " .. rune.style.cyan(e.usage) .. rune.style.gray(" - ") .. e.desc)
+    rune.echo("  " .. theme.value(e.usage) .. theme.muted(" - ") .. e.desc)
   end
   return true
 end
@@ -48,10 +49,10 @@ local function runes(q)
     if hit(q, c.name, c.description or "") then cmds[#cmds + 1] = c end
   end
   if not cmds[1] then return false end
-  rune.echo(rune.style.green("[Rune commands]") .. rune.style.gray(" (" .. #cmds .. ")"))
+  rune.echo(theme.heading("[Rune commands]") .. theme.muted(" (" .. #cmds .. ")"))
   for _, c in ipairs(cmds) do
     rune.echo(string.format("  %-12s %s%s", "/" .. c.name, c.description or "",
-      c.enabled and "" or (" " .. rune.style.red("[off]"))))
+      c.enabled and "" or (" " .. theme.danger("[off]"))))
   end
   return true
 end

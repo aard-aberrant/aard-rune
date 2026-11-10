@@ -21,6 +21,7 @@
 -- Cost: one literal trigger (contains); the row's
 -- segment is a few string operations each redraw.
 local util = require("core.util")
+local theme = require("core.theme")
 local status = require("panes.status")   -- the PUP segment's slot
 
 local GAP = 60   -- seconds: a longer gap ends the session
@@ -66,11 +67,11 @@ end, { name = "pup_line" })
 -- label, the numbers green as its value (gray once the session is over). The average's
 -- underline is SGR 4 (24 ends it); an overline (53) didn't show live, 2026-11-08
 table.insert(status.row1_end, function()
-  if not sess then return "PUP " .. rune.style.gray("--") .. string.rep(" ", W - 2) end
+  if not sess then return "PUP " .. theme.unavailable("--") .. string.rep(" ", W - 2) end
   local plain = string.format("%ds / %ds (%d)", sess.last, avg(sess), sess.n)
-  local text = string.format("%ds / \27[4m%ds\27[24m (%d)", sess.last, avg(sess), sess.n)
+  local text = string.format("%ds / %s%ds%s (%d)", sess.last, theme.emphasis.on, avg(sess), theme.emphasis.off, sess.n)
   local on = live() and sess.ends == prev
-  return "PUP " .. (on and rune.style.green(text) or rune.style.gray(text)) .. string.rep(" ", W - #plain)
+  return "PUP " .. (on and theme.on(text) or theme.muted(text)) .. string.rep(" ", W - #plain)
 end)
 
 local clock = util.clock

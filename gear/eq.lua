@@ -20,6 +20,8 @@
 -- eqdata seeds gear/invmon.lua's list of what's worn.
 
 local util = require("core.util")
+local colors = require("core.colors")
+local theme = require("core.theme")
 local invmon = require("gear.invmon")   -- what's worn; what came off (into the bag)
 local game = require("core.game")       -- your level (the set for it)
 local tags = require("core.tags")       -- the eqdata reply's tags
@@ -67,7 +69,7 @@ local function row_on()
     local id, rest = ctx.line:clean():match("^(%d+),(.*)$")
     if not id then return end
     local name, loc = (rest .. ","):match("^[^,]*,(.-),%-?%d+,%-?%d+,%-?%d+,(%-?%d+),")
-    worn[id] = { name = name and util.trim(util.uncolor(name)),
+    worn[id] = { name = name and util.trim(colors.uncolor(name)),
                  loc = tonumber(loc) }
     return false
   end, { name = "eq_row", priority = 5 })
@@ -220,7 +222,7 @@ rune.alias.exact("eqcheck", function(args)
     say("[eq] eqcheck: not wearing these from the " .. key .. " set:")
     for _, loc in ipairs(locs) do
       local it = set[loc]
-      rune.echo(string.format("  %2d %s %s", loc, it.name or "?", rune.style.gray("(" .. tostring(it.id) .. ")")))
+      rune.echo(string.format("  %2d %s %s", loc, it.name or "?", theme.muted("(" .. tostring(it.id) .. ")")))
     end
   end, "eqcheck")
 end)
@@ -245,7 +247,7 @@ rune.alias.exact("eqsets", function(args)
     for loc in pairs(set) do locs[#locs + 1] = loc end
     table.sort(locs)
     for _, loc in ipairs(locs) do
-      rune.echo(string.format("  %2d %s %s", loc, set[loc].name or "?", rune.style.gray("(" .. tostring(set[loc].id) .. ")")))
+      rune.echo(string.format("  %2d %s %s", loc, set[loc].name or "?", theme.muted("(" .. tostring(set[loc].id) .. ")")))
     end
     return
   end
@@ -255,8 +257,8 @@ rune.alias.exact("eqsets", function(args)
   for _, k in ipairs(keys) do
     local n = 0
     for _ in pairs(sets[k]) do n = n + 1 end
-    rune.echo("  " .. rune.style.cyan(tostring(k)) .. ": " .. n .. " items"
-      .. (k == mine and rune.style.green("  <- your level") or ""))
+    rune.echo("  " .. theme.value(tostring(k)) .. ": " .. n .. " items"
+      .. (k == mine and theme.found("  <- your level") or ""))
   end
 end)
 

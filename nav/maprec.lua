@@ -41,6 +41,7 @@
 -- one Lua call per line sent and one per GMCP room.info.
 
 local util = require("core.util")
+local colors = require("core.colors")
 local mapper = require("nav.mapper")
 
 local R = {}
@@ -58,7 +59,7 @@ local S = { on = false, room = nil, lines = {}, plan = {} }
 
 local function room_label(v)
   local r = mapper.rooms[v]
-  local name = r and util.strip(r.name or "") or ""
+  local name = r and colors.strip(r.name or "") or ""
   return tostring(v) .. (name ~= "" and (" " .. name) or "")
 end
 
