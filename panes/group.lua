@@ -11,7 +11,9 @@ local layout = require("core.layout")   -- the pane's height, for the columns
 -- pane has rows, the rest go in the second after a 2-space gap - a small
 -- group looks like one column. The second only when the pane is 44 wide
 -- (layout.left_w()); narrower, one column, and what doesn't fit is cut.
--- Every line is 21 wide, so they line up.
+-- Every line is 21 wide, so they line up. Above them, the group's title on
+-- one row, cyan on dim grey and cut to the pane's width (the user,
+-- 2026-11-09) - it takes a row from the members.
 -- Redrawn whole (util.pane - only when it changed), so no flicker.
 --
 -- The marker (new - the user's design, 2026-11-08), yellow, one column:
@@ -100,11 +102,20 @@ local function draw(d)
     if a.key ~= b.key then return a.key < b.key end
     return a.i < b.i
   end)
-  local h, out = layout.group_h(), {}
-  if layout.left_w() < 2 * 21 + 2 then h = #rows end   -- two don't fit: one column
+  local h, w, out = layout.group_h(), layout.left_w(), {}
+  -- the title row: GMCP group's "groupname" (a guess from Aardwolf's GMCP
+  -- docs - "/debug group on" shows the real field), cyan on dim grey
+  -- (xterm-256 236), cut and padded to the pane's width; none, no row
+  local title = type(d.groupname) == "string" and util.trim(d.groupname) or ""
+  if title ~= "" then
+    title = title:sub(1, w)
+    out[1] = "\27[36;48;5;236m" .. title .. string.rep(" ", w - #title) .. "\27[0m"
+    h = math.max(h - 1, 1)
+  end
+  if w < 2 * 21 + 2 then h = #rows end   -- two don't fit: one column
   for k = 1, math.min(#rows, h) do
     local second = rows[k + h]
-    out[k] = rows[k].text .. (second and ("  " .. second.text) or "")
+    out[#out + 1] = rows[k].text .. (second and ("  " .. second.text) or "")
   end
   util.pane("group", table.concat(out, "\n"))
 end

@@ -92,13 +92,28 @@ end, { name = "aard_channel" })
 -- Remote socials ("*Rockwell smiles at you.", "*You smile at Rockwell.")
 -- come as text, not GMCP: moved to the chats pane, stamped like a channel,
 -- and the blank line(s) the game sends after one are hidden too
--- (general.tin). A line with a double space is left alone - "*Very fast
--- spell-up time    6000 ..." table rows look the same otherwise
-rune.trigger.regex("^\\*[A-Z][A-Za-z]+ .*[.!?]$", function(_, ctx)
-  local clean = ctx.line:clean()
-  if clean:find("  ", 1, true) then return end
-  chat(rune.style.gray(os.date("%H:%M")) .. " " .. ctx.line:raw())
-  util.eat_blanks(clean)
+-- (general.tin). The game marks one by its color: "Remote socials are
+-- prefixed with a cyan asterisk" (the game's help), and live 2026-11-09 the
+-- raw line was "\e[0;36m*\e[0;37mWarlow smiles at you." Other lines that start
+-- with a * have another color or none ("*SQUISH*" green, "*Click*, the door
+-- opens." and area trivia none - tt++'s logs), so the color alone decides:
+-- any text after it, any ending ("*Gasp!* ...", '... goes "Hmmmm."').
+-- The trigger is a literal prefix, so it costs next to nothing; the color
+-- check runs only on lines that start with a *.
+-- debug chats: each line that starts with a *, raw (\e for escape), and
+-- what was done with it
+local CYAN_STAR = "\27[0;36m"
+local dbg = require("core.debug").topic("chats", "lines starting with *: raw, and moved to chats or left")
+rune.trigger.starts("*", function(_, ctx)
+  local raw = ctx.line:raw()
+  local lead = raw:match("^(.-)%*") or ""
+  local social = lead:sub(-#CYAN_STAR) == CYAN_STAR and lead:gsub("\27%[[%d;]*m", "") == ""
+  if dbg.on then
+    dbg.log((social and "moved: " or "left: ") .. raw:gsub("\27", "\\e"))
+  end
+  if not social then return end
+  chat(rune.style.gray(os.date("%H:%M")) .. " " .. raw)
+  util.eat_blanks(ctx.line:clean())
   return false
 end, { name = "remote_social" })
 

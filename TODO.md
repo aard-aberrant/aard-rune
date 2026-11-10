@@ -45,26 +45,27 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
       finished session (dps: reset, area change, /reload, disconnect; pup: 61 s with no pup, /reload,
       disconnect); dps / pup list the one under way and the last 5 from the log. /log start [foo]
       writes userlogs/<date>_<time>.log or userlogs/foo.log there. No folder is made: a missing one is an error.
-- [ ] PUP on status row 1 (fight/pup.lua, 2026-11-08, offline-tested): always on - "PUP 23s / 25s (104)",
+- [x] PUP on status row 1 (fight/pup.lua, 2026-11-08; confirmed live 2026-11-09): always on - "PUP 23s / 25s (104)",
       last gap / session average (underlined, SGR 4) / gaps counted; dim once the last pup is over 60 s old;
       a gap over 60 s ends the session and is the next one's baseline. pup lists the last 5 sessions.
       Check live: the overline shows (else another mark); the line matches; dim after a minute
-- [ ] DPS time from GMCP (fight/dps.lua, 2026-11-08, offline-tested): combat time is GMCP char.status
+- [x] DPS time from GMCP (fight/dps.lua, 2026-11-08; confirmed live 2026-11-09): combat time is GMCP char.status
       state 8, plus a second per second you hit outside it (a first blow before the fight is reported, a
       one-hit kill); walking between fights no longer counts. Check live: a quick room-to-room run - DPS
       higher than before, the clock only moving in fights; the first blow's damage is in the total
-- [ ] Campaign kills from GMCP (targets/campaign.lua, 2026-11-08; the early message seen working live): at
+- [x] Campaign kills from GMCP (targets/campaign.lua, 2026-11-08; confirmed live 2026-11-09 - the kill
+      updates very fast): at
       "CAMPAIGN mobs!" GMCP char.status's last enemy, if on the cp list, is struck off - the cn mob: message,
       pane, target cleared; another (out of order): message and count. No cp check then; one only when the
       name isn't on the list, and at each cn to another area (fixes a wrong strike, the Dead marks). Check
       live: /debug campaign shows GMCP's name next to cp check's - an aggro mob killed out of order, and a
       one-hit kill (an earlier fight's name may strike the wrong one; the next cn to another area fixes it)
-- [ ] map record (nav/maprec.lua, offline-tested 2026-11-08): map record, do what gets you past a room
+- [x] map record (nav/maprec.lua, 2026-11-08; confirmed live 2026-11-09, worked all three times tried): map record, do what gets you past a room
       (say xwxhxfx, look field + enter field, open n + n), map record stop shows the plan, map edit /
       drop fix it, map apply writes the exits. Check live: what a heal or autocast line sent mid-recording
       looks like in the plan, and that find/g then route through the new exit (a /reload
       ends a recording and throws it away)
-- [ ] Walks as game runs (nav/travel.lua, offline-tested 2026-11-07): plain moves sent as "run 2n3e",
+- [x] Walks as game runs (nav/travel.lua, 2026-11-07; confirmed live by 2026-11-09): plain moves sent as "run 2n3e",
       doors/portals/home as they are; rooms hidden per command that shows one. Check live: a
       multi-direction run ("run 2nd2ns3es" - only single-direction runs tried), a route with a door and
       a portal, and "Too many run errors" naming the failed step
@@ -78,7 +79,7 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
       (rt, g sanctum, run 5s/5n, 5s/5n, run 10w, plain steps, blind) showed 12 on every run and never
       otherwise, so a room.info at state 12 now shows RUNNING and every map block draws the map (the
       map-less room.info rule is gone). Check: runs show RUNNING then the arrival's map; heighten in a
-      dark room keeps the map; an aborted run (not in that log) still redraws via minimap.refresh
+      dark room keeps the map. An aborted run redraws via minimap.refresh: confirmed live 2026-11-09 (10s into a wall)
 - [ ] Our messages in /log (core/copy.lua's rune.echo wrapper, 2026-11-09, untested): [debug ...] and [eq] ...
       lines appear in a /log, colored in /log start raw, not in /log start chat; each once
 - [ ] infopane (panes/info.lua, offline-tested 2026-11-08): ported from tt++ - list, pin a provider (e.g.
@@ -109,9 +110,9 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
 - [ ] k / kk / aa (fight/combat.lua, offline-tested): attacks from data/classes/<subclass>.lua (shaman,
       bandit, ninja). k <mob>; bare k in a fight = k_fight or pattack; out of one = pattack on
       gm's target by the keyword given to gm. Not ported: autocast's attack.k hook, Ninja spiral
-- [ ] Since the last /reload: bare g (fixed), g <area> only, ga, gm, g sendhian (gvozd),
+- [x] (confirmed live by 2026-11-09) Since the last /reload: bare g (fixed), g <area> only, ga, gm, g sendhian (gvozd),
       single-step wall message, minimap exits up one row
-- [ ] Walk hiding (core/tags.lua, offline-tested): during g/find/ga/gm/speedwalks only the room you
+- [x] Walk hiding (core/tags.lua; confirmed live by 2026-11-09): during g/find/ga/gm/speedwalks only the room you
       arrive in shows; rooms passed are hidden ({rname}..{/roomchars} + blank), the minimap still
       follows. A walk stopped short prints the room it stopped in (at once on a wrong exit, else
       after 5 s) - no look sent. runto hop lines "Name (5882)" always hidden
@@ -177,7 +178,7 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
          never use it, for exits that come and go.
       Open question: do those exits change destination, or appear/disappear? Plus phase 3's
       wrong-exit check.
-- [ ] Mapper phase 3 (find, g, g icefall confirmed live before the g/ga/gm split; label/unlabel and the wrong-exit message untested): nav/travel.lua + data/{portals,areas,labels}.lua
+- [ ] Mapper phase 3 (find, g, g icefall confirmed live before the g/ga/gm split; label/unlabel untested; the wrong-exit message confirmed live 2026-11-09 - it names the step, and now adds the map unlink hint): nav/travel.lua + data/{portals,areas,labels}.lua
       (converted once by tools/convert_ttdata.py; Rune's copies are the master). Shortest routes
       with portal and home steps; g, ga, gm, find (picker), label/unlabel/labels, map unlink, the
       wrong-exit message, no-recall marking. Map also saved before /reload and on disconnect.
