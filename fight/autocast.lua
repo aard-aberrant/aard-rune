@@ -62,7 +62,8 @@ result = rune.trigger.regex(
     if m[1] then
       local _, w = attack()
       if not w or w == "" or m[1]:sub(1, #w + 1) ~= w .. " " then return end
-      return clear()
+      clear()
+      return
     end
     clear()
     -- "on whom?": ac's cast outlived its mob (the round that sent it killed
@@ -110,7 +111,7 @@ rune.alias.exact("ac", function(args)
     show()
   elseif args:match("^cast ") then
     local c, w = args:match("^cast (.-)%s*|%s*(.+)$")
-    if not c or c == "" then return warn("[ac] ac cast <command> | <hit word>, or ac cast reset") end
+    if not c or c == "" then warn("[ac] ac cast <command> | <hit word>, or ac cast reset"); return end
     cmd, hit = c, w
     show()
   else

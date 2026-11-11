@@ -56,7 +56,7 @@ local function stop(why)
 end
 
 local function hunt()
-  if mode == "trick" then return rune.send_raw("hunt " .. n .. "." .. mob) end
+  if mode == "trick" then rune.send_raw("hunt " .. n .. "." .. mob); return end
   if game.state == 8 then waiting = true; return end
   rune.send_raw("hunt " .. mob)
 end
@@ -65,7 +65,8 @@ end
 local function direction(dir)
   if mode == "auto" then
     rune.send_raw(dir)
-    return hunt()
+    hunt()
+    return
   end
   say("[hqq] wrong mob - " .. n .. "." .. mob)
   n = n + 1
@@ -119,11 +120,11 @@ end, { name = "hunt_fight_over" })
 -- The target's keyword for `who`, to fn(kw) - probed for if it has only a name
 local function target_kw(who, fn)
   local t = target.get()
-  if t and t.kw then return fn(t.kw) end
-  if not (t and t.name) then return warn("[" .. who .. "] " .. who .. " <mob> - or set a target first.") end
+  if t and t.kw then fn(t.kw); return end
+  if not (t and t.name) then warn("[" .. who .. "] " .. who .. " <mob> - or set a target first."); return end
   say("[" .. who .. "] finding a keyword for " .. t.name .. "...")
   travel.probe(t.name, function(kw)
-    if not kw then return warn("[" .. who .. "] no keyword found for " .. t.name .. " in this area.") end
+    if not kw then warn("[" .. who .. "] no keyword found for " .. t.name .. " in this area."); return end
     target.learn_kw(kw)
     fn(kw)
   end)
@@ -139,7 +140,7 @@ end
 
 rune.alias.exact("autohunt", function(args)
   local m = trim(args)
-  if m == "" then return target_kw("autohunt", autohunt) end
+  if m == "" then target_kw("autohunt", autohunt); return end
   autohunt(m)
 end)
 
@@ -151,7 +152,7 @@ rune.alias.exact("hunt", function(args)
 end)
 
 rune.alias.exact("autohuntoff", function()
-  if mode ~= "auto" then return say("[autohunt] not running.") end
+  if mode ~= "auto" then say("[autohunt] not running."); return end
   stop("stopped")
 end)
 
@@ -160,7 +161,7 @@ rune.alias.exact("hqq", function(args)
   if m == "" then
     local t = target.get()
     m = t and t.kw and t.kw:gsub("^%d+%.", "") or ""
-    if m == "" then return warn("[hqq] hqq <mob> - or set a target with a keyword first.") end
+    if m == "" then warn("[hqq] hqq <mob> - or set a target with a keyword first."); return end
   end
   stop()
   mode, mob, n = "trick", m, 1
@@ -169,7 +170,7 @@ rune.alias.exact("hqq", function(args)
 end)
 
 rune.alias.exact("hqof", function()
-  if mode ~= "trick" then return say("[hqq] not running.") end
+  if mode ~= "trick" then say("[hqq] not running."); return end
   stop("given up")
 end)
 

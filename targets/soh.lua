@@ -54,7 +54,8 @@ rune.gmcp.on("comm.channel", function(d)
   name, key = short(name), key:gsub('"', "")
   if not name:match("^[a-z][a-z0-9'%-]*$") or key == "" or kw[name] == key then return end
   if kw[name] then
-    return warn("[soh] conflict for " .. name .. ": saved " .. kw[name] .. ", Bambot says " .. key .. " - not changed.")
+    warn("[soh] conflict for " .. name .. ": saved " .. kw[name] .. ", Bambot says " .. key .. " - not changed.")
+    return
   end
   kw[name] = key
   save()
@@ -66,12 +67,13 @@ rune.alias.exact("soh", function(args)
   if q == "" then
     local n = 0
     for _ in pairs(kw) do n = n + 1 end
-    return say("[soh] " .. n .. " mob keywords saved. soh <mob> looks one up.")
+    say("[soh] " .. n .. " mob keywords saved. soh <mob> looks one up.")
+    return
   end
-  if kw[q] then return rune.echo(q .. ": " .. theme.found(kw[q])) end
+  if kw[q] then rune.echo(q .. ": " .. theme.found(kw[q])); return end
   local hits = {}
   for n in pairs(kw) do if n:find(q, 1, true) then hits[#hits + 1] = n end end
-  if #hits == 0 then return warn("[soh] nothing saved for \"" .. q .. "\".") end
+  if #hits == 0 then warn("[soh] nothing saved for \"" .. q .. "\"."); return end
   table.sort(hits)
   for i = 1, math.min(#hits, 20) do rune.echo(hits[i] .. ": " .. theme.found(kw[hits[i]])) end
   if #hits > 20 then rune.echo(theme.muted("[soh] ... and " .. (#hits - 20) .. " more - type more of the name.")) end

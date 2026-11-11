@@ -140,7 +140,7 @@ rune.alias.exact("dps", function(args)
       list[#list + 1] = { when = when, secs = tonumber(t), damage = tonumber(dmg), hits = tonumber(hits), area = area }
     end
   end
-  if not list[1] then return util.say("[dps] no sessions yet - your first hit starts one.") end
+  if not list[1] then util.say("[dps] no sessions yet - your first hit starts one."); return end
   util.say("[dps] sessions, newest first:")
   for _, s in ipairs(list) do
     rune.echo(string.format("  %s  %6s  %5s dps  %7d dmg  %4d hit%s  %s%s", s.when,

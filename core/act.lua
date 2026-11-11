@@ -109,14 +109,6 @@ do
       end
     end
     fh:close()
-  else
-    -- Once: acts kept in rune.store (2026-11-09, before this file) move here
-    local ok, list = pcall(rune.store.get, "acts")
-    if ok and type(list) == "table" and list[1] then
-      for _, s in ipairs(list) do add(s.kind, s.pattern, s.cmds) end
-      save()
-      rune.store.delete("acts")
-    end
   end
 end
 

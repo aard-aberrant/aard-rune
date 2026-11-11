@@ -33,7 +33,7 @@ game, not just a connection, uses `game.on_login(fn)`. It runs at the first
 ## Folders and layering
 
 ```
-core/     util  game  layout  tags  aliases  login  history  debug  help
+core/     util  game  layout  tags  aliases  login  history  debug  help  profile
 panes/    status  group  chats  info  affects  timer
 gear/     eq  invmon
 nav/      mapper  maprec  travel  minimap  moons  repop
@@ -114,6 +114,7 @@ From Rune's source (`lua/matcher.go`) and benchmarks of this config
   from the config and times them against real /log files (`go test -bench .
   -args ~/combatmsg ...`). 2026-11-08: 50 permanent triggers, ~0.9 µs a line
   (literals ~8 ns each, regexes 15-115 ns). Rune's own `/triggers` lists them.
+  That is the Go matcher only; `/profile` times the Lua side, live (below).
 - **Adding or removing a trigger rebuilds the matcher,** so a trigger toggled
   every combat round (autocast's) stays registered and disabled.
 - **Timers are cancelled, not outlived.** `rune.timer.after` returns a handle with
@@ -172,20 +173,40 @@ description)` (an area script: `A.help(...)`, gone when it unloads).
 `core/help.lua` wraps Rune's own `/help`, which lists Rune's commands and
 then ours; `/help <text>` searches both. `core/aliases.lua`
 registers its one-liners from its own table, so a new one gets help too.
-A slash command (`/act`, `/copy`, `/debug` - the client's tools, nothing
+A slash command (`/act`, `/copy`, `/debug`, `/profile` - the client's tools, nothing
 to do with the game) needs no entry: Rune's list shows its description.
 A new command without a help entry is unfinished.
 
 **Debug output.** `core/debug.lua` holds named topics: a module registers
-one with `require("core.debug").topic(name, description, status_fn)` and
-writes `if dbg.on then dbg.log(msg) end`. The `debug` command lists them
-and switches them (`debug <topic> [on|off]`, `debug all off`). A topic that's
+one with `local dbg = require("core.debug").topic(name, description, status_fn)`
+and writes `if dbg.on then dbg.log(msg) end` - the check first, so a debug
+line costs nothing to build while its topic is off. `/debug` lists them and
+switches them (`/debug <topic> [on|off]`, `/debug all off`). A topic that's
 on stays on across `/reload`. Debug code goes in a topic, not a command of
-its own. Topics: `recov` (panes/affects.lua).
+its own. Topics: `act` (core/act.lua), `gmcp` (core/debug.lua), `group`,
+`chats`, `recov` (panes/affects.lua), `rooms` (nav/mapper.lua), `minimap`,
+`quiet`, `pup`, `dps`, `campaign`.
+
+**Profiling.** `/profile` (`core/profile.lua`) times every callback Rune
+runs - trigger, span, GMCP, timer, hook, bar, alias, command, bind. They all
+go through `rune.guarded_call`; `/profile on` swaps a timing wrapper into
+that field and `/profile off` puts Rune's own function back, so off costs
+nothing and no module needs code for it. To check a change: `/profile on`,
+a set activity, `/profile save before`; make the change, `/reload`;
+`/profile on`, the same activity, `/profile save after`; `/profile compare
+before after`. Compare shows each handler's mean before and after, in µs
+and %, the largest change first (the top 30; `compare <a> [b] all` for
+every one), plus Lua ms a second and any change in registered triggers.
+It flags nothing: read the µs - a handler going from 1 to 3 µs is noise
+(live, small handlers vary up to ~10 µs run to run), and even +5 µs on every
+line is ~0.25 ms a second at 50 lines/s. Runs are saved as
+`profile-<name>.tsv` in `~/.local/state/rune`. `/profile startup` reloads
+and times each require in init.lua. The clock is `os.clock` (process CPU),
+fine for means over many calls, rough for one.
 
 **Aliases.** Rune keys aliases by name, so adding one replaces any other of
 that name. An alias's return value is run as a command, so a handler never
-does `return rune.send_raw(...)`. One-line aliases live in `core/aliases.lua`,
+does `return rune.send_raw(...)` (see Conventions). One-line aliases live in `core/aliases.lua`,
 and everything else sits with its feature.
 
 ## Per-subclass modules
@@ -266,6 +287,12 @@ in areas/blackclaw.lua.
   where `rune.timer.every` slips), and less code. Build your own only where
   Rune has nothing, or its version can't do the job; then say why in the
   file's header.
+- **A call that returns nothing is never used as a return value:**
+  `if bad then warn(x); return end`, not `return warn(x)`. `return f(...)`
+  only where f gives a value the caller uses - a string, `false` to hide a
+  line (`return util.hide(ctx)`), or a wrapper passing on what it wraps.
+  (An alias's return value is run as a command, so a returned value there
+  is never an accident.)
 - **Syntax-check with `luac -p`** on the Mac. It's Lua 5.5, stricter than Rune's
   Lua 5.1 engine (lunar): you can't assign to a loop variable, for example.
   Offline tests use a mock `rune` table, outside this directory.

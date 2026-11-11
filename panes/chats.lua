@@ -73,8 +73,7 @@ end
 -- hidden, by a trigger that exists only until it comes (util.await)
 game.on_login(function()
   util.await("starts", "## GMCP Channels Only On", function(_, ctx)
-    util.eat_blanks(ctx.line:clean())
-    return false
+    return util.hide(ctx)
   end, "chats_gchan_reply")
   rune.gmcp.send("gmcpchannels on")
 end)
@@ -115,8 +114,7 @@ rune.trigger.starts("*", function(_, ctx)
   end
   if not social then return end
   chat(theme.muted(os.date("%H:%M")) .. " " .. raw)
-  util.eat_blanks(ctx.line:clean())
-  return false
+  return util.hide(ctx)
 end, { name = "remote_social" })
 
 -- finger's reply has a blank line between every two lines (tt++

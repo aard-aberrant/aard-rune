@@ -53,8 +53,7 @@ local travel = require("nav.travel")    -- home_vnum
 -- trigger that exists only until it comes (or 10 s)
 game.on_login(function()
   util.await("exact", "## Setting noweather to off.", function(_, ctx)
-    util.eat_blanks(ctx.line:clean())
-    return false
+    return util.hide(ctx)
   end, "moons_cfg_reply")
   rune.gmcp.send("config noweather off")
 end)

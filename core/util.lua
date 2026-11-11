@@ -171,6 +171,24 @@ function util.hide(ctx) util.eat_blanks(ctx.line:clean()); return false end
 -- Seconds as m:ss ("1:23", "75:00")
 function util.clock(secs) return string.format("%d:%02d", math.floor(secs / 60), secs % 60) end
 
+-- A whole number with thousands commas: 1234567 -> "1,234,567", -12345 -> "-12,345"
+function util.commas(n)
+  local s, k = tostring(math.floor(n))
+  repeat s, k = s:gsub("^(-?%d+)(%d%d%d)", "%1,%2") until k == 0
+  return s
+end
+
+-- A ";"-joined line's commands, trimmed, empty ones dropped:
+-- "get a; hold a;;enter" -> { "get a", "hold a", "enter" }
+function util.split(s)
+  local out = {}
+  for raw in (s .. ";"):gmatch("([^;]*);") do
+    local c = util.trim(raw)
+    if c ~= "" then out[#out + 1] = c end
+  end
+  return out
+end
+
 -- A timer slot: start(secs, fn) cancels the slot's waiting timer (Rune's
 -- timer handles) and starts a new one, stop() cancels it - in place of a
 -- generation counter that every stale timer had to check
@@ -241,8 +259,14 @@ end
 function util.load_data(path)
   local ok, t = pcall(dofile, path)
   if ok and type(t) == "table" then return t end
-  util.err("can't load " .. path .. ": " .. tostring(t))
+  util.err("[util] can't load " .. path .. ": " .. tostring(t))
   return nil
+end
+
+-- A subclass's file, data/classes/<subclass>.lua (init.lua's modules,
+-- combat's attacks, info's minimums), or nil after an error
+function util.class_data(sub)
+  return util.load_data(rune.config_dir .. "/data/classes/" .. sub:lower() .. ".lua")
 end
 
 -- A mob's likely keywords from its full name, best first, for where, k and

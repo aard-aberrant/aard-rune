@@ -66,7 +66,7 @@ end)
 
 -- The regen ring on, then cb(ok). Already on: what it replaced is kept
 local function regen_on(cb)
-  if invmon.where(REGEN) then return cb(true) end
+  if invmon.where(REGEN) then cb(true); return end
   replaced, capture, wearing_cb = {}, true, cb
   keep()
   rune.timer.after(3, function()
@@ -108,28 +108,30 @@ local function finish()
 end
 
 local function cast()
-  if cost and (game.mana or 0) < cost then return fail("out of mana") end
+  if cost and (game.mana or 0) < cost then fail("out of mana"); return end
   pending = { at = os.time(), hp = game.hp or 0, mana = game.mana or 0 }
   rune.send_raw("cast '" .. combat.heal() .. "'")
 end
 
 local function second()
   if state ~= "heal" then return end
-  if game.state == 8 then return fail("you're fighting") end
+  if game.state == 8 then fail("you're fighting"); return end
   local now = os.time()
   if pending then
     if now - pending.at < 5 then return end
     if (game.mana or 0) < pending.mana then   -- mana spent, no heal: a fizzle
       pending, next_at = nil, now
     else
-      return fail("no heal after the cast (out of mana?)")
+      fail("no heal after the cast (out of mana?)")
+      return
     end
   end
-  if hp_pct() > 95 then return finish() end
+  if hp_pct() > 95 then finish(); return end
   local ticks = game.tick()
   if ticks and ticks <= 2 then
     state = "sleep"
-    return rune.send_raw("sleep")
+    rune.send_raw("sleep")
+    return
   end
   if (not ticks or ticks >= 6) and now >= next_at then cast() end
 end
@@ -150,7 +152,7 @@ rune.gmcp.on("comm.tick", function()
     if state ~= "sleep" then return end
     last_state = nil   -- rh's own wake - not "you woke up" below
     rune.send_raw("wake")
-    if hp_pct() > 95 then return finish() end
+    if hp_pct() > 95 then finish(); return end
     state, next_at = "heal", os.time() + 1
   end)
 end, { name = "rheal_tick" })
@@ -167,17 +169,17 @@ end, { name = "rheal_woke" })
 
 rune.alias.exact("rh", function(args)
   if util.trim(args) == "stop" then
-    if state == "idle" then return say("[rh] not running.") end
+    if state == "idle" then say("[rh] not running."); return end
     stop()
-    return say("[rh] stopped. The regen ring is still on.")
+    say("[rh] stopped. The regen ring is still on.")
+    return
   end
-  if state ~= "idle" then return warn("[rh] already running - rh stop to end it.") end
-  if game.state == 8 then return warn("[rh] you're fighting - not starting.") end
-  stop()
+  if state ~= "idle" then warn("[rh] already running - rh stop to end it."); return end
+  if game.state == 8 then warn("[rh] you're fighting - not starting."); return end
   state = "ring"
   regen_on(function(ok)
     if state ~= "ring" then return end   -- rh stop meanwhile
-    if not ok then return fail("couldn't put on the regen ring") end
+    if not ok then fail("couldn't put on the regen ring"); return end
     state = "heal"
     say("[rh] healing to above 95%. rh stop to end.")
     loop = rune.timer.every(1, second)

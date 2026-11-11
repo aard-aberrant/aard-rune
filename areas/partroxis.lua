@@ -211,16 +211,16 @@ end)
 -- The way on: a hidden exits, then the exit naming the next room ----------
 
 local function walk(d)
-  if fighting() then return say("[maze] in combat - not moving. Step cancelled at #" .. room .. ".") end
+  if fighting() then say("[maze] in combat - not moving. Step cancelled at #" .. room .. "."); return end
   step = { from = room, dir = d }
   rune.send_raw(d)
 end
 
 local function decide(map, order)
-  if fighting() then return say("[maze] in combat - not moving. Step cancelled at #" .. room .. ".") end
+  if fighting() then say("[maze] in combat - not moving. Step cancelled at #" .. room .. "."); return end
   local want = ROOMS[room + 1][1]
   for _, d in ipairs(order) do
-    if map[d] == want and not (failed[room] and failed[room][d]) then return walk(d) end
+    if map[d] == want and not (failed[room] and failed[room][d]) then walk(d); return end
   end
   say("[maze] none of the exits from #" .. room .. " (" .. ROOMS[room][1] .. ") lists '" .. want
     .. "' (or every one is marked wrong). Re-check the exits or the table.")
@@ -262,18 +262,21 @@ end
 
 function mazenext()
   if fighting() then
-    return say("[maze] in combat - not moving. Step cancelled at #" .. tostring(room) .. ".")
+    say("[maze] in combat - not moving. Step cancelled at #" .. tostring(room) .. ".")
+    return
   end
   step = nil
-  if not room then return say("[maze] current room unknown - mazehere <number> first.") end
-  if speed_to then return speed_start(speed_to) end
+  if not room then say("[maze] current room unknown - mazehere <number> first."); return end
+  if speed_to then speed_start(speed_to); return end
   if ROOMS[room].last then
     auto = false
-    return say("[maze] no data past room #" .. room .. ". Get the rest of the table before continuing.")
+    say("[maze] no data past room #" .. room .. ". Get the rest of the table before continuing.")
+    return
   end
   if ROOMS[room].gate then
     step = { from = room, dir = GATE }
-    return rune.send_raw(GATE)
+    rune.send_raw(GATE)
+    return
   end
   ask_exits()
 end
@@ -284,13 +287,14 @@ local function mazehere(args)
   local n = tonumber(trim(args))
   if not n then
     local v = game.room.num
-    if not v then return say("[maze] no room vnum from GMCP - mazehere <room number>.") end
+    if not v then say("[maze] no room vnum from GMCP - mazehere <room number>."); return end
     if v <= BASE or v > BASE + #ROOMS then
-      return say("[maze] vnum " .. v .. " isn't a maze room (" .. (BASE + 1) .. "-" .. (BASE + #ROOMS) .. "). mazehere <room number>.")
+      say("[maze] vnum " .. v .. " isn't a maze room (" .. (BASE + 1) .. "-" .. (BASE + #ROOMS) .. "). mazehere <room number>.")
+      return
     end
     n = v - BASE
   end
-  if not ROOMS[n] then return warn("[maze] mazehere 1-" .. #ROOMS) end
+  if not ROOMS[n] then warn("[maze] mazehere 1-" .. #ROOMS); return end
   room = n
   if n == 1 then reset_route() else stop_moving() end
   say("[maze] current room set to #" .. n .. " (" .. ROOMS[n][1] .. ").")
@@ -305,9 +309,9 @@ A.help("graxkeys", "graxkeys", "Grax's three-key quest, from Grax's room 5814 (p
 A.alias.exact("mazenext", function() mazenext() end)
 A.alias.exact("mazehere", mazehere)
 local function run_to(n)
-  if not room then return say("[maze] current room unknown - mazehere <number> first.") end
-  if n == room then return say("[maze] already at #" .. room .. " - that's where " .. MOBS[room] .. " is.") end
-  if n < room then return say("[maze] #" .. n .. " (" .. MOBS[n] .. ") is behind you (#" .. room .. ") - the maze only runs forward.") end
+  if not room then say("[maze] current room unknown - mazehere <number> first."); return end
+  if n == room then say("[maze] already at #" .. room .. " - that's where " .. MOBS[room] .. " is."); return end
+  if n < room then say("[maze] #" .. n .. " (" .. MOBS[n] .. ") is behind you (#" .. room .. ") - the maze only runs forward."); return end
   target = n
   say("[maze] target: #" .. n .. " (" .. MOBS[n] .. "). Auto-running from #" .. room .. ". mazeabort to stop.")
   auto = true
@@ -322,7 +326,7 @@ local function pick(list)
       items[#items + 1] = { text = MOBS[n], desc = "#" .. n .. " " .. ROOMS[n][1], value = tostring(n) }
     end
   end
-  if #items == 0 then return say("[maze] no rooms ahead of #" .. room .. ".") end
+  if #items == 0 then say("[maze] no rooms ahead of #" .. room .. "."); return end
   rune.ui.picker.show({ title = "mazerun", items = items, match_description = true,
                         on_select = function(v) run_to(tonumber(v)) end })
 end
@@ -331,19 +335,20 @@ end
 -- ahead. mazerun <mob>: an exact name, else a part of one (case ignored); a
 -- part matching several opens a picker of them
 A.alias.exact("mazerun", function(args)
-  if not room then return say("[maze] current room unknown - mazehere <number> first.") end
+  if not room then say("[maze] current room unknown - mazehere <number> first."); return end
   local q = trim(args):gsub("^[{\"'](.*)[}\"']$", "%1"):lower()   -- tt++ habit: {Insane Cheryb}
   if q == "" then
-    if target then return run_to(target) end
-    return pick()
+    if target then run_to(target); return end
+    pick()
+    return
   end
   local hits, n_hits = {}, 0
-  for n, mob in ipairs(MOBS) do if mob:lower() == q then return run_to(n) end end
+  for n, mob in ipairs(MOBS) do if mob:lower() == q then run_to(n); return end end
   for n, mob in ipairs(MOBS) do
     if mob:lower():find(q, 1, true) then hits[n] = true; n_hits = n_hits + 1 end
   end
-  if n_hits == 0 then return say("[maze] no room's mob matches '" .. q .. "'.") end
-  if n_hits == 1 then return run_to(next(hits)) end
+  if n_hits == 0 then say("[maze] no room's mob matches '" .. q .. "'."); return end
+  if n_hits == 1 then run_to(next(hits)); return end
   pick(hits)
 end)
 
@@ -398,13 +403,14 @@ local function run(list, i)
   local s = list[i]
   if not s then return end
   local function after() run(list, i + 1) end
-  if s.say then rune.send_raw(s.say); return after() end
+  if s.say then rune.send_raw(s.say); after(); return end
   if s.wait then
     waiting_for = s.wait
     warn("[graxkeys] " .. s.msg)
-    return util.beep()
+    util.beep()
+    return
   end
-  if s.done then return say("[graxkeys] done - Grax's Trust, Hope and Ambition all turned in.") end
+  if s.done then say("[graxkeys] done - Grax's Trust, Hope and Ambition all turned in."); return end
   move = { to = s.vf or s.to, from = game.room.num, after = after }
   local secs = s.vf and 10 or 3
   if move_timer then move_timer:cancel() end
@@ -432,7 +438,8 @@ end)
 
 A.alias.exact("graxkeys", function()
   if game.room.num ~= 5814 then
-    return warn("[graxkeys] start in room 5814 (you're in " .. tostring(game.room.num) .. ") - not starting.")
+    warn("[graxkeys] start in room 5814 (you're in " .. tostring(game.room.num) .. ") - not starting.")
+    return
   end
   waiting_for = nil
   run(RUNS.start)

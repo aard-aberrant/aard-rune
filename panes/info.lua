@@ -69,8 +69,8 @@ end
 function info.set(name, prio, text)
   local p = prov[name]
   if p then p.prio, p.text = prio, text else prov[name] = { prio = prio, text = text } end
-  refresh()   -- returns nothing: an alias may end with "return info.set(...)",
-end           -- and an alias's return value is run as a command
+  refresh()
+end
 
 -- A target's view, shared by quest and campaign: the first line as given,
 -- then area (cyan), room (blue, or `gone` in red instead), mob (magenta).
@@ -163,19 +163,14 @@ local function short(n)
   return tostring(n)
 end
 
-local function commas(n)
-  local s = tostring(n)
-  local k
-  repeat s, k = s:gsub("^(%d+)(%d%d%d)", "%1,%2") until k == 0
-  return s
-end
+local commas = util.commas
 
 local LABEL, VALUE, RED = theme.default.on, theme.value.on, theme.danger.on
 
 local function account()
   local w, s = game.worth, game.stats
   local gold, bank = w and tonumber(w.gold), w and tonumber(w.bank)
-  if not (gold and bank) then return info.set("account", 90, nil) end
+  if not (gold and bank) then info.set("account", 90, nil); return end
   local function f(label, v, width)
     v = tostring(v)
     return LABEL .. label .. " " .. VALUE .. (width and v .. string.rep(" ", width - #v) or v)
@@ -207,7 +202,7 @@ rune.gmcp.on("char.base", function()
   local sub = game.subclass
   if not sub or sub == mins_for then return end
   mins_for = sub
-  local C = util.load_data(rune.config_dir .. "/data/classes/" .. sub:lower() .. ".lua") or {}
+  local C = util.class_data(sub) or {}
   HR_MIN, DR_MIN, STAT_MIN = C.hr_min or DEF_HR, C.dr_min or DEF_DR, C.stat_min or DEF_STAT
   account()
 end, { name = "info_class_mins" })
@@ -221,7 +216,7 @@ local msg_clear = util.slot()   -- an infomsg's time up
 
 function info.msg(text, secs)
   msg_clear.stop()
-  if not text then return info.set("msg", 40, nil) end
+  if not text then info.set("msg", 40, nil); return end
   local rows = {}
   for l in (text .. "|"):gmatch("(.-)|") do
     if #rows < 4 then rows[#rows + 1] = l:sub(1, layout.left_w()) end
@@ -234,10 +229,11 @@ end
 
 rune.alias.exact("infomsg", function(args)
   local text = util.trim(args)
-  if text == "" then return info.msg(nil) end
+  if text == "" then info.msg(nil); return end
   local secs, rest = text:match("^%-t%s+(%d+)%s+(.+)$")
   if text:match("^%-t") and not secs then
-    return util.warn("[info] infomsg [-t seconds] [text] - | starts a new line.")
+    util.warn("[info] infomsg [-t seconds] [text] - | starts a new line.")
+    return
   end
   info.msg(rest or text, tonumber(secs))
 end)
@@ -266,15 +262,16 @@ rune.alias.exact("infopane", function(args)
     pin = nil
     rune.session.set(PIN, "")
     refresh()
-    return util.say("[info] info pane: back to the normal order.")
+    util.say("[info] info pane: back to the normal order.")
+    return
   end
   local hits = {}
   for _, name in ipairs(names()) do
     if name == arg then hits = { name }; break end
     if name:sub(1, #arg) == arg then hits[#hits + 1] = name end
   end
-  if #hits == 0 then return util.warn("[info] infopane: nothing called \"" .. arg .. "\" - infopane lists them.") end
-  if #hits > 1 then return util.warn("[info] infopane: \"" .. arg .. "\" could be " .. table.concat(hits, ", ") .. ".") end
+  if #hits == 0 then util.warn("[info] infopane: nothing called \"" .. arg .. "\" - infopane lists them."); return end
+  if #hits > 1 then util.warn("[info] infopane: \"" .. arg .. "\" could be " .. table.concat(hits, ", ") .. "."); return end
   pin = hits[1]
   rune.session.set(PIN, pin)
   refresh()

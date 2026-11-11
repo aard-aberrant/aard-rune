@@ -45,16 +45,18 @@ end
 rune.alias.exact("timer", function(args)
   local text = util.trim(args)
   if text == "" or text == "check" then
-    if not t then return say("[timer] none running.") end
-    return say("[timer] " .. mmss(math.max(0, t.ends - os.time())) .. " left: " .. t.msg)
+    if not t then say("[timer] none running."); return end
+    say("[timer] " .. mmss(math.max(0, t.ends - os.time())) .. " left: " .. t.msg)
+    return
   end
   if text == "clear" then
-    if not t and not info.alert_clear("TIMER") then return say("[timer] none running.") end
+    local shown = info.alert_clear("TIMER")   -- the alert, if it's up
+    if not t and not shown then say("[timer] none running."); return end
     due.stop()
     t = nil
     store(false)
-    info.alert_clear("TIMER")
-    return say("[timer] cleared.")
+    say("[timer] cleared.")
+    return
   end
   local when, msg = text:match("^(%S+)%s+(.+)$")
   local secs
@@ -64,7 +66,8 @@ rune.alias.exact("timer", function(args)
     else secs = tonumber(when:match("^(%d+)s?$")) end
   end
   if not secs or secs <= 0 then
-    return warn("[timer] timer <5m30 | 5m | 45> <message>, timer check, timer clear.")
+    warn("[timer] timer <5m30 | 5m | 45> <message>, timer check, timer clear.")
+    return
   end
   start(os.time() + secs, msg)
   say("[timer] " .. mmss(secs) .. ": " .. msg)

@@ -71,22 +71,21 @@ table.insert(status.row1_end, light("dqp", "2QP", T.qp))
 
 -- The game's lines -------------------------------------------------------------
 
-local function n(s) return tonumber(s) end
 
 rune.trigger.starts("For the next ", function(_, ctx)
   local c = ctx.line:clean()
   local m = c:match("^For the next (%d+) minutes")
-  if m and c:find("experience is doubled", 1, true) then set("dxp", n(m)) end
+  if m and c:find("experience is doubled", 1, true) then set("dxp", tonumber(m)) end
 end, { name = "doubles_superhero" })
 
 rune.trigger.starts("Double experience for ", function(_, ctx)
   local m = ctx.line:clean():match("^Double experience for (%d+) minutes courtesy of")
-  if m then set("dxp", n(m)) end
+  if m then set("dxp", tonumber(m)) end
 end, { name = "doubles_courtesy" })
 
 rune.trigger.contains(" minutes of double exp started courtesy of", function(_, ctx)
   local m = ctx.line:clean():match("^%[%s*(%d+) minutes of double exp started")
-  if m then set("dxp", n(m)) end
+  if m then set("dxp", tonumber(m)) end
 end, { name = "doubles_started" })
 
 rune.trigger.exact("Aardwolf rejoices in the death of another MILLION monsters.", function()
@@ -96,12 +95,12 @@ end, { name = "doubles_million" })
 local function info_line(c)
   local m = c:match("^INFO: (%d+) minutes? of bonus experience remaining%.")
     or c:match("^INFO: Double experience is running .- %- (%d+) minutes left%.")
-  if m then return set("dxp", n(m)) end
-  if c:find("^INFO: Bonus experience has now expired%.") then return set("dxp", 0) end
+  if m then set("dxp", tonumber(m)); return end
+  if c:find("^INFO: Bonus experience has now expired%.") then set("dxp", 0); return end
   m = c:match("^INFO: (%d+) minutes? of double quest points remaining%.")
     or c:match("^INFO: Double quest points bonus is running .- %- (%d+) minutes left%.")
-  if m then return set("dqp", n(m)) end
-  if c:find("^INFO: Double quest points bonus has now expired%.") then return set("dqp", 0) end
+  if m then set("dqp", tonumber(m)); return end
+  if c:find("^INFO: Double quest points bonus has now expired%.") then set("dqp", 0); return end
 end
 rune.trigger.starts("INFO: ", function(_, ctx) info_line(ctx.line:clean()) end, { name = "doubles_info" })
 rune.gmcp.on("comm.channel", function(d)
@@ -115,13 +114,14 @@ local reader = nil
 
 local function reply_line(c)
   local m = c:match("^Double exp will expire in roughly (%d+) minute")
-  if m then return set("dxp", n(m)) end
-  if c:find("^Double exp is not currently running") then return set("dxp", 0) end
+  if m then set("dxp", tonumber(m)); return end
+  if c:find("^Double exp is not currently running") then set("dxp", 0); return end
   m = c:match("^Double quest points will expire in roughly (%d+) minute")
     or c:match("^Double QP will expire in roughly (%d+) minute")
-  if m then return set("dqp", n(m)) end
+  if m then set("dqp", tonumber(m)); return end
   if c:find("^Double QP is not currently running") or c:find("^Double quest points is not currently running") then
-    return set("dqp", 0)
+    set("dqp", 0)
+    return
   end
 end
 

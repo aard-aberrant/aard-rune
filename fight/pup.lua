@@ -86,7 +86,7 @@ rune.alias.exact("pup", function()
     local when, t, n, a = line:match("^(%d+%-%d+%-%d+ %d+:%d+):%d+\t(%d+)\t(%d+)\t(%d+)$")
     if when then list[#list + 1] = { when = when, secs = tonumber(t), n = tonumber(n), avg = tonumber(a) } end
   end
-  if not list[1] then return util.say("[pup] no sessions yet - two pups within a minute start one.") end
+  if not list[1] then util.say("[pup] no sessions yet - two pups within a minute start one."); return end
   util.say("[pup] sessions, newest first:")
   for _, s in ipairs(list) do
     rune.echo(string.format("  %s  %6s  %4d pup%s  %3ds avg%s", s.when, clock(s.secs), s.n,

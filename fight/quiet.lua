@@ -46,11 +46,7 @@ local T = theme.define("reward", "The fight's reward tab", {
 })
 
 local function num(s) return tonumber((s:gsub(",", ""))) or 0 end
-local function commas(n)
-  local s, k = tostring(math.floor(n))
-  repeat s, k = s:gsub("^(-?%d+)(%d%d%d)", "%1,%2") until k == 0
-  return s
-end
+local commas = util.commas
 
 -- Fight rewards -----------------------------------------------------------
 

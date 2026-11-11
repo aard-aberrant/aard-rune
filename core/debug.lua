@@ -52,42 +52,44 @@ function M.topic(name, desc, status)
   return t
 end
 
+-- A topic's status line (its status_fn), if it has one, under its entry
+local function show_status(t, indent)
+  if not t.status then return end
+  local ok, s = pcall(t.status)
+  if ok and s then rune.echo(theme.muted(indent .. s)) end
+end
+
 local function list()
-  if not order[1] then return util.say("[debug] no topics.") end
+  if not order[1] then util.say("[debug] no topics."); return end
   util.say("[debug] topics - /debug <topic> [on|off|filter], /debug all off:")
   for _, name in ipairs(order) do
     local t = topics[name]
     rune.echo(string.format("  %-8s %s  %s", name,
       t.on and theme.on("on ") or theme.off("off"), t.desc or ""))
-    if t.status then
-      local ok, s = pcall(t.status)
-      if ok and s then rune.echo(theme.muted("           " .. s)) end
-    end
+    show_status(t, "           ")
   end
 end
 
 rune.command.add("debug", function(args)
   local name, arg = util.trim(args):match("^(%S*)%s*(.-)$")
-  if name == "" then return list() end
+  if name == "" then list(); return end
   if name == "all" then
-    if arg ~= "off" then return util.warn("[debug] /debug all off - one at a time to switch on.") end
+    if arg ~= "off" then util.warn("[debug] /debug all off - one at a time to switch on."); return end
     for _, n in ipairs(order) do topics[n].on = false end
     saved = {}
     save()
-    return util.say("[debug] all off.")
+    util.say("[debug] all off.")
+    return
   end
   local t = topics[name]
-  if not t then return util.warn("[debug] no topic \"" .. name .. "\" - /debug lists them.") end
+  if not t then util.warn("[debug] no topic \"" .. name .. "\" - /debug lists them."); return end
   if arg == "on" then t.on = true elseif arg == "off" then t.on = false
   elseif arg == "" then t.on = not t.on
   elseif t.filter then t.filter(arg); t.on = true
-  else return util.warn("[debug] /debug " .. name .. " [on|off]") end
+  else util.warn("[debug] /debug " .. name .. " [on|off]"); return end
   save()
   util.say("[debug] " .. name .. " " .. (t.on and "on" or "off") .. ".")
-  if t.on and t.status then
-    local ok, s = pcall(t.status)
-    if ok and s then rune.echo(theme.muted("  " .. s)) end
-  end
+  if t.on then show_status(t, "  ") end
 end, "debug topics: list them, switch one (bare toggles), give one a filter (/debug gmcp char.status), or all off")
 
 -- debug gmcp: every GMCP message as it comes, package and raw JSON (cut
