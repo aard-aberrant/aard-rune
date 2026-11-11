@@ -7141,7 +7141,11 @@ X	2817	2847	s
 X	2817	2816	w		
 R	2818					
 R	2819					
-R	2820					
+R	2820	alagh	ocean			Sea of the Horn
+X	2820	2821	e		
+X	2820	2790	n		
+X	2820	2850	s		
+X	2820	2819	w		
 R	2821	alagh	ocean			Sea of the Horn
 X	2821	24536	e		
 X	2821	2791	n		
@@ -7216,7 +7220,12 @@ X	2847	2817	n
 X	2847	2877	s		
 X	2847	2846	w		
 R	2848					
-R	2850					
+R	2849					
+R	2850	alagh	ocean			Sea of the Horn
+X	2850	2851	e		
+X	2850	2820	n		
+X	2850	2880	s		
+X	2850	2849	w		
 R	2851	alagh	ocean			Sea of the Horn
 X	2851	24566	e		
 X	2851	2821	n		
@@ -7297,7 +7306,12 @@ X	2877	2847	n
 X	2877	2907	s		
 X	2877	2876	w		
 R	2878					
-R	2880					
+R	2879					
+R	2880	alagh	ocean			Sea of the Horn
+X	2880	2881	e		
+X	2880	2850	n		
+X	2880	2910	s		
+X	2880	2879	w		
 R	2881	alagh	ocean			Sea of the Horn
 X	2881	24596	e		
 X	2881	2851	n		
@@ -7435,7 +7449,12 @@ X	2907	2877	n
 X	2907	2937	s		
 X	2907	2906	w		
 R	2908					
-R	2910					
+R	2909					
+R	2910	alagh	ocean			Sea of the Horn
+X	2910	2911	e		
+X	2910	2880	n		
+X	2910	2940	s		
+X	2910	2909	w		
 R	2911	alagh	ocean			The Forbidden Waters
 X	2911	24626	e		
 X	2911	2881	n		
@@ -7516,8 +7535,16 @@ X	2938	2939	e
 X	2938	39358	n		
 X	2938	2968	s		
 X	2938	2937	w		
-R	2939					
-R	2940					
+R	2939	alagh	ocean			Sea of the Horn
+X	2939	2940	e		
+X	2939	2909	n		
+X	2939	2969	s		
+X	2939	2938	w		
+R	2940	alagh	ocean			Sea of the Horn
+X	2940	2941	e		
+X	2940	2910	n		
+X	2940	2970	s		
+X	2940	2939	w		
 R	2941	alagh	ocean			Sea of the Horn
 X	2941	24656	e		
 X	2941	2911	n		
@@ -52130,6 +52157,9 @@ X	16299	16298	w
 R	16300	sirens	inside	1		Beside the Beachway Hotel
 X	16300	16314	e		
 X	16300	16307	n		
+R	16301	sirens	inside	2		Golden Sands
+R	16302	sirens	inside			Golden Sands
+R	16303	sirens	inside			Golden Sands
 R	16305	sirens	inside	1		Golden Sands
 R	16307	sirens	inside			Hotel Ground Level
 X	16307	16313	n		
@@ -107901,7 +107931,7 @@ R	38264	titan	castle			The northern hall
 X	38264	38265	e		
 X	38264	38276	s		
 X	38264	38263	w		
-R	38265	titan	castle			The northern hall
+R	38265	titan	castle	2		The northern hall
 X	38265	38266	e		
 X	38265	38264	w		
 R	38266	titan	castle			Northeastern tower
@@ -107939,12 +107969,12 @@ X	38274	38260	w
 R	38275	titan	castle			The inner courtyard
 X	38275	38276	e		
 X	38275	38274	s		
-R	38276	titan	castle			The inner courtyard
+R	38276	titan	castle	2		The inner courtyard
 X	38276	38277	e		
 X	38276	38264	n		
 X	38276	38280	s		
 X	38276	38275	w		
-R	38277	titan	castle			The inner courtyard
+R	38277	titan	castle	2		The inner courtyard
 X	38277	38278	s		
 X	38277	38276	w		
 R	38278	titan	castle			The inner courtyard
@@ -108741,7 +108771,13 @@ X	38478	38475	w
 R	38479					
 R	38480					
 R	38481					
-R	38482					
+R	38482	geniewish	inside			A Terrible Nightmare
+X	38482	38489	d		
+X	38482	38483	e		
+X	38482	38485	n		
+X	38482	38486	s		
+X	38482	38499	u		
+X	38482	38484	w		
 R	38483	geniewish	inside			A Terrible Nightmare
 X	38483	38487	d		
 X	38483	38484	e		
@@ -108784,7 +108820,13 @@ X	38488	38483	n
 X	38488	38490	s		
 X	38488	38486	u		
 X	38488	38486	w		
-R	38489					
+R	38489	geniewish	inside			A Terrible Nightmare
+X	38489	38485	d		
+X	38489	38485	e		
+X	38489	38487	n		
+X	38489	38484	s		
+X	38489	38482	u		
+X	38489	38490	w		
 R	38490	geniewish	inside			A Terrible Nightmare
 X	38490	38484	d		
 X	38490	38489	e		
@@ -108957,6 +108999,7 @@ R	38550	geniewish	inside			Entering the Onyx Lamp
 R	38551	geniewish	inside			Lamp Guardian Room
 R	38552	geniewish	inside			Lamp Guardian Room
 R	38557	geniewish	inside			Lamp Guardian Room
+R	38559	geniewish	inside			Lamp Guardian Room
 R	38561	fortune	mountain			Innocence
 X	38561	38661	d		
 X	38561	25385	e		

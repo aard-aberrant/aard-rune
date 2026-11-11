@@ -8,7 +8,7 @@ local MEDKIT = "medkit"
 
 local A = {
   gh     = "home",
-  su     = "autoassist;spellup luck %0;spellup int %0;spellup %0;autoassist",
+  su     = "autoassist off;spellup luck %0;spellup int %0;spellup %0;autoassist on",
   sq     = "spellup;get lotus " .. MEDKIT .. ";quaff lotus",
   dd     = "c 'dispel magic' %0",
   hh     = "c 'party heal'",
