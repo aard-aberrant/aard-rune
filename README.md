@@ -86,6 +86,7 @@ Client tools are slash commands:
 | `/copy <n> [chat]` | the last n lines of the main (or chats) pane to the clipboard |
 | `/log start [chat] [raw] [file]`, `/log stop` | log to `~/.local/state/rune/userlogs/` |
 | `/debug [topic] [on\|off]` | debug output, by topic |
+| `/profile on`, `off`, `save <name>`, `compare <a> [b]` | time every handler, to compare before and after a change |
 
 **Keys:** Ctrl+E goes to the end of the input line (Rune's edit-in-editor moves
 to Alt+E). F12 switches the mouse between wheel scrolling and selecting text.
@@ -95,7 +96,7 @@ to Alt+E). F12 switches the mouse between wheel scrolling and selecting text.
 ```
 init.lua    sets Rune up and loads every feature
 core/       shared code: game state from GMCP, tags, layout, help, debug, login,
-            history, /act, /copy, aliases
+            history, /act, /copy, /profile, aliases
 panes/      the panes: status, group, chats, info, affects, timer
 gear/       gear sets, what you wear
 nav/        the map, routing and travel, minimap, moons, repop

@@ -50,9 +50,10 @@ end, { name = "heal_gap" })
 rune.alias.exact("h", function(args)
   args = trim(args)
   if args == "stop" then
-    if not queued then return say("[h] nothing queued.") end
+    if not queued then say("[h] nothing queued."); return end
     queued = false
-    return say("[h] queued heal dropped.")
+    say("[h] queued heal dropped.")
+    return
   end
   arg = args
   if game.state == 8 then

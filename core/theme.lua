@@ -277,7 +277,7 @@ rune.command.add("theme", function(args)
     section("not loaded", "data/theme.lua sets these; their module isn't loaded (an area out of its zone), or the group is misspelled")
     for _, k in ipairs(idle) do out[#out + 1] = "  " .. theme.muted("theme." .. k .. " = " .. tostring(type(set[k]) == "table" and set[k].expr or set[k])) end
   end
-  if #out == 0 then return rune.echo(theme.muted("[theme] no name contains \"" .. q .. "\".")) end
+  if #out == 0 then rune.echo(theme.muted("[theme] no name contains \"" .. q .. "\".")); return end
   out[#out + 1] = theme.muted("Change any of these in data/theme.lua, then /reload.")
   for _, l in ipairs(out) do rune.echo(l) end
 end, "the theme: every color name you can change in data/theme.lua, shown in its colors (/theme quest - only names containing quest)")

@@ -101,7 +101,7 @@ local function smiles(on)
       local name = ctx.line:clean():match("^(%a+) smiles at you%.$")
       if not name or name == cur or queued(name) then return end
       queue[#queue + 1] = name
-      say("[spellups] " .. name .. " queued - " .. #queue .. " waiting.")
+      say("[spup] " .. name .. " queued - " .. #queue .. " waiting.")
       drain()
     end, { name = "spup_smile" })
   elseif not on and smile_trig then
@@ -112,10 +112,11 @@ end
 rune.alias.exact("spq", function(args)
   if trim(args) == "clear" then
     queue = {}
-    return say("[spellups] queue cleared.")
+    say("[spup] queue cleared.")
+    return
   end
-  if #queue == 0 then return say("[spellups] nobody queued.") end
-  say("[spellups] queue:")
+  if #queue == 0 then say("[spup] nobody queued."); return end
+  say("[spup] queue:")
   for i, n in ipairs(queue) do rune.echo("  " .. i .. ". " .. n) end
 end)
 
@@ -124,7 +125,7 @@ end)
 local function finish()
   rune.send_raw("spellup " .. cur .. "\nsmile " .. cur)
   cur = nil
-  say("[spellups] done - " .. #queue .. " still waiting.")
+  say("[spup] done - " .. #queue .. " still waiting.")
   later(1, drain)
 end
 
@@ -137,7 +138,7 @@ local function cancel_done()
   finish()
 end
 local function cancel_try()
-  if cancel_n >= CANCEL_MAX then return cancel_done() end
+  if cancel_n >= CANCEL_MAX then cancel_done(); return end
   cancel_n = cancel_n + 1
   rune.send_raw("cast 'cancel' " .. cur)
   cancel_wait.start(4, cancel_try)
@@ -186,8 +187,8 @@ tags.on("/roomchars", function()
 end)
 
 local function spn()
-  if cur then return warn("[spellups] still working on " .. cur .. ".") end
-  if #queue == 0 then return say("[spellups] nobody queued.") end
+  if cur then warn("[spup] still working on " .. cur .. "."); return end
+  if #queue == 0 then say("[spup] nobody queued."); return end
   cur = table.remove(queue, 1)
   look_wait = true
   rune.send_raw("look")
@@ -201,11 +202,13 @@ rune.alias.exact("spn", function() spn() end)
 -- means it was that way already - once more. Only a first toggle on is
 -- spup's change. then() runs when the channel is the way wanted
 local stop_gos
+local gos_timeout = util.slot()   -- the reader's 10 s limit; a new gossip_set replaces it
 local function gossip_set(want, then_fn)
   if stop_gos then stop_gos() end
   local second = false
   local function done(ctx)
     stop_gos(); stop_gos = nil
+    gos_timeout.stop()
     util.eat_blanks(ctx.line:clean())
     if then_fn then then_fn(second) end
   end
@@ -227,7 +230,7 @@ local function gossip_set(want, then_fn)
     end
   end, "spup_gossip")
   -- not a session timer: the off toggle is sent as the session ends
-  rune.timer.after(10, function() if stop_gos then stop_gos(); stop_gos = nil end end)
+  gos_timeout.start(10, function() if stop_gos then stop_gos(); stop_gos = nil end end)
   rune.send_raw("gossip")
 end
 
@@ -315,7 +318,7 @@ local function quaff()
   rune.send("qs")
   later(2, function()
     if not S.quaffing then return end
-    if mana_pct() < FULL then return quaff() end
+    if mana_pct() < FULL then quaff(); return end
     S.quaffing = false
     if stop_qs then stop_qs() end
     drain()
@@ -325,7 +328,7 @@ end
 function drain()
   if not S.on or not (S.phase == "run" or S.phase == "last") then return end
   if S.paused or S.quaffing or cur or #queue == 0 then return end
-  if mana_pct() < LOW then return quaff() end
+  if mana_pct() < LOW then quaff(); return end
   rune.send("su")
   rune.send_raw("vis")
   spn()
@@ -333,12 +336,12 @@ end
 
 local walk_hook
 local function start()
-  if S.on then return warn("[spup] already on.") end
+  if S.on then warn("[spup] already on."); return end
   cancel_session_timers()
   S.on, S.phase, S.paused, S.quaffing, S.gos_changed = true, "walk", false, false, false
   queue = {}
   smiles(true)
-  if game.room and game.room.num == ROOM then return arrived() end
+  if game.room and game.room.num == ROOM then arrived(); return end
   say("[spup] heading to Muranooyashiro.")
   walk_hook = true
   later(30, function()
@@ -358,9 +361,9 @@ rune.gmcp.on("room.info", function()
 end, { name = "spup_walk" })
 
 local function stop()
-  if not S.on then return say("[spup] not on.") end
+  if not S.on then say("[spup] not on."); return end
   queue = {}
-  if S.phase == "run" or S.phase == "last" then return done() end
+  if S.phase == "run" or S.phase == "last" then done(); return end
   if S.phase == "ending" then return end
   walk_hook = false
   if S.gos_changed then gossip_set("off") end
@@ -382,20 +385,22 @@ end
 
 rune.alias.exact("spup", function(args)
   local a, b = trim(args):match("^(%S*)%s*(%S*)")
-  if a == "on" then return start() end
-  if a == "off" then return stop() end
+  if a == "on" then start(); return end
+  if a == "off" then stop(); return end
   if a == "resume" then
-    if not S.paused then return say("[spup] not paused.") end
+    if not S.paused then say("[spup] not paused."); return end
     S.paused = false
     say("[spup] resumed.")
-    return drain()
+    drain()
+    return
   end
   if a == "test" then
     test = b ~= "off"
-    if test then return say("[spup] test mode on - gossips are only shown here.") end
-    return warn("[spup] test mode off - gossips are sent for real.")
+    if test then say("[spup] test mode on - gossips are only shown here."); return end
+    warn("[spup] test mode off - gossips are sent for real.")
+    return
   end
-  if S.on then return status() end
+  if S.on then status(); return end
   say("[spup] off. spup on starts a session.")
 end)
 

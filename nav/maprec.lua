@@ -68,15 +68,6 @@ local function exit_name(cmd)
   return DIRS[c] or c
 end
 
-local function split(s)
-  local out = {}
-  for raw in (s .. ";"):gmatch("([^;]*);") do
-    local c = trim(raw)
-    if c ~= "" then out[#out + 1] = c end
-  end
-  return out
-end
-
 -- The map has some exit from room a to room b
 local function has_way(a, b)
   for _, e in pairs(mapper.rooms[a].exits) do
@@ -165,7 +156,7 @@ local function others(p)
 end
 
 local function show_plan()
-  if #S.plan == 0 then return say("[map] the plan is empty.") end
+  if #S.plan == 0 then say("[map] the plan is empty."); return end
   say("[map] plan - map apply writes it, map edit / map drop change it:")
   for i, p in ipairs(S.plan) do
     local r = mapper.rooms[p.from]
@@ -184,24 +175,28 @@ local cmd = {}
 
 function cmd.record(rest)
   if rest == "stop" then
-    if not S.on then return warn("[map] not recording.") end
+    if not S.on then warn("[map] not recording."); return end
     S.on = false
     hook(false)
     say("[map] recording stopped.")
-    return show_plan()
+    show_plan()
+    return
   elseif rest == "cancel" then
     S.on = false
     hook(false)
     S.plan, S.lines = {}, {}
-    return say("[map] recording and plan thrown away.")
+    say("[map] recording and plan thrown away.")
+    return
   elseif rest ~= "" then
-    return warn("map record [stop|cancel]")
+    warn("[map] map record [stop|cancel]")
+    return
   end
   if S.on then
     say(string.format("[map] recording, in %s, %d line(s) sent here.", room_label(S.room), #S.lines))
-    return show_plan()
+    show_plan()
+    return
   end
-  if not mapper.here then return warn("[map] where you are isn't known yet - move once first.") end
+  if not mapper.here then warn("[map] where you are isn't known yet - move once first."); return end
   S.on, S.room, S.lines = true, mapper.here, {}
   hook(true)
   say("[map] recording from " .. room_label(S.room) .. ".")
@@ -212,9 +207,9 @@ function cmd.plan() show_plan() end
 function cmd.edit(rest)
   local n, cmds = rest:match("^(%d+)%s+(.+)$")
   local p = S.plan[tonumber(n or "")]
-  if not p then return warn("map edit <n> <cmds> - n from map plan, cmds \";\"-separated") end
-  local list = split(cmds)
-  if #list == 0 then return warn("map edit: no commands.") end
+  if not p then warn("[map] map edit <n> <cmds> - n from map plan, cmds \";\"-separated"); return end
+  local list = util.split(cmds)
+  if #list == 0 then warn("[map] map edit: no commands."); return end
   p.cmds, p.name = table.concat(list, ";"), exit_name(list[#list])
   show_plan()
 end
@@ -222,10 +217,11 @@ end
 function cmd.drop(rest)
   if rest == "all" then
     S.plan = {}
-    return say("[map] plan emptied.")
+    say("[map] plan emptied.")
+    return
   end
   local i = tonumber(rest)
-  if not i or not S.plan[i] then return warn("map drop <n|all> - n from map plan") end
+  if not i or not S.plan[i] then warn("[map] map drop <n|all> - n from map plan"); return end
   table.remove(S.plan, i)
   show_plan()
 end
@@ -242,7 +238,7 @@ end
 -- so routes don't take it
 local function write(p, keep)
   local msg, ok = mapper.set_exit(p.from, keep, p.to, p.cmds)
-  if ok then say(msg) else return warn(msg) end
+  if ok then say(msg) else warn(msg); return end
   local r = mapper.rooms[p.from]
   for name, e in pairs(r.exits) do
     if e.to == p.to and name ~= keep then
@@ -289,7 +285,7 @@ local function ask(queue, i)
 end
 
 function cmd.apply()
-  if #S.plan == 0 then return warn("[map] nothing to apply.") end
+  if #S.plan == 0 then warn("[map] nothing to apply."); return end
   local entries, queue = {}, {}
   for i, p in ipairs(S.plan) do entries[i] = p end   -- write() takes them off the plan
   for _, p in ipairs(entries) do

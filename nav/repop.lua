@@ -67,7 +67,7 @@ end, { name = "repop_seen" })
 -- estimate), `secs` sense life's own limit
 local function reading(mins, secs)
   local zone = game.room.zone
-  if zone == "" then return warn("[pop] area unknown (no GMCP room yet) - move a room and cast again.") end
+  if zone == "" then warn("[pop] area unknown (no GMCP room yet) - move a room and cast again."); return end
   local a, now = area(zone), os.time()
   local new, sure, contra = now + secs, false, false
   if mins and a.seen then
@@ -89,14 +89,16 @@ local SENSE = "You sense that life will return to this area "
 rune.trigger.starts(SENSE, function(_, ctx)
   local rest = ctx.line:clean():sub(#SENSE + 1)
   local lo, hi = rest:match("^in roughly (%d+)%-(%d+) minutes%.$")
-  if lo then return reading(tonumber(lo), tonumber(hi) * 60) end
+  if lo then reading(tonumber(lo), tonumber(hi) * 60); return end
   local h = rest:match("^in roughly (%d+) hours?")
   if h then
     local m = rest:match("and (%d+) minute") or 0
-    return reading(nil, (tonumber(h) * 60 + tonumber(m)) * 60)
+    reading(nil, (tonumber(h) * 60 + tonumber(m)) * 60)
+    return
   end
   if rest:match("^within ") then
-    return reading(0, rest == "within the next 30 seconds." and 30 or 60)
+    reading(0, rest == "within the next 30 seconds." and 30 or 60)
+    return
   end
 end, { name = "repop_sense" })
 
@@ -113,7 +115,7 @@ table.insert(status.row1_end, 1, function()
 end)
 
 rune.alias.exact("pop", function()
-  if #stats == 0 then return say("[pop] no exact countdown checked against a repop yet.") end
+  if #stats == 0 then say("[pop] no exact countdown checked against a repop yet."); return end
   say("[pop] the last " .. #stats .. " exact countdowns (repop minus prediction):")
   for _, l in ipairs(stats) do rune.echo("  " .. l) end
 end)

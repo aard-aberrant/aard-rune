@@ -127,10 +127,10 @@ end, { name = "target_check" })
 
 function target.go()
   local t = cur
-  if not t then return warn("[target] no target - target <kw>, gm <mob> or qx.") end
+  if not t then warn("[target] no target - target <kw>, gm <mob> or qx."); return end
   local here = game.room.zone
-  if t.zone and not travel.same_area(t.zone, here) then return travel.go_area(t.zone) end
-  if t.room then return travel.go_room(t.zone or here, t.room, "target " .. label(t)) end
+  if t.zone and not travel.same_area(t.zone, here) then travel.go_area(t.zone); return end
+  if t.room then travel.go_room(t.zone or here, t.room, "target " .. label(t)); return end
   -- No room: ask where, once it's free
   if checking or travel.where_busy() then
     rune.timer.after(1, function() if cur == t then target.go() end end)
@@ -140,7 +140,7 @@ function target.go()
   local function walk(kw, name, room)
     checking = false
     if cur ~= t then return end
-    if not name then return warn("[target] " .. (room or (label(t) .. " isn't in this area."))) end
+    if not name then warn("[target] " .. (room or (label(t) .. " isn't in this area."))); return end
     t.kw, t.name, t.zone, t.room = t.kw or kw, t.name or name, here, room
     changed()
     travel.go_room(here, room, "target " .. label(t))
@@ -156,13 +156,14 @@ local function target_cmd(args)
   local text = trim(args)
   if text == "clear" then
     target.clear()
-    return say("[target] cleared.")
+    say("[target] cleared.")
+    return
   end
   if text ~= "" then
     target.set({ kw = text, src = "manual" })
     return
   end
-  if not cur then return say("[target] none.") end
+  if not cur then say("[target] none."); return end
   say(string.format("[target] %s - keyword %s, %s, room %s (%s)", label(cur), cur.kw or "?",
     cur.zone and area_name(cur.zone) or "area ?", cur.room or "?", cur.src or "?"))
 end

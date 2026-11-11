@@ -87,7 +87,7 @@ local tick = util.slot()   -- the info row's minute redraw
 local function row()
   -- Nothing until cn has picked a mob: a cp check alone (after cp request,
   -- or at load) leaves the pane to what was there
-  if not ends or not cur then return info.set("campaign", 60, nil) end
+  if not ends or not cur then info.set("campaign", 60, nil); return end
   local left = math.max(0, math.ceil((ends - os.time()) / 60))
   local d, h, m = math.floor(left / 1440), math.floor(left % 1440 / 60), left % 60
   local time = d > 0 and string.format("%dd %dh", d, h) or string.format("%dh %dm", h, m)
@@ -283,7 +283,7 @@ live("^Congratulations, that was one of your CAMPAIGN mobs!$", function()
       if cur and e.mob == cur.mob and e.place == cur.place then at = i; break end
     end
   end
-  if killed == "" or not at then return check_quietly() end
+  if killed == "" or not at then check_quietly(); return end
   local e = table.remove(list, at)
   if cur and not cur_dead and e.mob == cur.mob then
     cur_dead = true
@@ -368,13 +368,14 @@ local function aim(e)
 end
 
 rune.alias.exact("cn", function(args)
-  if #list == 0 then return warn("[campaign] cn: no campaign mobs - cp check first.") end
+  if #list == 0 then warn("[campaign] cn: no campaign mobs - cp check first."); return end
   local skip = util.trim(args) == "next"
   if skip and cur then skipped[cur.mob] = true end
   if skip or not cur or cur_dead then
     if aim(pick()) then return end
   elseif not cur.zone and cur.where and #cur.where > 1 then
-    return aim(cur)   -- the picker again: none chosen yet
+    aim(cur)   -- the picker again: none chosen yet
+    return
   else
     -- The same mob already targeted - by cn, or found by hqq (its keyword
     -- and room are the right one of several; seen live 2026-11-09: cn

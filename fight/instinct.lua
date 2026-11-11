@@ -54,7 +54,7 @@ local function done(_, ctx)
     end
   end
   util.eat_blanks(ctx.lines[#ctx.lines]:clean())
-  if #out == 0 then return rune.echo(theme.muted("[inst] no instinct above 0")) end
+  if #out == 0 then rune.echo(theme.muted("[inst] no instinct above 0")); return end
   local line = table.concat(out, " ")
   rune.echo(line)
   rune.clipboard.set(line)

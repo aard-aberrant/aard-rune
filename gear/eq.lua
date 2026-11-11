@@ -132,10 +132,10 @@ end
 rune.alias.exact("eqwear", function(args)
   local want = util.trim(args):lower()
   local set, key = pick(want)
-  if not set then return no_set("eqwear", want) end
+  if not set then no_set("eqwear", want); return end
   eqdata(function(now)
     local locs = missing(set, now)
-    if #locs == 0 then return say("[eq] eqwear: already wearing the whole " .. key .. " set.") end
+    if #locs == 0 then say("[eq] eqwear: already wearing the whole " .. key .. " set."); return end
     local cmds = {}
     for _, loc in ipairs(locs) do
       local id = tostring(set[loc].id)
@@ -189,7 +189,8 @@ rune.alias.exact("eqsave", function(args)
   local want = util.trim(args):lower()
   if want == "" then want = tostring(game.level or "") end
   if not want:match("^[a-z0-9_-]+$") then
-    return warn("[eq] eqsave: a level or a name (letters, digits, _ and -).")
+    warn("[eq] eqsave: a level or a name (letters, digits, _ and -).")
+    return
   end
   local key = tonumber(want) or want
   eqdata(function(now)
@@ -200,7 +201,7 @@ rune.alias.exact("eqsave", function(args)
         n = n + 1
       end
     end
-    if n == 0 then return warn("[eq] eqsave: nothing worn was read - not saved.") end
+    if n == 0 then warn("[eq] eqsave: nothing worn was read - not saved."); return end
     local had = sets[key] ~= nil
     sets[key] = set
     if save() then
@@ -215,10 +216,10 @@ end)
 rune.alias.exact("eqcheck", function(args)
   local want = util.trim(args):lower()
   local set, key = pick(want)
-  if not set then return no_set("eqcheck", want) end
+  if not set then no_set("eqcheck", want); return end
   eqdata(function(now)
     local locs = missing(set, now)
-    if #locs == 0 then return say("[eq] eqcheck: wearing the whole " .. key .. " set.") end
+    if #locs == 0 then say("[eq] eqcheck: wearing the whole " .. key .. " set."); return end
     say("[eq] eqcheck: not wearing these from the " .. key .. " set:")
     for _, loc in ipairs(locs) do
       local it = set[loc]
@@ -235,14 +236,14 @@ rune.alias.exact("eqsets", function(args)
   local a, b = util.trim(args):lower():match("^(%S*)%s*(.-)$")
   if a == "del" then
     local key = tonumber(b) or b
-    if b == "" or not sets[key] then return warn("[eq] eqsets: no set saved as " .. b .. ".") end
+    if b == "" or not sets[key] then warn("[eq] eqsets: no set saved as " .. b .. "."); return end
     sets[key] = nil
     if save() then say("[eq] eqsets: removed the " .. b .. " set.") end
     return
   end
   if a ~= "" then
     local set = sets[tonumber(a) or a]
-    if not set then return warn("[eq] eqsets: no set saved as " .. a .. ".") end
+    if not set then warn("[eq] eqsets: no set saved as " .. a .. "."); return end
     local locs = {}
     for loc in pairs(set) do locs[#locs + 1] = loc end
     table.sort(locs)
@@ -252,7 +253,7 @@ rune.alias.exact("eqsets", function(args)
     return
   end
   local keys = set_keys()
-  if #keys == 0 then return say("[eq] no equipment sets yet - wear one and eqsave [level | name].") end
+  if #keys == 0 then say("[eq] no equipment sets yet - wear one and eqsave [level | name]."); return end
   local _, mine = pick("")
   for _, k in ipairs(keys) do
     local n = 0
@@ -297,7 +298,7 @@ end
 
 local function wield(id, what)
   id = tostring(id)
-  if wielded() == id then return say("[eq] dt: " .. what .. " is already wielded.") end
+  if wielded() == id then say("[eq] dt: " .. what .. " is already wielded."); return end
   say("[eq] dt: " .. what .. " -> " .. id)
   bag_removed()
   last_dt = id
@@ -307,11 +308,13 @@ end
 local function dt(arg)
   arg = util.trim(arg):lower()
   if arg == "" then
-    return say("[eq] dt types: " .. table.concat(types, " ") .. " | also dt next, dt reset")
+    say("[eq] dt types: " .. table.concat(types, " ") .. " | also dt next, dt reset")
+    return
   end
   if arg == "r" or arg == "reset" then
-    if not W.primary then return warn("[eq] dt: no primary weapon in data/weapons.lua.") end
-    return wield(W.primary, "primary weapon")
+    if not W.primary then warn("[eq] dt: no primary weapon in data/weapons.lua."); return end
+    wield(W.primary, "primary weapon")
+    return
   end
   if arg == "n" or arg == "next" then
     local w = wielded()
@@ -320,16 +323,17 @@ local function dt(arg)
     for i, t in ipairs(types) do
       if t == cur then nxt = types[i % #types + 1] end
     end
-    if not nxt then return warn("[eq] dt: no weapons in data/weapons.lua.") end
-    return wield(W.types[nxt], nxt)
+    if not nxt then warn("[eq] dt: no weapons in data/weapons.lua."); return end
+    wield(W.types[nxt], nxt)
+    return
   end
   local hits = {}
   for _, t in ipairs(types) do
     if t == arg then hits = { t }; break end
     if t:sub(1, #arg) == arg then hits[#hits + 1] = t end
   end
-  if #hits == 1 then return wield(W.types[hits[1]], hits[1]) end
-  if #hits > 1 then return warn("[eq] dt: several types start with " .. arg .. ": " .. table.concat(hits, " ")) end
+  if #hits == 1 then wield(W.types[hits[1]], hits[1]); return end
+  if #hits > 1 then warn("[eq] dt: several types start with " .. arg .. ": " .. table.concat(hits, " ")); return end
   warn("[eq] dt: no weapon for " .. arg .. ".")
   dt("")
 end

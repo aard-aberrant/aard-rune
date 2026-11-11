@@ -53,16 +53,14 @@ rune.hooks.on("echo", function(text) main.push(colors.strip(text)) end, { name =
 
 -- Our messages: rune.echo (lua/core/00_init.lua) is a plain function with
 -- no hook, so it's wrapped. Every file calls rune.echo at the time (none
--- keeps its own copy), so they all go through this. The original is kept
--- in rune._copy_echo, so a /reload that keeps Lua's state wraps the
--- original again, not the last wrapper (every message would be kept twice)
+-- keeps its own copy), so they all go through this. A /reload starts a
+-- fresh Lua state (Rune's Engine.Init), so this always wraps Rune's own
 -- The same wrapper puts them in an open /log too, which Rune leaves them out
 -- of (lua/core/60_log.lua: "client chrome (rune.echo) is not logged") - so
 -- a debug topic's lines land in a log (the user, 2026-11-09). Colors kept
 -- in a raw log (rune.session "log_raw", as Rune's own hooks read it);
 -- nothing in a chat-only one (panes/chats.lua's "log_chat_only")
-rune._copy_echo = rune._copy_echo or rune.echo
-local echo = rune._copy_echo
+local echo = rune.echo
 function rune.echo(text)
   text = tostring(text)
   local plain = colors.strip(text)
@@ -81,12 +79,13 @@ rune.command.add("copy", function(args)
   local n, which = (args or ""):match("^%s*(%d+)%s*(%a*)%s*$")
   n = tonumber(n)
   if not n or n < 1 or (which ~= "" and which ~= "chat") then
-    return util.warn("[copy] /copy <n> [chat] - the last n lines of the main pane (" .. main.count
+    util.warn("[copy] /copy <n> [chat] - the last n lines of the main pane (" .. main.count
       .. " of " .. main.max .. " kept) or the chats pane (" .. chat.count .. " of " .. chat.max .. ").")
+    return
   end
   local r = which == "chat" and chat or main
   n = math.min(n, r.count)
-  if n == 0 then return util.warn("[copy] nothing yet.") end
+  if n == 0 then util.warn("[copy] nothing yet."); return end
   local text = table.concat(r.last(n), "\n")
   rune.clipboard.set(text)
   util.say("[copy] " .. n .. (which == "chat" and " chat" or "") .. " line" .. (n == 1 and "" or "s")

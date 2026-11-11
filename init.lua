@@ -10,7 +10,7 @@ end
 -- above it in this list, with a note on why (Lua's require: each runs once,
 -- and /reload starts a fresh Lua state), and returns its table when others
 -- use it:
---   core/      util, game (GMCP state), layout, tags, aliases, login, history, debug, help -
+--   core/      util, game (GMCP state), layout, tags, aliases, login, history, debug, help, profile -
 --              core/layout, core/game and core/util require nothing of ours
 --   panes/     status, group, chats, info, affects, and timer (which
 --              shows in info). Features plug into the panes (status's slots,
@@ -26,6 +26,10 @@ end
 -- data/ is settings and game data, map/ the map, tools/ the converters.
 -- This file only sets Rune up and lists the features
 local util = require("core.util")
+-- /profile (core/profile.lua). After /profile startup, it times every
+-- require from here to startup_end() below; otherwise both do nothing
+local profile = require("core.profile")
+profile.startup_begin()
 require("core.layout")     -- the panes, and the picker wrapper
 
 -- Ctrl+E goes to the end of the input line, as in a shell (Ctrl+A already
@@ -127,18 +131,17 @@ local game = require("core.game")
 -- off." - hidden if it matches, shown as it comes if not
 game.on_login(function()
   util.await("exact", "## Setting noweather to on.", function(_, ctx)
-    util.eat_blanks(ctx.line:clean())
-    return false
+    return util.hide(ctx)
   end, "init_noweather_reply")
   rune.gmcp.send("config noweather on")
 end)
 
 local class_for = rune.session.get("class_modules")
 local function load_class(sub)
-  local C = util.load_data(rune.config_dir .. "/data/classes/" .. sub:lower() .. ".lua")
+  local C = util.class_data(sub)
   for _, m in ipairs(C and C.modules or {}) do
     local ok, err = pcall(require, m)
-    if not ok then util.err("[init.lua] " .. sub .. "'s " .. m .. " didn't load: " .. tostring(err)) end
+    if not ok then util.err("[init] " .. sub .. "'s " .. m .. " didn't load: " .. tostring(err)) end
   end
 end
 if class_for then load_class(class_for) end
@@ -149,7 +152,7 @@ local function class_check()
   local was = class_for
   class_for = sub   -- once: more char.base before the reload ask for none
   if was then
-    util.say("[init.lua] subclass now " .. sub .. " - reloading for its modules.")
+    util.say("[init] subclass now " .. sub .. " - reloading for its modules.")
     rune.timer.after(0, rune.reload)   -- after this handler, not inside it
   else
     load_class(sub)
@@ -157,6 +160,8 @@ local function class_check()
 end
 game.on_login(class_check)
 rune.gmcp.on("char.base", class_check, { name = "init_class_modules" })
+
+profile.startup_end()   -- the requires above, timed after /profile startup
 
 -- /reload starts every table above empty, and the game only sends char.*
 -- and group when something changes - ask for both now so the bar and the
@@ -167,4 +172,4 @@ rune.gmcp.send("request group")
 rune.gmcp.send("request room")
 rune.gmcp.send("request quest")   -- QST
 
-util.say("[init.lua] loaded.")
+util.say("[init] loaded.")

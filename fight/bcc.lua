@@ -133,7 +133,7 @@ walking.add("contains", "A thick layer of mist is obscuring your vision.", funct
 end, { name = "bcc_mist" })
 
 local function find()
-  if phase then return say("[bcc] find is already walking - bcc stop to cancel it.") end
+  if phase then say("[bcc] find is already walking - bcc stop to cancel it."); return end
   i, n, back = 0, 0, 0
   room = game.room and game.room.num
   walking.set(true)
@@ -152,9 +152,9 @@ end
 local function count_run()
   local home = travel.cfg.home_vnum
   local r = home and mapper.rooms[home]
-  if not r then return warn("[bcc] home_vnum isn't on the map - run not counted.") end
+  if not r then warn("[bcc] home_vnum isn't on the map - run not counted."); return end
   local runs = r.note == "" and 0 or tonumber(r.note:match("^bcc runs (%d+)"))
-  if not runs then return err("[bcc] home's room note isn't a run count, not updated: " .. r.note) end
+  if not runs then err("[bcc] home's room note isn't a run count, not updated: " .. r.note); return end
   runs = runs + 1
   local when = os.date("%d-%b %H%M")
   r.note = "bcc runs " .. runs .. " " .. when
@@ -177,7 +177,7 @@ rune.alias.exact("bcc", function(args)
   if args == "find" then
     find()
   elseif args == "stop" then
-    if not phase then return say("[bcc] find isn't walking.") end
+    if not phase then say("[bcc] find isn't walking."); return end
     walk_end()
     say("[bcc] find stopped.")
   else

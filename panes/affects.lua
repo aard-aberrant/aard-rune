@@ -439,7 +439,7 @@ local function dbg(what, id)
 end
 
 tags.on("recon", function(rest)
-  dbg("{recon}" .. rest, tonumber(rest:match("^(%d+)")))
+  if rec_dbg.on then dbg("{recon}" .. rest, tonumber(rest:match("^(%d+)"))) end
   local id, secs = rest:match("^(%d+),(%d+)$")
   if not id then return end
   id, secs = tonumber(id), tonumber(secs)
@@ -460,7 +460,7 @@ tags.on("recon", function(rest)
 end)
 
 tags.on("recoff", function(rest)
-  dbg("{recoff}" .. rest, tonumber(rest:match("^(%d+)")))
+  if rec_dbg.on then dbg("{recoff}" .. rest, tonumber(rest:match("^(%d+)"))) end
   local id = tonumber(rest:match("^(%d+)$"))
   if id == 65 then
     totem.rec_end, totem.ready = 0, true
@@ -530,8 +530,7 @@ local function totem_done(ctx)
   totem_quiet = totem_q[1] == true
   if not totem_q[1] and totem_q[1] ~= false then reply_trig.set(false) end
   if not hidden then return end
-  util.eat_blanks(ctx.line:clean())
-  return false
+  return util.hide(ctx)
 end
 
 totem_trig.add("regex", "You place an? (\\w+) totem in the room\\.", function(m)

@@ -114,7 +114,7 @@ local PAD = string.rep(" ", 10)
 local last_key
 
 local function draw()
-  if not dir then last_key = nil; return info.set("bcc", 10, nil) end
+  if not dir then last_key = nil; info.set("bcc", 10, nil); return end
   local now = os.time()
   local left, key, counting = {}, dir, false
   for _, c in ipairs(ALL) do
@@ -204,7 +204,8 @@ local function send()
   local h = hot[RING[to].cell] - os.time()
   if h > 0 and rr.here_hot <= 0 then
     rr_stop()
-    return err(string.format("[rr] the next room (%s) is in the breath for %ds more - not moving you.", RING[to].cell, h))
+    err(string.format("[rr] the next room (%s) is in the breath for %ds more - not moving you.", RING[to].cell, h))
+    return
   end
   go()
 end
@@ -214,7 +215,8 @@ function plan()
   where()
   if rr.c == 0 then
     rr_stop()
-    return err("[rr] room " .. tostring(rr.v) .. " isn't on the dragon nest ring, stopped.")
+    err("[rr] room " .. tostring(rr.v) .. " isn't on the dragon nest ring, stopped.")
+    return
   end
   rr.here_hot = hot[RING[rr.c].cell] - os.time()
   if rr.here_hot > 0 and not rr.escape and safe then
@@ -227,11 +229,13 @@ function plan()
   end
   if rr.c == rr.goal then
     rr_stop()
-    return arrive()
+    arrive()
+    return
   end
   if rr.stuck >= MAX_STUCK then
     rr_stop()
-    return err("[rr] " .. rr.stuck .. " tries without moving, stopped.")
+    err("[rr] " .. rr.stuck .. " tries without moving, stopped.")
+    return
   end
   send()
 end
@@ -285,8 +289,8 @@ A.trigger.exact("You cannot retreat in that direction!", function()
 end, { name = "blackclaw_baddir" })
 
 A.alias.exact("rr", function()
-  if not rr.on then return rr_begin() end
-  if rr.escape then return say("[rr] getting you out of the breath first.") end
+  if not rr.on then rr_begin(); return end
+  if rr.escape then say("[rr] getting you out of the breath first."); return end
   rr.goal = rr.goal + 2
   if rr.goal > 8 then rr.goal = rr.goal - 8 end
   say("[rr] queued - now going on to room " .. rr.goal .. " (" .. RING[rr.goal].cell .. ").")

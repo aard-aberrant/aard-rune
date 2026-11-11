@@ -2,7 +2,8 @@
 --   k <mob>   your primary attack (pattack) on <mob>
 --   k         in a fight: k_fight, or pattack with no target (the game aims
 --             it at your current enemy). Out of one: pattack on the target
---             (targets/target.lua), by its keyword. No target or keyword: a message
+--             (targets/target.lua), by its keyword - none found yet: a guess
+--             from its name, as the target's check tries first. No target: a message
 --   kk [mob]  your secondary attack (sattack)
 --   aa        your area attack (paoe)
 -- The commands are in data/classes/<subclass>.lua - the subclass as GMCP
@@ -28,7 +29,7 @@ local subclass    -- the subclass they're for
 rune.gmcp.on("char.base", function()
   if not game.subclass or game.subclass == subclass then return end
   subclass = game.subclass
-  C = util.load_data(rune.config_dir .. "/data/classes/" .. subclass:lower() .. ".lua")
+  C = util.class_data(subclass)
   if not C then warn("[combat] no attacks for " .. subclass .. " - k, kk and aa need that file.") end
 end, { name = "combat_base" })
 
@@ -54,13 +55,23 @@ rune.alias.exact("k", function(args)
     rune.send_raw(C.k_fight or pattack)
   else
     local t = target.get()
-    if t and t.kw then
-      say("[combat] k: " .. (t.name or t.kw))
+    -- No keyword yet (the target's check is still asking where): the
+    -- check's own first guess from the name - "a shifty exhibit employee"
+    -- -> "shifty exhibit employee" (seen 2026-11-10: k typed on arrival,
+    -- before where answered). A wrong guess is refused by the game
+    local kw, guessed = t and t.kw, false
+    if t and not kw and t.name then
+      kw = util.mob_keywords(t.name)[1]
+      if kw == "" then kw = nil end
+      guessed = kw ~= nil
+    end
+    if kw then
+      say("[combat] k: " .. (t.name or kw) .. (guessed and (" (keyword guessed: " .. kw .. ")") or ""))
       -- A numbered keyword (5.traveller, from hqq or target) counts the
       -- area's mobs for where, but an attack seemed to count only the room's
       -- ("They aren't here." with two in the room, 2026-11-06): attack by
       -- the keyword alone - the first one here
-      rune.send_raw(pattack .. " " .. (t.kw:gsub("^%d+%.", "")))
+      rune.send_raw(pattack .. " " .. (kw:gsub("^%d+%.", "")))
     elseif t then
       warn("[combat] k: no keyword for " .. t.name .. " - k <mob>.")
     else

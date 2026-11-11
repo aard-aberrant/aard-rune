@@ -19,8 +19,9 @@ local STEPS = {
 A.help("knossos", "knossos", "the whole Knossos area quest, from the portal's landing room 28193 (knossos)")
 A.alias.exact("knossos", function()
   if game.room.num ~= START then
-    return util.warn("[knossos] start in room " .. START .. ", Before a great city (you're in "
+    util.warn("[knossos] start in room " .. START .. ", Before a great city (you're in "
       .. tostring(game.room.num) .. ") - g knossos takes you there.")
+    return
   end
   rune.send_raw(table.concat(STEPS, "\n"))
 end)

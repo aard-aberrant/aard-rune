@@ -89,7 +89,7 @@ end
 
 local function load(zone)
   local chunk, e = loadfile(DIR .. zone .. ".lua")
-  if not chunk then return util.err("[areas] can't load " .. zone .. ": " .. tostring(e)) end
+  if not chunk then util.err("[areas] can't load " .. zone .. ": " .. tostring(e)); return end
   local rec = { zone = zone, handles = {}, unload = {} }
   loaded = rec
   local ok, err = pcall(chunk, context(rec))
@@ -113,7 +113,7 @@ help.add("areascripts", "areascripts", "the area scripts, and which one is loade
 rune.alias.exact("areascripts", function()
   local names = {}
   local ok, p = pcall(io.popen, 'ls "' .. DIR .. '" 2>/dev/null')
-  if not ok or not p then return warn("[areas] can't list " .. DIR .. " here.") end
+  if not ok or not p then warn("[areas] can't list " .. DIR .. " here."); return end
   for line in p:lines() do
     local z = line:match("^(.+)%.lua$")
     if z and z ~= "loader" then names[#names + 1] = z end

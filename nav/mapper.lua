@@ -19,7 +19,9 @@
 --   - a maze room (details contain "maze") gets its name, area and terrain
 --     but no exits - GMCP lists every maze exit as -1
 -- Saved a minute after a change (checked every 60 s), before /reload, on
--- disconnect, and by "mapsave".
+-- disconnect, and by "mapsave". Rooms by vnum and each room's exits by name,
+-- so an unchanged map saves byte for byte the same (a diff shows only what
+-- changed; before 2026-11-10 exits came out in pairs() order)
 -- Always on - tt++'s $mapping switch was never used by hand, so it's gone.
 
 local util = require("core.util")
@@ -81,11 +83,16 @@ function M.save()
   for v in pairs(M.rooms) do vnums[#vnums + 1] = v end
   table.sort(vnums)
   local ok = util.write_file(M.file, function(fh)
+    local names = {}   -- one room's exit names, sorted: the file comes out the same every save
     for _, v in ipairs(vnums) do
       local r = M.rooms[v]
       fh:write(table.concat({ "R", v, clean(r.area), clean(r.terrain), clean(r.data),
                               clean(r.note), clean(r.name) }, "\t"), "\n")
-      for name, e in pairs(r.exits) do
+      for i = #names, 1, -1 do names[i] = nil end
+      for name in pairs(r.exits) do names[#names + 1] = name end
+      table.sort(names)
+      for _, name in ipairs(names) do
+        local e = r.exits[name]
         fh:write(table.concat({ "X", v, e.to, clean(name), clean(e.flags), clean(e.cmds) }, "\t"), "\n")
       end
     end

@@ -46,7 +46,7 @@ local tick = util.slot()   -- the info row's minute redraw
 -- "killed, return to QM"), area, room, mob. Redrawn each minute
 local CYAN, RED = theme.value.on, theme.danger.on
 local function row()
-  if not q then return info.set("quest", 50, nil) end
+  if not q then info.set("quest", 50, nil); return end
   local first
   if q.killed then
     first = RED .. "killed, return to QM"
@@ -180,11 +180,12 @@ rune.gmcp.on("comm.quest", function(d)
 end, { name = "quest_target" })
 
 rune.alias.exact("qx", function()
-  if not q or q.killed or (q.room or "") == "" then return warn("[quest] qx: no quest target.") end
+  if not q or q.killed or (q.room or "") == "" then warn("[quest] qx: no quest target."); return end
   local zone = travel.zone_of(q.area)
   if not zone then
-    return warn("[quest] qx: area \"" .. tostring(q.area) .. "\" isn't in data/areas.lua - "
+    warn("[quest] qx: area \"" .. tostring(q.area) .. "\" isn't in data/areas.lua - "
       .. q.targ .. " is in " .. q.room .. ".")
+    return
   end
   local t = target.get()
   -- Already this quest's target: keep it (and the keyword it learned)

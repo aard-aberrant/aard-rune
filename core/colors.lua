@@ -147,8 +147,11 @@ function colors.strip(s) return (s:gsub("\27%[[%d;\\]*m", "")) end
 -- Codes shown as \e, for a debug line
 function colors.show(s) return (s:gsub("\27", "\\e")) end
 
--- Text without Aardwolf's color codes (@x123, @R) - GMCP's names carry them
-function colors.uncolor(s) return (s:gsub("@x%d%d?%d?", ""):gsub("@.", "")) end
+-- Text without Aardwolf's color codes (@x123, @R) - GMCP's names carry them;
+-- @@ is a plain @
+function colors.uncolor(s)
+  return (s:gsub("@x%d%d?%d?", ""):gsub("@(.)", function(c) return c == "@" and "@" or "" end))
+end
 
 -- Aardwolf's color codes made terminal colors, to show text as the game
 -- will: @r..@w dark (31-37), @R..@W bright (91-97), @D dark gray, @x123

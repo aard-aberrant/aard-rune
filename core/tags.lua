@@ -194,7 +194,7 @@ rune.trigger.regex("^\\{(/?[a-z]+(?: [a-z]+)?)\\}(.*)$", function(m, ctx)
   if not kind then return end
   -- A failed cast's {sfail} has a blank line after it, which would show as
   -- a double blank (tt++ affects.tin, seen live): hidden with it
-  if tag == "sfail" then util.eat_blanks(ctx.line:clean()); return false end
+  if tag == "sfail" then return util.hide(ctx) end
   if kind == "data" or blank(rest) then return false end
   -- Cut the tag out of the raw line, so the colours stay
   local raw = ctx.line:raw()
@@ -207,8 +207,7 @@ rune.trigger.regex("^\\{(/?[a-z]+(?: [a-z]+)?)\\}(.*)$", function(m, ctx)
   end
   if tag == "rname" then
     if rest:find("%(%d+%)%s*$") then   -- a runto hop, and the blank line(s) after it
-      util.eat_blanks(ctx.line:clean())
-      return false
+      return util.hide(ctx)
     end
     if room_starts(line) then return false end
   end

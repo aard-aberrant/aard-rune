@@ -45,18 +45,9 @@ local T = {}
 
 local say, warn, trim = util.say, util.warn, util.trim
 
-local function split_cmds(s)
-  local out = {}
-  for raw in (s .. ";"):gmatch("([^;]*);") do
-    local c = raw:match("^%s*(.-)%s*$")
-    if c ~= "" then out[#out + 1] = c end
-  end
-  return out
-end
-
 -- A route step's commands - a list (portals) or a ";"-joined string - as
 -- a list, and as one line
-local function step_cmds(s) return type(s.cmds) == "table" and s.cmds or split_cmds(s.cmds) end
+local function step_cmds(s) return type(s.cmds) == "table" and s.cmds or util.split(s.cmds) end
 local function step_text(s) return type(s.cmds) == "table" and table.concat(s.cmds, ";") or s.cmds end
 -- A plain move ("n"), or nil
 local function step_dir(s) return type(s.cmds) == "string" and s.cmds:match("^[nsewud]$") end
@@ -326,7 +317,7 @@ end
 -- Walk to `to` using a finished search from the current room
 local function walk(prev, how, to, what)
   local chain, rooms = T.path(prev, how, to)
-  if #chain == 0 then return say("[travel] already at " .. what .. ".") end
+  if #chain == 0 then say("[travel] already at " .. what .. "."); return end
   send_walk(chain, rooms, what)
 end
 
@@ -335,12 +326,13 @@ end
 local function walk_from_home(zone, what)
   local r = M.here and M.rooms[M.here]
   if blocks(r, "2", "3") then
-    return warn("[travel] g: this room doesn't allow home - walk out of it first.")
+    warn("[travel] g: this room doesn't allow home - walk out of it first.")
+    return
   end
   local home = T.cfg.home_vnum
-  if not (home and M.rooms[home]) then return warn("[travel] g: home_vnum isn't on the map (data/portals.lua).") end
+  if not (home and M.rooms[home]) then warn("[travel] g: home_vnum isn't on the map (data/portals.lua)."); return end
   local found, prev, how = T.search(home, function(x) return M.rooms[x].area == zone end)
-  if not found then return warn("[travel] g: no route from home to " .. what .. " on the map.") end
+  if not found then warn("[travel] g: no route from home to " .. what .. " on the map."); return end
   local chain, rooms = T.path(prev, how, found)
   table.insert(chain, 1, { name = "home", cmds = "home" })
   table.insert(rooms, 1, home)
@@ -373,7 +365,7 @@ end
 local function show(prev, how, to, what)
   local chain, rooms = T.path(prev, how, to)
   local n = #chain
-  if n == 0 then return say("[travel] mf: already at " .. what .. ".") end
+  if n == 0 then say("[travel] mf: already at " .. what .. "."); return end
   say(string.format("[travel] mf %s: %d step%s%s", what, n, n == 1 and "" or "s", describe(chain)))
   local all = {}
   for k, step in ipairs(chain) do
@@ -433,8 +425,9 @@ function T.send_paced(assumed)
   if not pos and route_pos(p, M.here, 0) then return end   -- behind: an old report
   if not pos then
     plan = nil
-    return warn("[travel] the walk went off course: you're in " .. room_desc(M.here)
+    warn("[travel] the walk went off course: you're in " .. room_desc(M.here)
       .. ", not on the route - stopped.")
+    return
   end
   p.pos = pos
   if pos >= #p.rooms then plan = nil; return end   -- there
@@ -442,7 +435,7 @@ function T.send_paced(assumed)
   while p.paced[1] and p.paced[1].k <= pos do table.remove(p.paced, 1) end
   local nxt = p.paced[1]
   while nxt and nxt.k - 1 - pos < AHEAD do
-    if game.state == 8 then return stop_paced("you're fighting") end
+    if game.state == 8 then stop_paced("you're fighting"); return end
     table.remove(p.paced, 1)
     rune.send_raw(table.concat(nxt.cmds, "\n"))
     p.sent = nxt.k
@@ -698,42 +691,60 @@ local function runto(what, rt)
 end
 
 -- Choices: { text, desc, what, and set (vnum -> true) or zone }. Measured
--- with one full search from here; unreachable ones are dropped. One goes
--- straight there; several open the picker, nearest first.
+-- with one search from here that stops once every choice is reached (the
+-- whole map only when one can't be); unreachable ones are dropped. One
+-- goes straight there; several open the picker, nearest first.
 -- `act` is walk (the default) or show (mf)
+local NONE = {}
 local function choose(title, choices, on_none, act)
   act = act or walk
   local from = here()
   if not from then return end
-  local _, prev, how, dist, hops = T.search(from)
-  -- Nearest room of every zone, in one pass over what the search reached
-  local zbest, zd = {}, {}
-  for v, d in pairs(dist) do
-    local z = M.rooms[v].area
-    if not zd[z] or d < zd[z] then zbest[z], zd[z] = v, d end
-  end
-  local items, lost = {}, {}
-  for _, c in ipairs(choices) do
-    local best, bd
+  -- Which choices each zone and room belongs to
+  local by_zone, by_room = {}, {}
+  for i, c in ipairs(choices) do
     if c.zone then
-      best, bd = zbest[c.zone], zd[c.zone]
+      by_zone[c.zone] = by_zone[c.zone] or {}
+      table.insert(by_zone[c.zone], i)
     else
       for v in pairs(c.set) do
-        if dist[v] and (not bd or dist[v] < bd) then best, bd = v, dist[v] end
+        by_room[v] = by_room[v] or {}
+        table.insert(by_room[v], i)
       end
     end
-    if best then
+  end
+  -- The search hands rooms to the goal cheapest first, each at its final
+  -- cost, so the first room of a choice it sees is that choice's nearest
+  local best, left = {}, #choices
+  local function reach(list, v)
+    for _, i in ipairs(list) do
+      if not best[i] then best[i] = v; left = left - 1 end
+    end
+  end
+  local function goal(v)
+    local r = M.rooms[v]
+    if r then reach(by_zone[r.area] or NONE, v) end
+    reach(by_room[v] or NONE, v)
+    return left == 0
+  end
+  -- (after an early stop, dist also holds rooms not finished - only best's are final)
+  local _, prev, how, dist, hops = T.search(from, goal)
+  local items, lost = {}, {}
+  for i, c in ipairs(choices) do
+    local v = best[i]
+    if v then
       -- The room you're in is no choice
-      if bd > 0 then items[#items + 1] = { c = c, v = best, d = bd } end
+      if dist[v] > 0 then items[#items + 1] = { c = c, v = v, d = dist[v] } end
     else
       lost[#lost + 1] = c.text
     end
   end
   if #items == 0 and #lost == 0 then
-    return say("[travel] " .. title .. ": you're already there.")
+    say("[travel] " .. title .. ": you're already there.")
+    return
   end
   if #items == 0 then
-    if on_none then return on_none() end
+    if on_none then on_none(); return end
     table.sort(lost)
     warn("[travel] " .. title .. ": no route from here to " .. table.concat(lost, ", ", 1, math.min(#lost, 5))
       .. (#lost > 5 and ", ..." or "") .. " - not linked to this part of the map. g <area> falls back to the game's runto.")
@@ -750,7 +761,7 @@ local function choose(title, choices, on_none, act)
   local function go(it)
     act(prev, how, it.v, it.c.what .. " (" .. it.v .. ")")
   end
-  if #items == 1 then return go(items[1]) end
+  if #items == 1 then go(items[1]); return end
   local list = {}
   for i, it in ipairs(items) do
     list[i] = { text = it.c.text, desc = it.c.desc .. " - " .. hops[it.v] .. " steps", value = i }
@@ -774,12 +785,12 @@ end
 -- whose name contains it. Nearest
 rune.alias.exact("ga", function(args)
   local text = trim(args):lower()
-  if text == "" then return warn("[travel] ga <text> - a label or room name in this area.") end
+  if text == "" then warn("[travel] ga <text> - a label or room name in this area."); return end
   local from = here()
   if not from then return end
   local r = M.rooms[from]
   local zone = r and r.area ~= "" and r.area or nil
-  if not zone then return warn("[travel] ga: this room's area isn't known.") end
+  if not zone then warn("[travel] ga: this room's area isn't known."); return end
   local labs, n = labels_matching(text, zone)
   if n > 0 then
     local set, names = {}, {}
@@ -788,14 +799,16 @@ rune.alias.exact("ga", function(args)
       for _, v in ipairs(vnums) do set[v] = true end
     end
     table.sort(names)
-    return T.go_nearest(set, "label " .. table.concat(names, "/"), "only")
+    T.go_nearest(set, "label " .. table.concat(names, "/"), "only")
+    return
   end
   local set = {}
   for _, vs in pairs(rooms_matching(text, zone)) do
     for v in pairs(vs) do set[v] = true end
   end
   if next(set) == nil then
-    return warn("[travel] ga: no label or room here matches \"" .. text .. "\" - find " .. text .. " searches everywhere.")
+    warn("[travel] ga: no label or room here matches \"" .. text .. "\" - find " .. text .. " searches everywhere.")
+    return
   end
   T.go_nearest(set, "\"" .. text .. "\"", "only")
 end)
@@ -805,12 +818,13 @@ local function find(args, title, act)
   local text = trim(args):lower()
   local v = tonumber(text)
   if v then
-    if not M.rooms[v] then return warn("[travel] room " .. v .. " isn't on the map.") end
+    if not M.rooms[v] then warn("[travel] room " .. v .. " isn't on the map."); return end
     local from = here()
     if not from then return end
     local found, prev, how = T.search(from, function(x) return x == v end)
-    if not found then return warn("[travel] " .. title .. ": no route to room " .. v .. ".") end
-    return act(prev, how, found, "room " .. v)
+    if not found then warn("[travel] " .. title .. ": no route to room " .. v .. "."); return end
+    act(prev, how, found, "room " .. v)
+    return
   end
   local choices = {}
   for name, vnums in pairs(labels_matching(text)) do
@@ -827,7 +841,7 @@ local function find(args, title, act)
       choices[#choices + 1] = { text = name, desc = "room, " .. area_label(area), set = set, what = name }
     end
   end
-  if #choices == 0 then return warn("[travel] " .. title .. ": nothing matches \"" .. text .. "\".") end
+  if #choices == 0 then warn("[travel] " .. title .. ": nothing matches \"" .. text .. "\"."); return end
   choose(title, choices, nil, act)
 end
 
@@ -845,7 +859,8 @@ local function try_limited(zone, fallback)
   end
   local r = M.here and M.rooms[M.here]
   if not p or not r or r.area == zone or blocks(r, "1", "3") or tier_level() < (p.lvl or 0) then
-    return fallback()
+    fallback()
+    return
   end
   local cmds, done = portal_cmds(p.obj), false
   local got = rune.trigger.regex("^You get .* from ", function()
@@ -911,7 +926,7 @@ function T.home_running()
 end
 
 local function home_routine()
-  if T.home_running() then return warn("[travel] g: still finishing the last g or qc.") end
+  if T.home_running() then warn("[travel] g: still finishing the last g or qc."); return end
   quiet.hiding = false
   quiet_line.set(true)
   quiet.timer.start(10, function() quiet_line.set(false) end)
@@ -931,8 +946,9 @@ local function go_zones(zones, rt, what)
   end
   if #zones == 1 then
     local r = M.here and M.rooms[M.here]
-    if r and r.area == zones[1] then return walk_from_home(zones[1], "area " .. zones[1]) end
-    return try_limited(zones[1], route)
+    if r and r.area == zones[1] then walk_from_home(zones[1], "area " .. zones[1]); return end
+    try_limited(zones[1], route)
+    return
   end
   route()
 end
@@ -949,7 +965,8 @@ rune.alias.exact("g", function(args)
   end
   local zones = areas_matching(text)
   if not zones[1] then
-    return warn("[travel] g: no area matches \"" .. text .. "\" - ga for this area, find for anywhere.")
+    warn("[travel] g: no area matches \"" .. text .. "\" - ga for this area, find for anywhere.")
+    return
   end
   go_zones(zones, text, "\"" .. text .. "\"")
 end)
@@ -960,7 +977,7 @@ end)
 function T.go_area(zone)
   local rt = (T.areas[zone] or {}).kw or zone
   local zones = area_zones(zone)
-  if #zones == 1 then return go_zones({ zone }, rt, area_label(zone)) end
+  if #zones == 1 then go_zones({ zone }, rt, area_label(zone)); return end
   local is, rooms = set_of(zones), {}
   for v, r in pairs(M.rooms) do
     if is[r.area] then rooms[v] = true end
@@ -1010,7 +1027,8 @@ function T.go_room(zone, room, what)
     if T.same_area(r.area, zone) and plain_name(r):lower() == room:lower() then set[v] = true end
   end
   if next(set) == nil then
-    return warn("[travel] no room named \"" .. room .. "\" in " .. area_label(zone) .. " on the map.")
+    warn("[travel] no room named \"" .. room .. "\" in " .. area_label(zone) .. " on the map.")
+    return
   end
   local r = M.here and M.rooms[M.here]
   T.go_nearest(set, what, r and T.same_area(r.area, zone) and "first" or nil)
@@ -1035,13 +1053,13 @@ local function where_done(clean)
   where_asked = 0
   local line, cb = where_got, where_cb
   where_got = nil
-  if not line then return cb(nil, "the game gave no answer.") end
+  if not line then cb(nil, "the game gave no answer."); return end
   line = line:gsub("{/where}%s*$", "")
   local text = trim(line)
-  if text:find("^There is no ") then return cb(nil, text) end
-  if text:find("^There are too many ") then return cb(nil, text, true) end
+  if text:find("^There is no ") then cb(nil, text); return end
+  if text:find("^There are too many ") then cb(nil, text, true); return end
   local name, room = trim(line:sub(1, 30)), trim(line:sub(31))
-  if room == "" then return cb(nil, "can't read the where reply \"" .. text .. "\".") end
+  if room == "" then cb(nil, "can't read the where reply \"" .. text .. "\"."); return end
   cb(name, room)
 end
 
@@ -1107,11 +1125,11 @@ function T.probe(name, cb, kw)
       i, n = i + 1, 1
     end
     local k = tries[i]
-    if not k then return cb(nil) end
+    if not k then cb(nil); return end
     if n > 1 then k = n .. "." .. k end
     T.where(k, function(got, room, refused)
-      if refused then return cb(nil) end
-      if got and got:lower() == want then return cb(k, room) end
+      if refused then cb(nil); return end
+      if got and got:lower() == want then cb(k, room); return end
       next_try(got ~= nil)
     end)
   end
@@ -1138,12 +1156,12 @@ end
 
 rune.alias.exact("label", function(args)
   local name = trim(args):lower()
-  if name == "" or name:find("%s") then return warn("[travel] label <one word>") end
+  if name == "" or name:find("%s") then warn("[travel] label <one word>"); return end
   local v = here()
   if not v then return end
   local list = T.labels[name] or {}
   for _, x in ipairs(list) do
-    if x == v then return say("[travel] this room is already labelled " .. name .. ".") end
+    if x == v then say("[travel] this room is already labelled " .. name .. "."); return end
   end
   list[#list + 1] = v
   T.labels[name] = list
@@ -1153,7 +1171,7 @@ end)
 rune.alias.exact("unlabel", function(args)
   local name = trim(args):lower()
   local v = here()
-  if not v or name == "" then return warn("[travel] unlabel <label>") end
+  if not v or name == "" then warn("[travel] unlabel <label>"); return end
   local list = T.labels[name] or {}
   for i, x in ipairs(list) do
     if x == v then
