@@ -28,7 +28,8 @@
 local util = require("core.util")
 local game = require("core.game")       -- the area you're in
 local tags = require("core.tags")       -- no check while a walk is running
-local travel = require("nav.travel")   -- where, probe, go_area, go_room, areas
+local travel = require("nav.travel")   -- where, probe, go_area, go_room
+local mapper = require("nav.mapper")   -- areas, same_area
 local soh = require("targets.soh")     -- School of Horror mobs' hidden keywords
 
 -- The keyword: a School of Horror mob's saved one when none is given (its
@@ -48,7 +49,7 @@ local last_zone  -- the area you were last in
 local function label(t) return t.name or t.kw or "?" end
 
 local function area_name(zone)
-  local a = zone and travel.areas[zone]
+  local a = zone and mapper.areas[zone]
   return a and a.name or zone
 end
 
@@ -87,7 +88,7 @@ local function check()
     if not room then
       -- Not found: said only in its own area - while the area is unknown
       -- the check runs in every area you enter
-      if travel.same_area(t.zone, zone) then warn("[target] " .. label(t) .. ": where can't find it in this area.") end
+      if mapper.same_area(t.zone, zone) then warn("[target] " .. label(t) .. ": where can't find it in this area.") end
       return
     end
     local news = { "in " .. room }   -- where it is now, as where says
@@ -121,7 +122,7 @@ rune.timer.every(1, function()
   local zone = game.room.zone
   if zone == "" then return end
   pending = false
-  if cur.zone and not travel.same_area(cur.zone, zone) then return end   -- not its area
+  if cur.zone and not mapper.same_area(cur.zone, zone) then return end   -- not its area
   check()
 end, { name = "target_check" })
 
@@ -129,7 +130,7 @@ function target.go()
   local t = cur
   if not t then warn("[target] no target - target <kw>, gm <mob> or qx."); return end
   local here = game.room.zone
-  if t.zone and not travel.same_area(t.zone, here) then travel.go_area(t.zone); return end
+  if t.zone and not mapper.same_area(t.zone, here) then travel.go_area(t.zone); return end
   if t.room then travel.go_room(t.zone or here, t.room, "target " .. label(t)); return end
   -- No room: ask where, once it's free
   if checking or travel.where_busy() then

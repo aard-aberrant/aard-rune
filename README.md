@@ -67,7 +67,7 @@ header comment documents its own commands. The ones used most:
 | `g`, `g <area>` | home and chores; or travel to an area |
 | `find <text>`, `ga <text>`, `mf <text>` | go to a label, area or room; in this area; show the route |
 | `13s`, `3e2n` | speedwalk |
-| `label <word>`, `labels` | name the room you're in |
+| `map label <word>`, `map unlabel <word>`, `map labels` | name the room you're in |
 | `qx`, `qc` | go to the quest mob; home, quest complete, gulp |
 | `cn`, `cp` | go to the next campaign mob; the campaign list |
 | `target`, `gm <mob>`, `k`, `kk`, `aa` | the target, and your attacks |

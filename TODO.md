@@ -201,7 +201,7 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
   none left) the usual route. Limited-use portals: zone instead of vnum in data/portals.lua.
 - gm: the where reply's room is matched by name in the area you asked from (nearest wins)
 - qx to soh (confirmed live 2026-11-07): one step, the soh portal, ending in 30765 (sohtwo) - zones
-  sharing a full name (soh/sohtwo) are one area (travel.same_area), so no "enter unknown"
+  sharing a full name (soh/sohtwo) are one area (mapper.same_area), so no "enter unknown"
 
 ## Report upstream (Rune)
 

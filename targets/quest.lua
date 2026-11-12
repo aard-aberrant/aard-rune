@@ -33,7 +33,8 @@ local T = theme.define("quest", "QST and the quest lines", {
 local status = require("panes.status")   -- QST, in a row-1 slot
 local info = require("panes.info")       -- the quest's rows
 local target = require("targets.target")   -- qx sets it, a kill or the end drops it
-local travel = require("nav.travel")   -- qx goes; an area's zone from its name
+local travel = require("nav.travel")   -- qx goes
+local mapper = require("nav.mapper")   -- an area's zone from its name
 local soh = require("targets.soh")     -- a School of Horror mob's keyword, on its row
 
 local warn = util.warn
@@ -54,7 +55,7 @@ local function row()
     local left = math.max(0, math.ceil((q.ends - os.time()) / 60))
     first = (left < 5 and RED or CYAN) .. left .. "m left"
   end
-  info.set("quest", 50, info.target_rows(first, q.area, q.room, soh.label(q.targ, travel.zone_of(q.area))))
+  info.set("quest", 50, info.target_rows(first, q.area, q.room, soh.label(q.targ, mapper.zone_of(q.area))))
 end
 
 local function minutely()
@@ -181,7 +182,7 @@ end, { name = "quest_target" })
 
 rune.alias.exact("qx", function()
   if not q or q.killed or (q.room or "") == "" then warn("[quest] qx: no quest target."); return end
-  local zone = travel.zone_of(q.area)
+  local zone = mapper.zone_of(q.area)
   if not zone then
     warn("[quest] qx: area \"" .. tostring(q.area) .. "\" isn't in data/areas.lua - "
       .. q.targ .. " is in " .. q.room .. ".")
@@ -205,7 +206,11 @@ end)
 local qc_closes = nil   -- nil: not hiding; else {/eqdata} lines still to come
 local qc_line = util.group(true)   -- one catch-all, only while qc runs
 local qc_timeout = util.slot()
-local function qc_off() qc_line.set(false); qc_closes = nil end
+local function qc_off()
+  qc_line.set(false)
+  qc_closes = nil
+  travel.home_done()   -- a g or qc typed meanwhile
+end
 qc_line.add("starts", "", function(_, ctx)
   local clean = ctx.line:clean()
   if not qc_closes then
@@ -227,15 +232,17 @@ qc_line.add("starts", "", function(_, ctx)
   return false
 end, { name = "quest_qc_quiet", priority = 1 })
 
--- One at a time, with g's home routine too (nav/travel.lua's note)
+-- One at a time, with g's home routine too (nav/travel.lua's note): one
+-- typed while the other runs waits for it
 travel.home_busy(qc_line.is_on)
-rune.alias.exact("qc", function()
-  if travel.home_running() then warn("[quest] qc: still finishing the last g or qc."); return end
+local function qc()
+  if travel.home_after(qc, "[quest] qc") then return end
   qc_closes = nil
   qc_line.set(true)
   qc_timeout.start(30, qc_off)
   rune.send_raw("home\nquest complete\neqdata\ngulp\neqdata")
-end)
+end
+rune.alias.exact("qc", function() qc() end)
 
 -- Help (core/help.lua): /help
 local help = require("core.help")

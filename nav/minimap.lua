@@ -101,8 +101,9 @@ end
 -- when a fight broke the run, DARKNESS in a room you can't see)
 local stale = false   -- RUNNING or FIGHTING is up: no map block for this room yet
 local block_seen = false   -- a map block came since the last room.info
+local map_num   -- the room whose map the pane shows; nil while a word is up
 local function word_layout(word)
-  stale = word ~= "DARKNESS"
+  stale, map_num = word ~= "DARKNESS", nil
   local out = { header() }
   local mid = math.floor(H / 2)
   while #out < mid do out[#out + 1] = "" end
@@ -218,10 +219,20 @@ rune.trigger.exact("<MAPSTART>", function(_, ctx)
   dark, stale, block_seen = false, false, true
   build_map()
   draw_map()
+  map_num = game.room.num
   if dbg.on then
     dbg.log("map block: " .. util.trim(colors.strip(parts.name[1] or "?")) .. " (state " .. tostring(game.state) .. ")")
   end
 end, { name = "aard_map", priority = 10, gag = true, span = { to = "^<MAPEND>$", max = 120 } })
+
+-- TEMPORARY probe (2026-11-11, slope jets): with debug minimap on, every
+-- line holding MAPSTART, MAPEND or {rname} - hidden or not, any shape -
+-- shown raw (codes as \27). Remove once the jets question is settled
+for _, s in ipairs({ "MAPSTART", "MAPEND", "{rname}" }) do
+  rune.trigger.contains(s, function(_, ctx)
+    if dbg.on then dbg.log("probe " .. s .. ": " .. ctx.line:raw():gsub("\27", "\\27")) end
+  end, { name = "minimap_probe_" .. s, priority = 1 })
+end
 
 -- A room you can't see (heighten senses off) shows "You see nothing but
 -- darkness..." and sends no map block (seen live 2026-11-09), so the last
@@ -245,20 +256,28 @@ end, { name = "minimap_dark" })
 -- old map. If the block comes after its room.info (a plain step into an
 -- aggressive mob), it replaces FIGHTING with the map at once. Nothing is
 -- sent mid-fight (the user: a command can queue and disrupt the fight);
--- the fight's end asks for the map (minimap_stale_fight)
+-- the fight's end asks for the map (minimap_stale_fight).
+-- A look mid-fight sends room.info but no map block (seen live 2026-11-11:
+-- the second look in a fight blanked the map) - the same room as the map
+-- shown, so the pane is left as it is. A room with no vnum (-1) never
+-- counts as the same
 rune.gmcp.on("room.info", function()
-  local s = game.state
-  local fighting = s == 8 and not block_seen
+  local s, num = game.state, game.room.num
+  local same = num ~= nil and num ~= -1 and num == map_num
+  local fresh = block_seen
   block_seen = false
+  local fighting = s == 8 and not fresh and not same
   local word = s == 12 and "RUNNING" or dark and "DARKNESS" or fighting and "FIGHTING" or nil
+  local keep = not word and same and not fresh   -- the map shown is already this room's
   if dbg.on then
-    dbg.log(string.format("room.info %s %s (state %s) -> %s", tostring(game.room.num),
-      tostring(game.room.name), tostring(s), word or "map"))
+    dbg.log(string.format("room.info %s %s (state %s) -> %s", tostring(num),
+      tostring(game.room.name), tostring(s), word or keep and "kept" or "map"))
   end
   if word then
     word_layout(word)
-  elseif parts then
+  elseif parts and not keep then
     draw_map()
+    map_num = num
   end
 end, { name = "minimap_room" })
 
@@ -267,6 +286,9 @@ end, { name = "minimap_room" })
 -- commands (nav/mapper.lua):
 --   map info                   where you are on the map (nav/mapper.lua)
 --   map unlink <exit>          remove a wrong exit from this room
+--   map avoid <exit>           routes never take this exit (unavoid: they may again)
+--   map renames [apply <vnum|all>]  rooms the game now names differently (nav/mapper.lua)
+--   map label <word> / unlabel <word> / labels   room labels, for find and ga (nav/mapper.lua)
 --   map exit <vnum> <command>  add an exit GMCP doesn't list (custom exits)
 --   map record, plan, edit, drop, apply   record a way past a room (nav/maprec.lua)
 rune.alias.exact("map", function(args)
@@ -278,12 +300,28 @@ rune.alias.exact("map", function(args)
   elseif sub == "unlink" then
     local msg, ok = mapper.unlink(rest)
     return (ok and util.say or util.warn)(msg)
+  elseif sub == "renames" then
+    mapper.renames(rest)
+    return
+  elseif sub == "avoid" or sub == "unavoid" then
+    local msg, ok = mapper.avoid(rest:lower(), sub == "avoid")
+    if ok then util.say(msg) else util.warn(msg) end
+    return
   elseif sub == "exit" then
     local v, cmd = rest:match("^(%d+)%s+(.+)$")
     local msg, ok = mapper.add_exit(tonumber(v), cmd)
     return (ok and util.say or util.warn)(msg)
   elseif maprec.subs[sub] then
     maprec.command(sub, rest)
+    return
+  elseif sub == "label" then
+    mapper.label(rest)
+    return
+  elseif sub == "unlabel" then
+    mapper.unlabel(rest)
+    return
+  elseif sub == "labels" then
+    mapper.list_labels()
     return
   end
   show_next = true
@@ -338,5 +376,8 @@ local help = require("core.help")
 help.add("map", "map", "the game's map, in the main output too")
 help.add("map exit", "map exit <vnum> <command>", "add a custom exit from this room to <vnum>, taken by <command>")
 help.add("map unlink", "map unlink <exit>", "remove a wrong exit from this room")
+help.add("map avoid", "map avoid <exit>", "routes never take this exit from this room (avoid the exits into a room to keep routes out of it)")
+help.add("map unavoid", "map unavoid <exit>", "routes may take this exit from this room again")
+help.add("map renames", "map renames [apply <vnum|all>]", "rooms the game now names differently from the map (map/mapnames.log); apply takes the game's name")
 
 return minimap

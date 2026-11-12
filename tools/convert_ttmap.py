@@ -62,8 +62,10 @@ def main():
                 fl = FIELD.findall(line)
                 # vnum flags color name symbol desc area note terrain data weight id
                 current = fl[0]
+                # the name as the game sends it: tt++'s map file escapes ; and /
+                name = clean(fl[3]).replace('\\;', ';').replace('\\/', '/')
                 out.write('\t'.join(['R', fl[0], clean(fl[6]), clean(fl[8]),
-                                     clean(fl[9]), clean(fl[7]), clean(fl[3])]) + '\n')
+                                     clean(fl[9]), clean(fl[7]), name]) + '\n')
                 rooms += 1
             elif line.startswith('E ') and current is not None:
                 fl = FIELD.findall(line)

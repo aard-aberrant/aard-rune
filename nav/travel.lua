@@ -9,7 +9,6 @@
 --   mf [text]    as find, but shows the route instead of walking it, and
 --                copies it to the clipboard as one line
 --   gnom         the gnome airship (not on the map)
---   label <word> / unlabel <word> / labels
 --   13s, 3e2n ...              speedwalk (sent as one game "run 3e2n")
 -- A walk's plain moves go as the game's run ("run 2n3e"): the game shows
 -- only the room a run ends in, and stops it after three failed moves
@@ -18,10 +17,11 @@
 -- Inside the destination's area the steps go one by one instead, paced by
 -- GMCP's room reports (run_cmds, send_paced): the minimap follows you, and
 -- a fight stops the walk.
--- For other modules: go_vnum, go_nearest, go_area, go_room, zone_of, where,
--- probe, zones_with_rooms, and areas (target, quest, campaign use them).
--- Data: data/portals.lua, areas.lua, labels.lua (made from tt++ by
--- tools/convert_ttdata.py; Rune's copies are the master now).
+-- For other modules: go_vnum, go_nearest, go_area, go_room, where, probe
+-- and zones_with_rooms (target, quest, campaign use them). Areas and labels
+-- are nav/mapper.lua's (M.areas, M.labels, same_area, zone_of, area_label).
+-- Data: data/portals.lua (made from tt++ by tools/convert_ttdata.py; Rune's
+-- copy is the master now).
 --
 -- Every route is the cheapest one: a room costs 1, home 1, a portal
 -- portal_cost (data/portals.lua). Besides the map's exits, the search can
@@ -59,50 +59,11 @@ T.dir = rune.config_dir .. "/data"
 local function load_data(name) return util.load_data(T.dir .. "/" .. name .. ".lua") or {} end
 
 T.cfg = load_data("portals")
-T.areas = load_data("areas")
-T.labels = load_data("labels")
 T.cfg.portals = T.cfg.portals or {}
--- An area's full name (as GMCP and the game give it), lowercased -> zone
-local zone_by_name = {}
--- Zones that share one full name are one area to qx and the target (soh and
--- sohtwo are both "The School of Horror": GMCP and the quest give only the
--- name). Full name, lowercased -> its zones, for names with more than one
-local zones_by_name = {}
-for zone, a in pairs(T.areas) do
-  if a.name then
-    local k = a.name:lower()
-    zone_by_name[k] = zone
-    zones_by_name[k] = zones_by_name[k] or {}
-    table.insert(zones_by_name[k], zone)
-  end
-end
--- The zones of `zone`'s area: itself and any sharing its name
-local function area_zones(zone)
-  local a = T.areas[zone]
-  return a and a.name and zones_by_name[a.name:lower()] or { zone }
-end
--- Whether two zones are the same area (the same zone, or the same name)
-function T.same_area(z1, z2)
-  if z1 == z2 then return true end
-  local a, b = T.areas[z1 or ""], T.areas[z2 or ""]
-  return a ~= nil and b ~= nil and a.name ~= nil and a.name == b.name
-end
 T.cfg.home_cmds = T.cfg.home_cmds or { "home" }
 
-function T.save_labels()
-  local names = {}
-  for name in pairs(T.labels) do names[#names + 1] = name end
-  table.sort(names)
-  return util.write_file(T.dir .. "/labels.lua", function(fh)
-    fh:write("-- Room labels for ga / find: label -> vnums. Rewritten by label / unlabel.\nreturn {\n")
-    for _, name in ipairs(names) do
-      local v = T.labels[name]
-      table.sort(v)
-      fh:write(string.format("  [%q] = { %s },\n", name, table.concat(v, ", ")))
-    end
-    fh:write("}\n")
-  end, "[travel]")
-end
+-- Areas and labels are the map's (nav/mapper.lua)
+local area_zones, area_label = M.area_zones, M.area_label
 
 -- Which portals you can use: tier level = tier * 10 + level (core/game.lua)
 local function tier_level() return (game.tier or 0) * 10 + (game.level or 0) end
@@ -616,7 +577,7 @@ end
 -- Labels starting with `text`: { label = { vnum, ... } }
 local function labels_matching(text, zone)
   local out, n = {}, 0
-  for name, vnums in pairs(T.labels) do
+  for name, vnums in pairs(M.labels) do
     if name:sub(1, #text) == text then
       for _, v in ipairs(vnums) do
         local r = M.rooms[v]
@@ -633,8 +594,15 @@ end
 
 -- A room's name without colour codes (a few have them). The find first,
 -- since this runs for every room on the map
+-- A room's name for matching: colors out, and trailing whitespace - the
+-- game sends 30 names with a trailing space ("The Aylorian Temple of Ivar "),
+-- which cn's and where's room names lack. The map keeps them as sent (the
+-- user, 2026-11-11). Cost: one byte compare a room; a strip only for those
 local function plain_name(r)
-  return colors.has(r.name) and colors.strip(r.name) or r.name
+  local n = colors.has(r.name) and colors.strip(r.name) or r.name
+  local b = n:byte(-1)
+  if b == 32 or b == 9 then n = n:match("^(.-)%s+$") end
+  return n
 end
 
 -- Rooms whose name contains `text` (all rooms if text == ""), in `zone` or
@@ -661,22 +629,17 @@ end
 -- Areas matching `text`: exact zone or keyword first, else part of the
 -- zone, keyword or name. Returns a list of zones, and true for an exact match
 local function areas_matching(text)
-  for zone, a in pairs(T.areas) do
+  for zone, a in pairs(M.areas) do
     if zone == text or a.kw == text then return { zone }, true end
   end
   local out = {}
-  for zone, a in pairs(T.areas) do
+  for zone, a in pairs(M.areas) do
     if contains(zone, text) or contains(a.kw, text) or contains(a.name, text) then
       out[#out + 1] = zone
     end
   end
   table.sort(out)
   return out
-end
-
-local function area_label(zone)
-  local a = T.areas[zone]
-  return a and a.name or zone or "?"
 end
 
 -- An area as a choice for choose()
@@ -833,7 +796,7 @@ local function find(args, title, act)
                               set = set_of(vnums), what = "label " .. name }
   end
   local zones = text == "" and {} or areas_matching(text)
-  if text == "" then for zone in pairs(T.areas) do zones[#zones + 1] = zone end end
+  if text == "" then for zone in pairs(M.areas) do zones[#zones + 1] = zone end end
   for _, zone in ipairs(zones) do choices[#choices + 1] = zone_choice(zone) end
   if text ~= "" then
     for key, set in pairs(rooms_matching(text)) do
@@ -890,10 +853,14 @@ end
 -- room otherwise (home refused): nothing is hidden but eqdata. It ends at {/eqdata}; 10 s if that never comes
 local quiet_line = util.group(true)   -- one catch-all, only while it's needed
 local quiet = { hiding = false, timer = util.slot() }
+local function quiet_off()
+  quiet_line.set(false)
+  T.home_done()
+end
 quiet_line.add("starts", "", function(_, ctx)
   local clean = ctx.line:clean()
   if clean:find("^{/eqdata}") then
-    quiet_line.set(false)
+    quiet_off()
     return   -- gear/eq.lua hides it, and the blank after
   end
   if not quiet.hiding then
@@ -916,22 +883,39 @@ end, { name = "travel_home_quiet", priority = 1 })
 -- eqdata. A g sent while one runs used to switch the first one's hiding
 -- off (seen live 2026-11-09: rapid g showed the bank lines), and a qc
 -- could have its quest reply hidden as a g's chores. So while either runs,
--- g and qc refuse. T.home_busy(fn): fn() is true while that one runs
+-- a g or qc typed waits (the user, 2026-11-11 - it used to be refused):
+-- held here, not sent, and run as the one running ends. One waits at most;
+-- a later one replaces it. T.home_busy(fn): fn() is true while that one
+-- runs; its owner calls T.home_done() as it ends
 local busy = {}
+local waiting   -- the g or qc typed while one ran
 function T.home_busy(fn) busy[#busy + 1] = fn end
 function T.home_running()
   if quiet_line.is_on() then return true end
   for _, on in ipairs(busy) do if on() then return true end end
   return false
 end
+-- True if fn is held for later (one is running); `who` names it ("[quest] qc")
+function T.home_after(fn, who)
+  if not T.home_running() then return false end
+  waiting = fn
+  say(who .. ": waiting for the last g or qc to finish.")
+  return true
+end
+function T.home_done()
+  if not waiting or T.home_running() then return end
+  local fn = waiting
+  waiting = nil
+  fn()
+end
 
 local function home_routine()
-  if T.home_running() then warn("[travel] g: still finishing the last g or qc."); return end
+  if T.home_after(home_routine, "[travel] g") then return end
   quiet.hiding = false
   quiet_line.set(true)
-  quiet.timer.start(10, function() quiet_line.set(false) end)
+  quiet.timer.start(10, quiet_off)
   rune.send_raw(table.concat(T.cfg.home_cmds, "\n"))
-  if not eq.check_worn() then quiet_line.set(false) end   -- no {/eqdata} coming: hide nothing
+  if not eq.check_worn() then quiet_off() end   -- no {/eqdata} coming: hide nothing
 end
 
 -- To one of `zones`, the nearest (a picker if several reach): one zone's
@@ -975,7 +959,7 @@ end)
 -- An area of several zones (area_zones) is reached at its nearest room in
 -- any of them - a portal into one of them ends the route there
 function T.go_area(zone)
-  local rt = (T.areas[zone] or {}).kw or zone
+  local rt = (M.areas[zone] or {}).kw or zone
   local zones = area_zones(zone)
   if #zones == 1 then go_zones({ zone }, rt, area_label(zone)); return end
   local is, rooms = set_of(zones), {}
@@ -988,9 +972,6 @@ function T.go_area(zone)
     choose("g", { c }, function() runto(area_label(zone), rt) end)
   end)
 end
-
--- The zone of an area's full name ("The Amazon Nation"), as GMCP gives it
-function T.zone_of(name) return zone_by_name[(name or ""):lower()] end
 
 -- The gnome airship isn't on the map
 rune.alias.exact("gnom", function()
@@ -1024,14 +1005,14 @@ end
 function T.go_room(zone, room, what)
   local set = {}
   for v, r in pairs(M.rooms) do
-    if T.same_area(r.area, zone) and plain_name(r):lower() == room:lower() then set[v] = true end
+    if M.same_area(r.area, zone) and plain_name(r):lower() == room:lower() then set[v] = true end
   end
   if next(set) == nil then
     warn("[travel] no room named \"" .. room .. "\" in " .. area_label(zone) .. " on the map.")
     return
   end
   local r = M.here and M.rooms[M.here]
-  T.go_nearest(set, what, r and T.same_area(r.area, zone) and "first" or nil)
+  T.go_nearest(set, what, r and M.same_area(r.area, zone) and "first" or nil)
 end
 
 -- One where question at a time: T.where(kw, cb) sends "where <kw>" and
@@ -1152,52 +1133,6 @@ function T.zones_with_rooms(names)
   return out
 end
 
--- Labels -----------------------------------------------------------------
-
-rune.alias.exact("label", function(args)
-  local name = trim(args):lower()
-  if name == "" or name:find("%s") then warn("[travel] label <one word>"); return end
-  local v = here()
-  if not v then return end
-  local list = T.labels[name] or {}
-  for _, x in ipairs(list) do
-    if x == v then say("[travel] this room is already labelled " .. name .. "."); return end
-  end
-  list[#list + 1] = v
-  T.labels[name] = list
-  if T.save_labels() then say("[travel] room " .. v .. " labelled " .. name .. ".") end
-end)
-
-rune.alias.exact("unlabel", function(args)
-  local name = trim(args):lower()
-  local v = here()
-  if not v or name == "" then warn("[travel] unlabel <label>"); return end
-  local list = T.labels[name] or {}
-  for i, x in ipairs(list) do
-    if x == v then
-      table.remove(list, i)
-      if #list == 0 then T.labels[name] = nil end
-      if T.save_labels() then say("[travel] removed label " .. name .. " from room " .. v .. ".") end
-      return
-    end
-  end
-  warn("[travel] this room isn't labelled " .. name .. ".")
-end)
-
-rune.alias.exact("labels", function()
-  local names = {}
-  for name in pairs(T.labels) do names[#names + 1] = name end
-  table.sort(names)
-  for _, name in ipairs(names) do
-    local where = {}
-    for _, v in ipairs(T.labels[name]) do
-      local r = M.rooms[v]
-      where[#where + 1] = v .. (r and (" " .. r.name .. ", " .. area_label(r.area)) or "")
-    end
-    rune.echo(string.format("  %-14s %s", name, table.concat(where, "; ")))
-  end
-end)
-
 -- Help (core/help.lua): /help
 local help = require("core.help")
 help.add("g", "g [area]", "bare: the home routine; with an area: go there (a picker if several match)")
@@ -1205,9 +1140,6 @@ help.add("ga", "ga <text>", "this area: the nearest room labelled or named <text
 help.add("find", "find [text]", "anywhere: labels, areas, room names, a vnum - one match goes there, several open a picker")
 help.add("mf", "mf [text]", "as find, but shows the route instead of walking it, and copies it to the clipboard (3n2e;open north;north)")
 help.add("gnom", "gnom", "the gnome airship (not on the map)")
-help.add("label", "label <word>", "label this room, for find and ga")
-help.add("unlabel", "unlabel <word>", "remove a label from this room")
-help.add("labels", "labels", "every room label")
 help.add("13s", "13s, 3e2n ...", "speedwalk: a count and a direction letter, run together")
 
 return T
