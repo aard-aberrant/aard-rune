@@ -140,9 +140,8 @@ function colors.pattern(code) return (code:gsub("[%[%]%(%)%.%%%+%-%*%?%^%$]", "%
 -- Text has a color code in it
 function colors.has(s) return s:find("\27", 1, true) ~= nil end
 
--- Text without its color codes. A few room names in the converted map carry
--- tt++'s escaped form ("\27[1\;32m"), so a backslash is allowed in the code
-function colors.strip(s) return (s:gsub("\27%[[%d;\\]*m", "")) end
+-- Text without its color codes
+function colors.strip(s) return (s:gsub("\27%[[%d;]*m", "")) end
 
 -- Codes shown as \e, for a debug line
 function colors.show(s) return (s:gsub("\27", "\\e")) end

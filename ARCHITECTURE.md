@@ -249,7 +249,7 @@ in areas/blackclaw.lua.
 
 - `data/*.lua` are plain Lua tables loaded with `util.load_data`. Some are
   hand-edited settings (affects, portals, weapons), some are rewritten by
-  commands (`eqsave` writes `eqsets.lua`, `label` writes `labels.lua`), and
+  commands (`eqsave` writes `eqsets.lua`, `map label` writes `labels.lua`), and
   `areas.lua` was converted once from tt++. Every file this config writes
   (those, the map, history, soh keywords) goes through `util.write_file`: a
   .tmp file renamed into place.
@@ -267,7 +267,10 @@ in areas/blackclaw.lua.
   lines, about 34,800 rooms. It was converted from tt++ by
   `tools/convert_ttmap.py`, and `nav/mapper.lua` keeps it current from GMCP as
   you walk; `nav/maprec.lua` (map record) adds the custom exits GMCP can't show.
-  `nav/travel.lua` does route search, walks and the travel commands
+  `nav/mapper.lua` also owns the rest of the world's data - areas
+  (`data/areas.lua`: names, `same_area`, `zone_of`) and room labels
+  (`data/labels.lua`, `map label`) - and requires nothing of the modules that
+  use it. `nav/travel.lua` does route search, walks and the travel commands
   on top of it.
 
 ## Conventions

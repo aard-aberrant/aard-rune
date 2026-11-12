@@ -32,8 +32,10 @@ local theme = require("core.theme")
 local game = require("core.game")       -- the area you're in (cn's order)
 local info = require("panes.info")       -- the campaign's rows
 local target = require("targets.target")   -- cn sets it, a kill drops it
-local travel = require("nav.travel")   -- areas, zone_of, the map's room names
+local travel = require("nav.travel")   -- the map's room names, the area picker
+local mapper = require("nav.mapper")   -- areas, zone_of, same_area
 local soh = require("targets.soh")     -- a School of Horror mob's keyword, on its row
+local tags = require("core.tags")      -- cn waits while a walk runs
 
 local say, warn = util.say, util.warn
 local dbg = require("core.debug").topic("campaign", "at a campaign kill: GMCP's last enemy and the current cn mob")
@@ -140,7 +142,7 @@ local room_zones = {}
 local function place_all()
   local room_based = false
   for _, e in ipairs(list) do
-    e.zone = travel.zone_of(e.place)
+    e.zone = mapper.zone_of(e.place)
     if not e.zone and not e.dead then room_based = true end
   end
   if not room_based then
@@ -163,7 +165,7 @@ local function place_all()
       local z = zones[e.place]
       if #z == 1 then e.zone = z[1] end
       e.where = z
-      local a = e.zone and travel.areas[e.zone]
+      local a = e.zone and mapper.areas[e.zone]
       e.area_name = a and a.name or nil
     end
   end
@@ -351,7 +353,7 @@ local function aim(e)
     target.clear("campaign")   -- none until you choose its area
     row()
     travel.go_area_of(e.where, e.mob .. ": " .. e.place, function(zone)
-      local a = travel.areas[zone]
+      local a = mapper.areas[zone]
       e.zone, e.area_name = zone, a and a.name or nil
       target.set({ name = e.mob, zone = zone, room = e.room, src = "campaign" })
       row()
@@ -369,6 +371,7 @@ end
 
 rune.alias.exact("cn", function(args)
   if #list == 0 then warn("[campaign] cn: no campaign mobs - cp check first."); return end
+  if tags.walking() then warn("[campaign] cn: still on the way - cn again once the walk ends."); return end
   local skip = util.trim(args) == "next"
   if skip and cur then skipped[cur.mob] = true end
   if skip or not cur or cur_dead then
@@ -383,7 +386,7 @@ rune.alias.exact("cn", function(args)
     -- first student instead) - is kept
     local t = target.get()
     local same = t and t.name and t.name:lower() == cur.mob:lower()
-      and (not t.zone or not cur.zone or travel.same_area(t.zone, cur.zone))
+      and (not t.zone or not cur.zone or mapper.same_area(t.zone, cur.zone))
     if not same then
       target.set({ name = cur.mob, zone = cur.zone, room = cur.room, src = "campaign" })
     end

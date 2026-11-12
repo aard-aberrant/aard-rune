@@ -14,9 +14,9 @@
 -- Driven by GMCP and invmon, no game text: a cast worked when char.vitals
 -- shows HP going up within 5 s (HP only rises on a tick or a heal, and rh
 -- never casts near a tick); mana down but HP not is a fizzle - cast again;
--- neither moving, or a fight, stops it. Out of mana: stops when mana is
--- below what the last cast cost. What the regen ring replaced is kept in
--- rune.store, so a /reload doesn't lose it.
+-- neither moving, or a fight, stops it. Out of mana (below what the last
+-- cast cost): it stops and sleeps, the regen ring on. What the regen ring
+-- replaced is kept in rune.store, so a /reload doesn't lose it.
 
 local util = require("core.util")
 local game = require("core.game")       -- HP, mana, state, the tick
@@ -107,8 +107,16 @@ local function finish()
   say(string.format("[rh] done - HP %d%%.", hp_pct()))
 end
 
+-- Out of mana: rh ends asleep, the regen ring on (the user, 2026-11-11 - it
+-- used to stop awake). Waking takes the ring off (rheal_woke, below). Never
+-- in a fight: second() stops rh there before any cast
 local function cast()
-  if cost and (game.mana or 0) < cost then fail("out of mana"); return end
+  if cost and (game.mana or 0) < cost then
+    stop()
+    say("[rh] out of mana - sleeping with the regen ring on.")
+    rune.send_raw("sleep")
+    return
+  end
   pending = { at = os.time(), hp = game.hp or 0, mana = game.mana or 0 }
   rune.send_raw("cast '" .. combat.heal() .. "'")
 end

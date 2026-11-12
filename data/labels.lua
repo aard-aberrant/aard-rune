@@ -1,4 +1,4 @@
--- Room labels for hf / find: label -> vnums. Rewritten by label / unlabel.
+-- Room labels for ga / find: label -> vnums. Rewritten by map label / map unlabel.
 return {
   ["adaline"] = { 19828 },
   ["amethyst"] = { 42193 },
@@ -10,6 +10,9 @@ return {
   ["gatekeeper"] = { 30561 },
   ["home"] = { 55213 },
   ["imaginarium"] = { 2010 },
+  ["l1"] = { 38482 },
+  ["l2"] = { 38491 },
+  ["l3"] = { 38497 },
   ["massesexit"] = { 43862 },
   ["medusa"] = { 29208 },
   ["nyancat"] = { 49251 },

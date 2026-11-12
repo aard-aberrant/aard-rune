@@ -73,7 +73,7 @@ local ROLES = {
   { "Blocks" },
   { "alert",         mix(P.black_tc, bg(P.red)),    "info pane alerts, an important affect off" },
   { "alert_caution", mix(P.black_tc, bg(P.yellow)), "info pane warnings" },
-  { "scrolled",      mix(P.black_tc, bg(P.yellow)), "SCROLLED: the main pane scrolled back" },
+  { "scrolled",      mix(P.black_tc, bg(P.yellow)), "SCR: the main pane scrolled back" },
 }
 local IS_ROLE = {}
 for _, r in ipairs(ROLES) do if r[2] then IS_ROLE[r[1]] = true end end

@@ -50,6 +50,7 @@ function util.blank(s) return s:match("^%s*$") ~= nil end
 -- (make it by hand: mkdir -p ~/.local/state/rune).
 --   util.dir_exists(path)              true if path is an existing folder
 --   util.append_log(name, line, who)   true if written
+--   util.append_file(path, line, who)  the same for any file (map/mapnames.log)
 --   util.log_tail(name, n)             the last n lines, newest first ({} if none)
 util.state_dir = (os.getenv("XDG_STATE_HOME") or ((os.getenv("HOME") or ".") .. "/.local/state")) .. "/rune"
 -- "path/." opens only if path is a folder (Go's os.Rename refuses a
@@ -59,12 +60,7 @@ function util.dir_exists(path)
   if fh then fh:close() end
   return fh ~= nil
 end
-function util.append_log(name, line, who)
-  local path = util.state_dir .. "/" .. name
-  if not util.dir_exists(util.state_dir) then
-    util.err(who .. " can't log: " .. util.state_dir .. " doesn't exist (mkdir -p it).")
-    return false
-  end
+function util.append_file(path, line, who)
   local fh, err = io.open(path, "a")
   if not fh then
     util.err(who .. " can't append to " .. path .. ": " .. tostring(err))
@@ -73,6 +69,13 @@ function util.append_log(name, line, who)
   fh:write(line, "\n")
   fh:close()
   return true
+end
+function util.append_log(name, line, who)
+  if not util.dir_exists(util.state_dir) then
+    util.err(who .. " can't log: " .. util.state_dir .. " doesn't exist (mkdir -p it).")
+    return false
+  end
+  return util.append_file(util.state_dir .. "/" .. name, line, who)
 end
 function util.log_tail(name, n)
   local fh = io.open(util.state_dir .. "/" .. name, "r")

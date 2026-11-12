@@ -1185,7 +1185,7 @@ X	471	467	s
 X	471	468	w		
 R	472	xylmos	office			The Edge
 X	472	24299	n		
-R	502	rhabdo	city			[1\;32mArmageddon[0\;37m
+R	502	rhabdo	city			[1;32mArmageddon[0;37m
 X	502	32570	u		
 R	504	landofoz	inside			Dorothy's Room!!
 X	504	505	e		
@@ -1522,19 +1522,19 @@ R	602	landofoz	forest			At a Tree with a Crow's Nest
 X	602	554	w		
 R	603	landofoz	inside			At the end of the barracks
 X	603	591	w		
-R	641	dragon	inside			[1\;32mOvergrown Stone Dragon Maw[0\;37m
+R	641	dragon	inside			[1;32mOvergrown Stone Dragon Maw[0;37m
 X	641	642	d		
 X	641	32419	u		
-R	642	dragon	inside			[1\;32mArcane Dragon Production[0\;37m
+R	642	dragon	inside			[1;32mArcane Dragon Production[0;37m
 X	642	643	d		
 X	642	641	u		
-R	643	dragon	inside			[1\;32mVorel's Sanctuary[0\;37m
+R	643	dragon	inside			[1;32mVorel's Sanctuary[0;37m
 X	643	644	d		
 X	643	642	u		
-R	644	dragon	forest			[1\;32mA Vast Cavern[0\;37m
+R	644	dragon	forest			[1;32mA Vast Cavern[0;37m
 X	644	645	d		
 X	644	643	u		
-R	645	dragon	inside			[1\;32mAt An Underground Lake[0\;37m
+R	645	dragon	inside			[1;32mAt An Underground Lake[0;37m
 X	645	644	u		
 R	647	cougarian	inside			A Hallway in the Cougarian Palace
 X	647	649	e		open e;east
@@ -1911,35 +1911,35 @@ X	775	753	e
 X	775	774	u		
 R	811	emerald	inside			Athena's Sparring Chamber
 X	811	52198	s		
-R	831	emerald	city			[1\;32mBorn into Arms[0\;37m
+R	831	emerald	city			[1;32mBorn into Arms[0;37m
 X	831	832	d		
 X	831	32539	u		
 X	831	834	w		
-R	832	emerald	inside			[1\;32mThe Parthenon[0\;37m
+R	832	emerald	inside			[1;32mThe Parthenon[0;37m
 X	832	833	n		
 X	832	831	u		
 R	833					
-R	834	emerald	city			[1\;32mThe Practice Fields[0\;37m
+R	834	emerald	city			[1;32mThe Practice Fields[0;37m
 X	834	831	e		
 X	834	52198	n		
-R	854	vanir	inside			[1\;32mA Hazy Dry Field[0\;37m
+R	854	vanir	inside			[1;32mA Hazy Dry Field[0;37m
 X	854	28847	d		
 X	854	36451	e		
 X	854	878	n		
 X	854	1767	s		
 X	854	1204	u		
 X	854	32981	w		
-R	878	vanir	inside			[1\;32mVanaheim[0\;37m
+R	878	vanir	inside			[1;32mVanaheim[0;37m
 X	878	879	e		
 X	878	880	n		
 X	878	854	s		
 X	878	32539	w		
-R	879	vanir	inside			[1\;32mValaskjalf[0\;37m
+R	879	vanir	inside			[1;32mValaskjalf[0;37m
 X	879	881	s		
 X	879	878	w		
-R	880	vanir	inside			[1\;32mGladsheim[0\;37m
+R	880	vanir	inside			[1;32mGladsheim[0;37m
 X	880	878	s		
-R	881	vanir	inside			[1\;32mFolkvang Combat Maze[0\;37m
+R	881	vanir	inside			[1;32mFolkvang Combat Maze[0;37m
 X	881	879	n		
 R	883	amusement	inside			Prize Redemption Room
 X	883	29301	e		
@@ -2521,8 +2521,8 @@ R	1099	vale	dead_forest			Fog Forest
 X	1099	1100	e		
 X	1099	1048	n		
 X	1099	1047	w		
-R	1100	vale	underground			[1\;32mA very [0\;31mhot [1\;32mtrench[0\;37m
-R	1101	vale	underground			A very [0\;31mhot [1\;32mcave[0\;37m
+R	1100	vale	underground			[1;32mA very [0;31mhot [1;32mtrench[0;37m
+R	1101	vale	underground			A very [0;31mhot [1;32mcave[0;37m
 R	1103	vale	rocks			A steep crevasse
 X	1103	1080	d		
 X	1103	1065	u		
@@ -4520,19 +4520,19 @@ R	1913	mayhem	inside			Pantry
 X	1913	1911	w		
 R	1914	mayhem	inside			Room Under the Table
 X	1914	1912	u		
-R	1960	retri	inside			[1\;32mInside a Morbid Gallery[0\;37m
+R	1960	retri	inside			[1;32mInside a Morbid Gallery[0;37m
 X	1960	1964	d		
 X	1960	1962	e		
 X	1960	1963	n		
 X	1960	32575	u		
 X	1960	1961	w		
-R	1961	retri	inside			[1\;32mRaider Gathering Place[0\;37m
+R	1961	retri	inside			[1;32mRaider Gathering Place[0;37m
 X	1961	1960	e		
-R	1962	retri	inside			[1\;32mStanding Before the Throne of Taboo[0\;37m
+R	1962	retri	inside			[1;32mStanding Before the Throne of Taboo[0;37m
 X	1962	1960	w		
-R	1963	retri	inside			[1\;32mWalking Down the Memory Lane[0\;37m
+R	1963	retri	inside			[1;32mWalking Down the Memory Lane[0;37m
 X	1963	1960	s		
-R	1964	retri	inside			[1\;32mLazarus Crypt[0\;37m
+R	1964	retri	inside			[1;32mLazarus Crypt[0;37m
 X	1964	1960	u		
 R	1966	lemdagor	inside			The Storm Cruiser, Tempest
 X	1966	1967	e		
@@ -5312,34 +5312,34 @@ X	2233	2232	w
 R	2234	greece	field			Plain of the Giants
 X	2234	2097	n		
 X	2234	2233	s		
-R	2291	hook	inside			[1\;32mTreasure Island[0\;37m
+R	2291	hook	inside			[1;32mTreasure Island[0;37m
 X	2291	2293	n		
 X	2291	32508	u		
-R	2292	hook	inside			[1\;32mSmuggler's Hideaway[0\;37m
+R	2292	hook	inside			[1;32mSmuggler's Hideaway[0;37m
 X	2292	2294	u		
-R	2293	hook	inside			[1\;32mTavern of Treasure Island[0\;37m
+R	2293	hook	inside			[1;32mTavern of Treasure Island[0;37m
 X	2293	2294	e		
 X	2293	2295	n		
 X	2293	2291	s		
-R	2294	hook	inside			[1\;32mA back room of the tavern[0\;37m
+R	2294	hook	inside			[1;32mA back room of the tavern[0;37m
 X	2294	2292	d		
 X	2294	2293	w		
-R	2295	hook	inside			[1\;32mThe Conditioning Area[0\;37m
+R	2295	hook	inside			[1;32mThe Conditioning Area[0;37m
 X	2295	2293	s		
-R	2339	light	inside			[1\;32mA Light Provisions Room[0\;37m
+R	2339	light	inside			[1;32mA Light Provisions Room[0;37m
 X	2339	2341	e		
 X	2339	2343	n		
 X	2339	2344	s		
 X	2339	32538	u		
 X	2339	2340	w		
-R	2340	light	inside			[1\;32mPillar of Accolades[0\;37m
+R	2340	light	inside			[1;32mPillar of Accolades[0;37m
 X	2340	2339	e		
-R	2341	light	inside			[1\;32mParty at the Lighthouse[0\;37m
+R	2341	light	inside			[1;32mParty at the Lighthouse[0;37m
 X	2341	2342	n		
 X	2341	2339	w		
-R	2342	light	inside			[1\;32mRoom of Remembrance[0\;37m
+R	2342	light	inside			[1;32mRoom of Remembrance[0;37m
 X	2342	2341	s		
-R	2343	light	inside			[1\;32mPendragon's Pledge[0\;37m
+R	2343	light	inside			[1;32mPendragon's Pledge[0;37m
 X	2343	2339	s		
 R	2344					
 R	2346	mudwog	waterswim			Path along the River's Shore
@@ -6891,7 +6891,11 @@ X	2757	2727	n
 X	2757	2787	s		
 X	2757	2756	w		
 R	2758					
-R	2759					
+R	2759	alagh	ocean			Sea of the Horn
+X	2759	2760	e		
+X	2759	2729	n		
+X	2759	2789	s		
+X	2759	2758	w		
 R	2760	alagh	ocean			Sea of the Horn
 X	2760	2761	e		
 X	2760	2730	n		
@@ -7140,7 +7144,11 @@ X	2817	2787	n
 X	2817	2847	s		
 X	2817	2816	w		
 R	2818					
-R	2819					
+R	2819	alagh	ocean			Sea of the Horn
+X	2819	2820	e		
+X	2819	2789	n		
+X	2819	2849	s		
+X	2819	2818	w		
 R	2820	alagh	ocean			Sea of the Horn
 X	2820	2821	e		
 X	2820	2790	n		
@@ -7220,7 +7228,11 @@ X	2847	2817	n
 X	2847	2877	s		
 X	2847	2846	w		
 R	2848					
-R	2849					
+R	2849	alagh	ocean			Sea of the Horn
+X	2849	2850	e		
+X	2849	2819	n		
+X	2849	2879	s		
+X	2849	2848	w		
 R	2850	alagh	ocean			Sea of the Horn
 X	2850	2851	e		
 X	2850	2820	n		
@@ -7306,7 +7318,11 @@ X	2877	2847	n
 X	2877	2907	s		
 X	2877	2876	w		
 R	2878					
-R	2879					
+R	2879	alagh	ocean			Sea of the Horn
+X	2879	2880	e		
+X	2879	2849	n		
+X	2879	2909	s		
+X	2879	2878	w		
 R	2880	alagh	ocean			Sea of the Horn
 X	2880	2881	e		
 X	2880	2850	n		
@@ -7449,7 +7465,11 @@ X	2907	2877	n
 X	2907	2937	s		
 X	2907	2906	w		
 R	2908					
-R	2909					
+R	2909	alagh	ocean			Sea of the Horn
+X	2909	2910	e		
+X	2909	2879	n		
+X	2909	2939	s		
+X	2909	39358	w		
 R	2910	alagh	ocean			Sea of the Horn
 X	2910	2911	e		
 X	2910	2880	n		
@@ -12376,7 +12396,7 @@ X	4229	4226	e
 X	4229	4230	n		
 X	4229	4231	s		
 X	4229	4232	w		
-R	4230	ddoom	desert			A Sunset Warrior Hut[0\;37m
+R	4230	ddoom	desert			A Sunset Warrior Hut[0;37m
 X	4230	4229	s		
 R	4231	ddoom	desert			A Sunset Warrior Hut
 X	4231	4229	n		
@@ -13512,7 +13532,7 @@ X	4586	4587	w
 R	4587	coral	underwater			Before the Great Coral Tower
 X	4587	4586	e		
 X	4587	4603	n		open n;north
-R	4588	coral	underwater			The Fanglang\/Finlang Intersection
+R	4588	coral	underwater			The Fanglang/Finlang Intersection
 X	4588	4593	e		
 X	4588	4586	n		
 X	4588	4589	s		
@@ -17522,17 +17542,17 @@ X	5860	5850	s
 R	5861	partroxis	inside			A Secluded Corner
 X	5861	25635	s		
 R	5862	partroxis	inside			The Partroxis
-R	5863	dominion	inside			[1\;32mThe Oracle[0\;37m
+R	5863	dominion	inside			[1;32mThe Oracle[0;37m
 X	5863	32539	e		
 X	5863	5866	n		
 X	5863	5864	s		
 X	5863	5865	w		
-R	5864	dominion	inside			[1\;32mInfirmary[0\;37m
+R	5864	dominion	inside			[1;32mInfirmary[0;37m
 X	5864	5863	n		
-R	5865	dominion	city			[1\;32mSupplies and Gear[0\;37m
+R	5865	dominion	city			[1;32mSupplies and Gear[0;37m
 X	5865	5863	e		
 X	5865	5867	w		
-R	5866	dominion	inside			[1\;32mThe Classroom[0\;37m
+R	5866	dominion	inside			[1;32mThe Classroom[0;37m
 X	5866	5863	s		
 R	5867	dominion	inside			The shrine of remembrance
 X	5867	5865	e		
@@ -33620,7 +33640,7 @@ X	10355	10375	u
 X	10355	10355	w		
 R	10356	rebellion	inside	2		Torture Chamber
 X	10356	10355	u		
-R	10358	rebellion	hills	1		[0\;37mA Hill Untouched by the Battle
+R	10358	rebellion	hills	1		[0;37mA Hill Untouched by the Battle
 X	10358	10349	s		
 X	10358	10359	u		
 R	10359	rebellion	air	1		The Battlegrounds of the Nix
@@ -33668,7 +33688,7 @@ X	10378	10378	n
 X	10378	10378	s		
 X	10378	10378	w		
 R	10379	rebellion	inside	1		The Eye of the Storm
-R	10380	zodiac	inside			[0\;37mNo Visibility
+R	10380	zodiac	inside			[0;37mNo Visibility
 X	10380	36899	e		
 X	10380	36895	w		
 R	10381	zodiac	inside			Underground Hallway
@@ -35473,7 +35493,7 @@ R	11086	nottingham	inside			Castle Dining Hall
 X	11086	11094	n		
 X	11086	11117	w		
 R	11088	nottingham	road_eastwest			Bridge
-R	11089	nottingham	inside			[0\;33mThatch Hut[0\;37m
+R	11089	nottingham	inside			[0;33mThatch Hut[0;37m
 X	11089	11090	n		
 R	11090	nottingham	inside			Camp Check Point
 X	11090	11096	e		
@@ -35496,7 +35516,7 @@ R	11095	nottingham	inside			Thatch Hut
 X	11095	11092	s		
 R	11096	nottingham	inside			Thatch Hut
 X	11096	11090	w		
-R	11097	nottingham	inside			Tavern in the camp[0\;37m
+R	11097	nottingham	inside			Tavern in the camp[0;37m
 X	11097	11099	crate		enter crate
 X	11097	11093	e		
 R	11098	nottingham	inside			Weapons Hut
@@ -35509,7 +35529,7 @@ X	11100	11102	s
 R	11102	nottingham	rocks			Gates of Nottingham
 X	11102	11100	n		
 X	11102	11103	s		give 5000 coins guard
-R	11103	nottingham	city			Inside the Great Gates of Nottingham
+R	11103	nottingham	city	2		Inside the Great Gates of Nottingham
 X	11103	11104	e		
 X	11103	11102	n		
 X	11103	11107	s		
@@ -35522,7 +35542,7 @@ X	11105	11103	e
 X	11105	11109	s		
 R	11106	nottingham	inside			Castle Library
 X	11106	11116	e		
-R	11107	nottingham	city			Center of the Courtyard
+R	11107	nottingham	city	2		Center of the Courtyard
 X	11107	11108	e		
 X	11107	11103	n		
 X	11107	11111	s		
@@ -47826,7 +47846,7 @@ R	14133	yurgach	dungeon			On the Dais
 X	14133	14132	n		
 R	14134	yurgach	redcarpet			Dark room
 X	14134	35398	d		
-R	14135	seekers	city			[1\;32mThe Fortress of Knowledge[0\;37m
+R	14135	seekers	city			[1;32mThe Fortress of Knowledge[0;37m
 X	14135	32418	d		
 X	14135	14138	n		
 X	14135	14165	s		
@@ -47834,44 +47854,44 @@ X	14135	14145	u
 X	14135	14142	w		
 R	14136					
 R	14137					
-R	14138	seekers	inside			[1\;32mThe Grand Hall[0\;37m
+R	14138	seekers	inside			[1;32mThe Grand Hall[0;37m
 X	14138	14139	e		
 X	14138	14143	n		
 X	14138	14135	s		
 X	14138	14146	u		
 X	14138	14137	w		
-R	14139	seekers	inside			[1\;32mMemory Lane[0\;37m
+R	14139	seekers	inside			[1;32mMemory Lane[0;37m
 X	14139	14138	w		
-R	14140	seekers	inside			[1\;32mThe Cellar[0\;37m
+R	14140	seekers	inside			[1;32mThe Cellar[0;37m
 X	14140	20622	d		
 X	14140	29449	e		
 X	14140	1767	n		
 X	14140	34036	s		
 X	14140	14142	u		
 X	14140	30981	w		
-R	14141	seekers	city			[1\;32mEnlightenment Shop[0\;37m
+R	14141	seekers	city			[1;32mEnlightenment Shop[0;37m
 X	14141	14165	w		
-R	14142	seekers	city			[1\;32mAn Inn[0\;37m
+R	14142	seekers	city			[1;32mAn Inn[0;37m
 X	14142	14140	d		
 X	14142	14135	e		
 X	14142	14152	s		
 X	14142	14136	w		
-R	14143	seekers	city			[1\;32mThe Garden[0\;37m
+R	14143	seekers	city			[1;32mThe Garden[0;37m
 X	14143	14138	s		
-R	14145	seekers	inside			[1\;32mArchives[0\;37m
+R	14145	seekers	inside			[1;32mArchives[0;37m
 X	14145	14135	d		
 R	14146					
-R	14152	seekers	inside			[1\;32mHall of Shared Knowledge[0\;37m
+R	14152	seekers	inside			[1;32mHall of Shared Knowledge[0;37m
 X	14152	14142	n		
-R	14162	seekers	city			[1\;32mMilo's Research Laboratory[0\;37m
+R	14162	seekers	city			[1;32mMilo's Research Laboratory[0;37m
 X	14162	14165	e		
-R	14165	seekers	inside			[1\;32mHallway of Champions[0\;37m
+R	14165	seekers	inside			[1;32mHallway of Champions[0;37m
 X	14165	32458	d		
 X	14165	14141	e		
 X	14165	14135	n		
 X	14165	14168	s		
 X	14165	14162	w		
-R	14168	seekers	city			[1\;32mSeekers Public Library[0\;37m
+R	14168	seekers	city			[1;32mSeekers Public Library[0;37m
 X	14168	14165	n		
 R	14170	melody	inside			The Esplanade
 X	14170	14171	n		
@@ -48503,7 +48523,7 @@ R	14489
 R	14490					
 R	14496					
 R	14498					
-R	14500	manor1	inside			[1\;37mTower [1\;33mPrecipice[0\;37m
+R	14500	manor1	inside			[1;37mTower [1;33mPrecipice[0;37m
 X	14500	14462	d		
 X	14500	14501	n		
 R	14501					
@@ -48520,7 +48540,7 @@ X	14616	14617	n
 X	14616	14461	u		
 R	14617					
 R	14618					
-R	14632	manor1	inside			[0\;34mM[1\;34misty [1\;34mW[0\;34maiting [1\;34mR[0\;34moom.[0\;37m
+R	14632	manor1	inside			[0;34mM[1;34misty [1;34mW[0;34maiting [1;34mR[0;34moom.[0;37m
 X	14632	14633	n		
 X	14632	14461	w		
 R	14633					
@@ -48880,19 +48900,19 @@ X	15079	15080	n		open n;north
 X	15079	15067	s		
 R	15080	darkside	chessblack			Home of the Despot
 X	15080	15079	s		
-R	15140	pyre	field			[1\;32mA Dank Drainage Pipe[0\;37m
+R	15140	pyre	field			[1;32mA Dank Drainage Pipe[0;37m
 X	15140	15141	e		
 X	15140	32672	u		
-R	15141	pyre	mountain			[1\;32mWhere Dusk and Dawn Collide[0\;37m
+R	15141	pyre	mountain			[1;32mWhere Dusk and Dawn Collide[0;37m
 X	15141	15142	e		
 X	15141	15143	n		
 X	15141	15140	w		
-R	15142	pyre	mountain			[1\;32mThe Standing Stone[0\;37m
+R	15142	pyre	mountain			[1;32mThe Standing Stone[0;37m
 X	15142	15144	s		
 X	15142	15141	w		
-R	15143	pyre	underground			[1\;32mThe Tomb of the Diaftheronoma[0\;37m
+R	15143	pyre	underground			[1;32mThe Tomb of the Diaftheronoma[0;37m
 X	15143	15141	s		
-R	15144	pyre	underground			[1\;32mA Combat Maze in a Deep Black Hole[0\;37m
+R	15144	pyre	underground			[1;32mA Combat Maze in a Deep Black Hole[0;37m
 X	15144	15142	n		
 R	15146	hedge	forest			The centre of the maze
 X	15146	15153	e		
@@ -49432,7 +49452,7 @@ R	15303	fantasy	inside			In Pleasure
 X	15303	15301	e		
 R	15304	fantasy	inside	1		Facing Reality
 X	15304	15205	d		
-R	15305	sanctum	cave	1		The Cavernous Deep
+R	15305	sanctum	cave	3		The Cavernous Deep
 X	15305	25127	e		
 X	15305	15306	n		
 X	15305	25156	s		
@@ -49638,7 +49658,7 @@ R	15370	sanctum	city			Whitewind Avenue
 X	15370	15369	n		
 X	15370	15372	s		
 R	15371					
-R	15372	sanctum	hellfountain			[1\;33mWelcome to Grandmarket Boulevard![0\;37m
+R	15372	sanctum	hellfountain			[1;33mWelcome to Grandmarket Boulevard![0;37m
 X	15372	15373	e		
 X	15372	15370	n		
 X	15372	15373	s		
@@ -50176,13 +50196,13 @@ R	15537	sennarre	underwater			Before the Light
 X	15537	15536	s		
 R	15538	sennarre	underwater			Beyond the Blue Shimmer
 X	15538	15537	d		
-R	15573	twinlobe	inside			[1\;32mA peaceful mezzanine[0\;37m
+R	15573	twinlobe	inside			[1;32mA peaceful mezzanine[0;37m
 X	15573	15575	d		
 X	15573	15574	e		
 X	15573	45591	u		
-R	15574	twinlobe	inside			[1\;32mAncient Artifacts and Treasures[0\;37m
+R	15574	twinlobe	inside			[1;32mAncient Artifacts and Treasures[0;37m
 X	15574	15573	w		
-R	15575	twinlobe	inside			[1\;32mThe Faculty Club[0\;37m
+R	15575	twinlobe	inside			[1;32mThe Faculty Club[0;37m
 X	15575	32549	d		
 X	15575	15573	u		
 R	15578	omentor	hallway			Entrance to the Fortress Aethelburh
@@ -50472,7 +50492,7 @@ R	15672	omentor	underground			A Sink Hole
 X	15672	15627	u		
 R	15674	omentor	quicksand			A Sink Hole
 X	15674	15622	u		
-R	15704	cabal	inside			[1\;32mInside A Swirling Typhoon[0\;37m
+R	15704	cabal	inside			[1;32mInside A Swirling Typhoon[0;37m
 X	15704	32420	d		
 R	15706	glamdursil	inside			The Inn on the Trail
 X	15706	25154	e		
@@ -50765,16 +50785,16 @@ X	15801	15802	n
 X	15801	15756	w		
 R	15802	monastery	forest			A small path into the trees
 X	15802	15801	s		
-R	15852	masaki	forest	1		[1\;32mMuranooyashiro[0\;37m
+R	15852	masaki	forest	1		[1;32mMuranooyashiro[0;37m
 X	15852	32539	d		
 X	15852	15855	e		
 X	15852	15853	n		
-R	15853	masaki	inside			[1\;32mKurinikku[0\;37m
+R	15853	masaki	inside			[1;32mKurinikku[0;37m
 X	15853	15854	e		op e;e
 X	15853	15852	s		
-R	15854	masaki	inside			[1\;32mNaichi Kaidan[0\;37m
+R	15854	masaki	inside			[1;32mNaichi Kaidan[0;37m
 X	15854	15853	w		
-R	15855	masaki	inside			[1\;32mKodai no Ibutsu[0\;37m
+R	15855	masaki	inside			[1;32mKodai no Ibutsu[0;37m
 X	15855	15852	w		
 R	15857	zodiac	pillar			Base of the Monolith
 X	15857	25361	e		
@@ -51673,6 +51693,7 @@ R	16149	qong	city			Pavilion of the Dragonfly
 X	16149	16156	n		
 X	16149	16148	w		
 R	16150	qong	inside			Hall of the Inoshishi
+X	16150	16122	d		
 X	16150	16151	e		
 X	16150	16143	s		
 R	16151	qong	inside			Hall of the Boxer
@@ -53545,7 +53566,7 @@ X	16759	16760	w
 R	16760	dhalgora	swamp			The Swamp of Blood and Tears
 X	16760	16759	e		
 X	16760	16735	w		
-R	16774	doh	inside			[1\;32mA Shimmering Gateway[0\;37m
+R	16774	doh	inside			[1;32mA Shimmering Gateway[0;37m
 X	16774	10518	d		
 X	16774	16576	e		
 X	16774	19976	n		
@@ -53553,7 +53574,7 @@ X	16774	24070	s
 X	16774	4334	u		
 X	16774	16803	w		
 R	16802					
-R	16803	doh	city			[1\;32mDisciples Auditorium[0\;37m
+R	16803	doh	city			[1;32mDisciples Auditorium[0;37m
 X	16803	16774	e		
 X	16803	16802	s		
 X	16803	32479	u		
@@ -64277,13 +64298,13 @@ X	19854	19841	e
 X	19854	19853	n		
 X	19854	19845	s		
 X	19854	19840	w		
-R	19855	zodiac	underwater			[0\;34mDeep under the Water[0\;37m
+R	19855	zodiac	underwater			[0;34mDeep under the Water[0;37m
 X	19855	19856	e		
 X	19855	15921	u		
-R	19856	zodiac	underwater			[0\;34mDark Underwater Cavern[0\;37m
+R	19856	zodiac	underwater			[0;34mDark Underwater Cavern[0;37m
 X	19856	19857	e		
 X	19856	19855	w		
-R	19857	zodiac	underwater			[0\;37mLighter Cavern
+R	19857	zodiac	underwater			[0;37mLighter Cavern
 X	19857	19859	s		
 X	19857	19858	u		
 X	19857	19856	w		
@@ -64432,34 +64453,34 @@ X	19909	19910	e
 R	19910	raga	hills			In the Foothills
 X	19910	19908	u		
 X	19910	19909	w		
-R	19966	perdition	inside			[1\;32mA Hard Days Knight Inn[0\;37m
+R	19966	perdition	inside			[1;32mA Hard Days Knight Inn[0;37m
 X	19966	19969	e		
 X	19966	19971	w		
-R	19967	perdition	inside			[1\;32mUnder a Striped Canopy[0\;37m
+R	19967	perdition	inside			[1;32mUnder a Striped Canopy[0;37m
 X	19967	19969	w		
-R	19968	perdition	inside			[1\;32mHome of the Moat Monster[0\;37m
+R	19968	perdition	inside			[1;32mHome of the Moat Monster[0;37m
 X	19968	19971	s		
 X	19968	32442	u		
-R	19969	perdition	inside			[1\;32mA Garden Alcove[0\;37m
+R	19969	perdition	inside			[1;32mA Garden Alcove[0;37m
 X	19969	32418	d		
 X	19969	19967	e		
 X	19969	19970	n		
 X	19969	19973	s		
 X	19969	19966	w		
-R	19970	perdition	inside			[1\;32mCarriage House Rotunda[0\;37m
+R	19970	perdition	inside			[1;32mCarriage House Rotunda[0;37m
 X	19970	20622	d		
 X	19970	30849	n		
 X	19970	19969	s		
 X	19970	34087	w		
-R	19971	perdition	inside			[1\;32mGateway to Templar Haven[0\;37m
+R	19971	perdition	inside			[1;32mGateway to Templar Haven[0;37m
 X	19971	19966	e		
 X	19971	19968	n		
 X	19971	19972	s		
 X	19971	19974	w		
 R	19972					
-R	19973	perdition	inside			[1\;32mThe Lists,  A Knightly workout arena[0\;37m
+R	19973	perdition	inside			[1;32mThe Lists,  A Knightly workout arena[0;37m
 X	19973	19969	n		
-R	19974	perdition	inside			[1\;32mThe Jousting Grounds[0\;37m
+R	19974	perdition	inside			[1;32mThe Jousting Grounds[0;37m
 X	19974	19971	e		
 R	19976	cataclysm	inside	1		An Elegant Chamber
 X	19976	2592	n		
@@ -64612,7 +64633,7 @@ X	20023	20022	s
 R	20024	cataclysm	cave	2		A Small Cave
 X	20024	38123	w		
 R	20025	cataclysm	desert			Through the Great Portal
-R	20026	gaardian	city			[1\;35mMidgaardian Publishing House Reception Area[0\;37m
+R	20026	gaardian	city			[1;35mMidgaardian Publishing House Reception Area[0;37m
 X	20026	32418	d		
 X	20026	32451	e		
 X	20026	20028	n		
@@ -64620,21 +64641,21 @@ X	20026	20029	s
 X	20026	20031	u		
 X	20026	20027	w		
 R	20027					
-R	20028	gaardian	inside			[1\;35mRestroom[0\;37m
+R	20028	gaardian	inside			[1;35mRestroom[0;37m
 X	20028	45194	d		
 X	20028	20026	s		
-R	20029	gaardian	shop			[1\;35mNews Stand[0\;37m
+R	20029	gaardian	shop			[1;35mNews Stand[0;37m
 X	20029	20030	d		
 X	20029	20035	e		
 X	20029	20026	n		
 X	20029	49335	s		
-R	20030	gaardian	inside			[1\;35mThe Pit[0\;37m
+R	20030	gaardian	inside			[1;35mThe Pit[0;37m
 X	20030	20033	n		
 X	20030	20029	u		
-R	20031	gaardian	inside			[1\;35mNewsroom Floor[0\;37m
+R	20031	gaardian	inside			[1;35mNewsroom Floor[0;37m
 X	20031	20026	d		
 X	20031	20034	w		
-R	20033	gaardian	shop			[1\;35mThe Archives[0\;37m
+R	20033	gaardian	shop			[1;35mThe Archives[0;37m
 X	20033	20030	s		
 R	20034					
 R	20035	gaardian	shop			Newsstand Storage Room
@@ -67253,11 +67274,11 @@ R	21318
 R	21331					
 R	21365					
 R	21367					
-R	21381	manor3	inside			[0\;34mEntrance to an Underground Lair[0\;37m
+R	21381	manor3	inside			[0;34mEntrance to an Underground Lair[0;37m
 X	21381	23363	e		
 X	21381	21382	n		
 R	21382					
-R	21390	manor3	inside			[1\;33mOld Gunnars potent brew![0\;37m
+R	21390	manor3	inside			[1;33mOld Gunnars potent brew![0;37m
 X	21390	21391	n		
 X	21390	21204	w		
 R	21391					
@@ -67298,10 +67319,10 @@ X	21549	21540	w
 R	21550					
 R	21552					
 R	21592					
-R	21595	manor3	inside			[1\;34mClan hall [1\;37mof [1\;32mBeer [1\;31mDrinking [1\;33mFriends[0\;37m
+R	21595	manor3	inside			[1;34mClan hall [1;37mof [1;32mBeer [1;31mDrinking [1;33mFriends[0;37m
 X	21595	21271	e		
 X	21595	21601	n		
-R	21601	manor3	inside			[1\;34mMain hall [0\;37mof the [1\;32mBeer [1\;31mDrinking [1\;33mFriends[1\;37m Tavern[0\;37m
+R	21601	manor3	inside			[1;34mMain hall [0;37mof the [1;32mBeer [1;31mDrinking [1;33mFriends[1;37m Tavern[0;37m
 X	21601	55602	d		
 X	21601	55596	e		
 X	21601	21602	n		
@@ -67338,7 +67359,7 @@ R	22080
 R	22094					
 R	22099					
 R	22146					
-R	22149	manor3	inside			[1\;36mAbelinc's Private Heaven[0\;37m
+R	22149	manor3	inside			[1;36mAbelinc's Private Heaven[0;37m
 X	22149	22150	n		
 X	22149	44510	s		
 R	22150					
@@ -67439,7 +67460,7 @@ X	23160	35004	w
 R	23161					
 R	23174					
 R	23177					
-R	23183	manor3	inside			[1\;31mC[1\;37mocamide's [1\;31mA[1\;37mnteroom[0\;37m
+R	23183	manor3	inside			[1;31mC[1;37mocamide's [1;31mA[1;37mnteroom[0;37m
 X	23183	23361	e		
 X	23183	23184	n		
 R	23184					
@@ -67447,12 +67468,12 @@ R	23193	manor3	inside			Merlin's Pass
 X	23193	23194	n		
 X	23193	44730	s		
 R	23194					
-R	23219	manor3	inside			[1\;32mE[0\;32ml[1\;32me[0\;32mu[1\;32ms[0\;32mi[1\;32mn[0\;32mi[1\;32ma[0\;32mn [1\;32mF[0\;32mi[1\;32me[0\;32ml[1\;32md[0\;37m
+R	23219	manor3	inside			[1;32mE[0;32ml[1;32me[0;32mu[1;32ms[0;32mi[1;32mn[0;32mi[1;32ma[0;32mn [1;32mF[0;32mi[1;32me[0;32ml[1;32md[0;37m
 X	23219	39449	d		
 X	23219	23221	n		
 R	23221					
 R	23250					
-R	23297	manor3	inside			[1\;34mB[0\;34mefore [1\;34mT[0\;34mhe [1\;34mG[0\;34mallows[0\;37m
+R	23297	manor3	inside			[1;34mB[0;34mefore [1;34mT[0;34mhe [1;34mG[0;34mallows[0;37m
 X	23297	23250	e		
 X	23297	23298	n		
 R	23298					
@@ -69357,7 +69378,7 @@ R	23984	newthalos	inside			Jail
 X	23984	23875	n		
 R	23985	newthalos	inside			City Hall
 X	23985	23876	n		
-R	23986	newthalos	inside			The Boyer\/Fletcher's
+R	23986	newthalos	inside			The Boyer/Fletcher's
 X	23986	23891	e		
 R	23987					
 R	23988	newthalos	palace_room			Guard House
@@ -69805,25 +69826,25 @@ R	24136	verdure	underground			A cold stone passage
 X	24136	24133	d		
 X	24136	24124	e		
 X	24136	24091	u		
-R	24139	romani	inside			[1\;32mVesh Shpera[0\;37m
+R	24139	romani	inside			[1;32mVesh Shpera[0;37m
 X	24139	25661	d		
 X	24139	26366	e		
 X	24139	26672	s		
 X	24139	1767	u		
 X	24139	24183	w		
 R	24158					
-R	24180	romani	inside			[1\;32mA Campsite within the Oasis[0\;37m
+R	24180	romani	inside			[1;32mA Campsite within the Oasis[0;37m
 X	24180	24181	d		
 X	24180	24183	e		
 X	24180	24184	n		
 X	24180	32499	s		
 X	24180	24158	u		
 X	24180	24182	w		
-R	24181	romani	inside			[1\;32mA Sparring Pit - Combat Maze[0\;37m
+R	24181	romani	inside			[1;32mA Sparring Pit - Combat Maze[0;37m
 X	24181	24180	u		
-R	24182	romani	city			[1\;32mA Merchant's Tent[0\;37m
+R	24182	romani	city			[1;32mA Merchant's Tent[0;37m
 X	24182	24180	e		
-R	24183	romani	inside			[1\;32mThe Drabmengro's Tent[0\;37m
+R	24183	romani	inside			[1;32mThe Drabmengro's Tent[0;37m
 X	24183	24139	e		
 X	24183	24180	w		
 R	24184	romani	inside			[1;32mA Tent of the Mystical and the Mysterious[0;37m
@@ -81285,16 +81306,16 @@ R	27694	kingsholm	inside			The Sewer
 X	27694	27693	s		
 R	27695	challenge	inside			In a Stone Ring
 R	27696	challenge	ice			Dangerous Liaisons
-R	27697	challenge	inside			[1\;37mTerrill's [1\;31mPurgatory[0\;37m
-R	27698	challenge	underground	1		[0\;36mA Flooded Hole In The Ground[0\;37m
-R	27699	challenge	inside	1		[0\;33mDirtworm's Chamber of Death[0\;37m
+R	27697	challenge	inside			[1;37mTerrill's [1;31mPurgatory[0;37m
+R	27698	challenge	underground	1		[0;36mA Flooded Hole In The Ground[0;37m
+R	27699	challenge	inside	1		[0;33mDirtworm's Chamber of Death[0;37m
 R	27700	challenge	inside			Morrigu's Thumb Wrestling Arena of Death
 R	27701	challenge	desert			A Dusty Deserted Street In Tombstone
 R	27702	challenge	city			The Colosseum, Jerusalem
 R	27703	challenge	inside			Floating in Space
 R	27704	challenge	inside			Citron's Weasel Pit
 R	27705	challenge	inside			The Cage
-R	27706	challenge	inside			[1\;37mA [0\;34mDark Corner [1\;37min [0\;31mVladia's Dungeon[0\;37m
+R	27706	challenge	inside			[1;37mA [0;34mDark Corner [1;37min [0;31mVladia's Dungeon[0;37m
 R	27707	challenge	inside			The Jousting Field
 R	27708	challenge	inside			Duel - Winners Room
 X	27708	32418	d		
@@ -81953,21 +81974,21 @@ X	27930	27891	u
 R	27931	astral	cave			Hall of Hypnosis
 X	27931	27930	s		
 R	27987					
-R	27988	crimson	inside			[1\;32mThe Pit of Wolves[0\;37m
+R	27988	crimson	inside			[1;32mThe Pit of Wolves[0;37m
 X	27988	27990	e		
-R	27989	crimson	inside	1		[1\;32mBefore the Stone Gates of Valhalla[0\;37m
+R	27989	crimson	inside	1		[1;32mBefore the Stone Gates of Valhalla[0;37m
 X	27989	27992	e		
 X	27989	32586	n		
 X	27989	27990	s		
 X	27989	27991	w		
-R	27990	crimson	inside			[1\;32mAt the Stone Gates[0\;37m
+R	27990	crimson	inside			[1;32mAt the Stone Gates[0;37m
 X	27990	27989	n		
 X	27990	27988	w		
-R	27991	crimson	city			[1\;32mA Trading Post at the Foot of a Mountain[0\;37m
+R	27991	crimson	city			[1;32mA Trading Post at the Foot of a Mountain[0;37m
 X	27991	50136	d		
 X	27991	27989	e		
 X	27991	27987	w		
-R	27992	crimson	inside			[1\;32mCrimson Polling Place[0\;37m
+R	27992	crimson	inside			[1;32mCrimson Polling Place[0;37m
 X	27992	27989	w		
 R	27994	lidnesh	forest			The Entrance to a Large Forest
 X	27994	27995	n		
@@ -82636,7 +82657,7 @@ R	28251	prosper	inside	1		Behind a Pillar
 X	28251	28250	s		
 X	28251	28248	w		
 R	28252	prosper	inside	1		On a Tribune
-R	28253	prosper	inside	1		Standing in Line
+R	28253	prosper	inside	3		Standing in Line
 R	28254	prosper	inside			Intruding upon 'Act I, Scene II'
 R	28255	prosper	inside			Behind the Stage
 R	28256	prosper	inside			Entering the Theater
@@ -82884,21 +82905,21 @@ R	28340	prosper	city			The Western Docks
 X	28340	28328	e		
 R	28341	prosper	inside			The Room of the Crystals
 X	28341	28330	n		
-R	28343	touchstone	city			[1\;37mCavern [1\;36mof [1\;33mGolden [1\;32mJewels[0\;37m
+R	28343	touchstone	city			[1;37mCavern [1;36mof [1;33mGolden [1;32mJewels[0;37m
 X	28343	32418	d		
 X	28343	28360	e		
 X	28343	28350	n		
 X	28343	28347	s		
 X	28343	28344	u		
 X	28343	28353	w		
-R	28344	touchstone	inside			[1\;32mUnderground River[0\;37m
+R	28344	touchstone	inside			[1;32mUnderground River[0;37m
 X	28344	28343	d		
 X	28344	28356	u		
 X	28344	28345	w		
-R	28345	touchstone	inside			[1\;32mUnderground Cavern[0\;37m
+R	28345	touchstone	inside			[1;32mUnderground Cavern[0;37m
 X	28345	28344	e		
 X	28345	28346	u		
-R	28346	touchstone	inside			[1\;32mA Gemstone Studded Staircase[0\;37m
+R	28346	touchstone	inside			[1;32mA Gemstone Studded Staircase[0;37m
 X	28346	28345	d		
 X	28346	50146	e		
 X	28346	32541	u		
@@ -82906,25 +82927,25 @@ X	28346	28358	w
 R	28347					
 R	28350					
 R	28353					
-R	28356	touchstone	inside			[1\;32mAir Shaft[0\;37m
+R	28356	touchstone	inside			[1;32mAir Shaft[0;37m
 X	28356	28344	d		
 X	28356	28357	u		
-R	28357	touchstone	inside			[1\;32mPortal Chamber[0\;37m
+R	28357	touchstone	inside			[1;32mPortal Chamber[0;37m
 X	28357	28356	d		
 X	28357	40497	e		
 X	28357	15857	n		
 X	28357	19976	s		
 X	28357	510	u		
 X	28357	25817	w		
-R	28358	touchstone	shop			[1\;32mExpedition Hut[0\;37m
+R	28358	touchstone	shop			[1;32mExpedition Hut[0;37m
 X	28358	28346	e		
 X	28358	28361	n		
 X	28358	50123	s		
 X	28358	28359	w		
-R	28359	touchstone	shop			[1\;32m(>Touchstone Brewery<)[0\;37m
+R	28359	touchstone	shop			[1;32m(>Touchstone Brewery<)[0;37m
 X	28359	28358	e		
 R	28360					
-R	28361	touchstone	shop			[1\;32mJunior Spelunker's Hut[0\;37m
+R	28361	touchstone	shop			[1;32mJunior Spelunker's Hut[0;37m
 X	28361	28358	s		
 R	28363	seaking	shore			Grey Hall of the Epitaph
 R	28364	seaking	shore			Grey Hall of the Tidebringer
@@ -83410,13 +83431,13 @@ X	28535	28534	s
 X	28535	28536	w		
 R	28536	times	inside			Forgotten Cave
 X	28536	28535	e		
-R	28580	loqui	city			[1\;32mLoqui Hideaway[0\;37m
+R	28580	loqui	city			[1;32mLoqui Hideaway[0;37m
 X	28580	28582	d		
 X	28580	28581	e		
 X	28580	32698	w		
-R	28581	loqui	inside			[1\;32mSanitarium[0\;37m
+R	28581	loqui	inside			[1;32mSanitarium[0;37m
 X	28581	28580	w		
-R	28582	loqui	inside			[1\;32mThe Cellar[0\;37m
+R	28582	loqui	inside			[1;32mThe Cellar[0;37m
 X	28582	35384	e		
 X	28582	28580	u		
 R	28584	losttime	forest			The Beach
@@ -84296,13 +84317,13 @@ X	28852	28853	d
 X	28852	28851	s		
 R	28853	wyrm	underground			Lair of the Dark Naga
 X	28853	28852	u		
-R	28909	chaos	inside			[1\;32mA Towering Waterfall[0\;37m
+R	28909	chaos	inside			[1;32mA Towering Waterfall[0;37m
 X	28909	32419	d		
 X	28909	28910	e		
 X	28909	28911	u		
-R	28910	chaos	inside			[1\;32mFollowing the River[0\;37m
+R	28910	chaos	inside			[1;32mFollowing the River[0;37m
 X	28910	28909	w		
-R	28911	chaos	inside			[1\;32mThe Temple of the Moons[0\;37m
+R	28911	chaos	inside			[1;32mThe Temple of the Moons[0;37m
 X	28911	28909	d		
 R	28913	graveyard	trail_ew			The Graveyard Gates
 X	28913	28914	e		
@@ -85218,64 +85239,64 @@ X	29208	29207	s
 X	29208	29198	w		
 R	29209	hades	underground			Den of the Furies
 X	29209	29208	w		
-R	29210	tao	inside			[1\;32mAtrium of the Collective Mind[0\;37m
+R	29210	tao	inside			[1;32mAtrium of the Collective Mind[0;37m
 X	29210	32418	d		
 X	29210	29213	e		
 X	29210	29214	n		
 X	29210	29211	s		
 X	29210	29215	u		
 X	29210	29212	w		
-R	29211	tao	inside			[1\;32mPerceptual Mist[0\;37m
+R	29211	tao	inside			[1;32mPerceptual Mist[0;37m
 X	29211	32538	d		
 X	29211	29210	n		
 X	29211	29229	u		
-R	29212	tao	field			[1\;32mLake of Reincarnation[0\;37m
+R	29212	tao	field			[1;32mLake of Reincarnation[0;37m
 X	29212	29216	d		
 X	29212	29210	e		
 X	29212	52718	w		
-R	29213	tao	inside			[1\;32mSand Garden of Inner Peace[0\;37m
+R	29213	tao	inside			[1;32mSand Garden of Inner Peace[0;37m
 X	29213	29222	e		
 X	29213	47113	n		
 X	29213	29210	w		
-R	29214	tao	shop			[1\;32mA Vast Marketplace[0\;37m
+R	29214	tao	shop			[1;32mA Vast Marketplace[0;37m
 X	29214	29220	e		
 X	29214	29221	n		
 X	29214	29210	s		
 X	29214	29223	w		
-R	29215	tao	inside			[1\;32mTemporary Epiphany[0\;37m
+R	29215	tao	inside			[1;32mTemporary Epiphany[0;37m
 X	29215	29210	d		
 X	29215	26672	e		
 X	29215	1354	n		
 X	29215	26241	s		
 X	29215	25817	u		
 X	29215	27496	w		
-R	29216	tao	inside			[1\;32mThe Waters of Experience[0\;37m
+R	29216	tao	inside			[1;32mThe Waters of Experience[0;37m
 X	29216	29212	u		
-R	29220	tao	shop			[1\;32mA Mystical Shop[0\;37m
+R	29220	tao	shop			[1;32mA Mystical Shop[0;37m
 X	29220	49373	n		
 X	29220	29214	w		
-R	29221	tao	shop			[1\;32mA Merchant's Tent[0\;37m
+R	29221	tao	shop			[1;32mA Merchant's Tent[0;37m
 X	29221	49373	e		
 X	29221	29214	s		
-R	29222	tao	inside			[1\;32mLooking Beyond[0\;37m
+R	29222	tao	inside			[1;32mLooking Beyond[0;37m
 X	29222	29226	n		
 X	29222	29224	s		
 X	29222	29213	w		
-R	29223	tao	shop			[1\;32mThe Jade Palace[0\;37m
+R	29223	tao	shop			[1;32mThe Jade Palace[0;37m
 X	29223	29214	e		
-R	29224	tao	inside			[1\;32mThe Way of Enlightenment[0\;37m
+R	29224	tao	inside			[1;32mThe Way of Enlightenment[0;37m
 X	29224	29222	n		
 X	29224	29225	s		
-R	29225	tao	inside			[1\;32mTao: The Beginning[0\;37m
+R	29225	tao	inside			[1;32mTao: The Beginning[0;37m
 X	29225	29224	n		
 X	29225	29226	s		
-R	29226	tao	inside			[1\;32mWu-wei[0\;37m
+R	29226	tao	inside			[1;32mWu-wei[0;37m
 X	29226	29225	n		
 X	29226	29222	s		
 X	29226	29230	w		
-R	29229	tao	forest			[1\;32mBamboo Forest[0\;37m
+R	29229	tao	forest			[1;32mBamboo Forest[0;37m
 X	29229	29211	d		
-R	29230	tao	inside			[1\;32mJade Reflections[0\;37m
+R	29230	tao	inside			[1;32mJade Reflections[0;37m
 X	29230	29226	e		
 R	29232	fields	desert			Amongst The Killing Fields
 X	29232	29239	e		
@@ -86221,14 +86242,14 @@ X	29538	29521	w
 R	29539	yurgach	hills			Hidden gully
 X	29539	29450	e		
 X	29539	25319	w		
-R	29580	druid	city			[1\;32mBrugh Na Boinne[0\;37m
+R	29580	druid	city			[1;32mBrugh Na Boinne[0;37m
 X	29580	29582	s		
-R	29582	druid	forest			[1\;32mIn a Sacred Glade[0\;37m
+R	29582	druid	forest			[1;32mIn a Sacred Glade[0;37m
 X	29582	32691	d		
 X	29582	29583	e		
 X	29582	29580	n		
 X	29582	52134	s		
-R	29583	druid	field			[1\;32mMound[0\;37m
+R	29583	druid	field			[1;32mMound[0;37m
 X	29583	29582	w		
 R	29585	paradise	desert			A Barren Wasteland
 X	29585	29624	d		
@@ -88142,10 +88163,10 @@ R	30357	orlando	underground			Underground River
 X	30357	30356	w		
 R	30358	orlando	underground			Cave In
 X	30358	30356	e		
-R	30414	imperium	inside			[1\;32mPaladine's Rest[0\;37m
+R	30414	imperium	inside			[1;32mPaladine's Rest[0;37m
 X	30414	30415	n		
 X	30414	30416	w		
-R	30415	imperium	inside			[1\;32mThe Brewery[0\;37m
+R	30415	imperium	inside			[1;32mThe Brewery[0;37m
 X	30415	30414	s		
 X	30415	32419	w		
 R	30416					
@@ -88429,92 +88450,92 @@ R	30516	hodgepodge	inside			The Royal Bedchamber
 X	30516	30514	w		
 R	30517	hodgepodge	inside			The Order of the Wanaeatawalnut
 X	30517	30473	s		
-R	30518	bard	inside			[1\;32mBard Clan Hall[0\;37m
+R	30518	bard	inside			[1;32mBard Clan Hall[0;37m
 X	30518	32418	e		
 X	30518	30528	n		
 X	30518	30519	s		
 X	30518	30524	u		
 X	30518	30538	w		
 R	30519					
-R	30520	bard	inside			[1\;32mThe Theatre[0\;37m
+R	30520	bard	inside			[1;32mThe Theatre[0;37m
 X	30520	30530	e		
 X	30520	30546	n		
 X	30520	30542	u		
 R	30521					
-R	30522	bard	inside			[1\;32mThe Bard Memorial Library[0\;37m
+R	30522	bard	inside			[1;32mThe Bard Memorial Library[0;37m
 X	30522	30535	s		
-R	30523	bard	inside			[1\;32mThe Bard Memorial Library[0\;37m
+R	30523	bard	inside			[1;32mThe Bard Memorial Library[0;37m
 X	30523	30535	n		
-R	30524	bard	inside			[1\;32mEndless Horizons[0\;37m
+R	30524	bard	inside			[1;32mEndless Horizons[0;37m
 X	30524	30518	d		
 X	30524	2395	e		
 X	30524	23713	n		
 X	30524	6162	s		
 X	30524	29282	u		
 X	30524	4563	w		
-R	30525	bard	shop			[1\;32mPeto's Cornucopia O' Corn[0\;37m
+R	30525	bard	shop			[1;32mPeto's Cornucopia O' Corn[0;37m
 X	30525	30528	e		
 X	30525	30538	s		
 X	30525	30547	w		
-R	30526	bard	inside			[1\;32mThe bottom of the spiral staircase[0\;37m
+R	30526	bard	inside			[1;32mThe bottom of the spiral staircase[0;37m
 X	30526	30535	e		op e;e
 X	30526	30537	n		
 X	30526	30538	u		
 X	30526	30536	w		
-R	30527	bard	inside			[1\;32mThe games room[0\;37m
+R	30527	bard	inside			[1;32mThe games room[0;37m
 X	30527	30536	n		
-R	30528	bard	inside			[1\;32mThe Cloak Room[0\;37m
+R	30528	bard	inside			[1;32mThe Cloak Room[0;37m
 X	30528	32418	d		
 X	30528	30518	s		
 X	30528	30525	w		
-R	30530	bard	inside			[1\;32mBehind the velvet drapes[0\;37m
+R	30530	bard	inside			[1;32mBehind the velvet drapes[0;37m
 X	30530	30521	d		
 X	30530	30538	n		
 X	30530	30520	w		
-R	30531	bard	shop			[1\;32mThe Closet of Outfits[0\;37m
+R	30531	bard	shop			[1;32mThe Closet of Outfits[0;37m
 X	30531	30539	e		
-R	30532	bard	shop			[1\;32mThe Music Box[0\;37m
+R	30532	bard	shop			[1;32mThe Music Box[0;37m
 X	30532	30539	n		
-R	30533	bard	shop			[1\;32mThe Silver Moon - Musical Supplies and Other Useful Things[0\;37m
+R	30533	bard	shop			[1;32mThe Silver Moon - Musical Supplies and Other Useful Things[0;37m
 X	30533	30539	s		
-R	30534	bard	inside			[1\;32mInfernal Revenue Savings & Loan[0\;37m
+R	30534	bard	inside			[1;32mInfernal Revenue Savings & Loan[0;37m
 X	30534	30536	s		
-R	30535	bard	inside			[1\;32mThe Bard Memorial Library[0\;37m
+R	30535	bard	inside			[1;32mThe Bard Memorial Library[0;37m
 X	30535	30522	n		
 X	30535	30523	s		
 X	30535	30526	w		
-R	30536	bard	inside			[1\;32mThe Bard's Gallery[0\;37m
+R	30536	bard	inside			[1;32mThe Bard's Gallery[0;37m
 X	30536	30526	e		
 X	30536	30534	n		
 X	30536	30527	s		
 R	30537					
-R	30538	bard	inside			[1\;32mThe central stairwell[0\;37m
+R	30538	bard	inside			[1;32mThe central stairwell[0;37m
 X	30538	30526	d		
 X	30538	30518	e		
 X	30538	30525	n		
 X	30538	30530	s		
 X	30538	30539	u		
 X	30538	30546	w		
-R	30539	bard	inside			[1\;32mUp the central stairwell[0\;37m
+R	30539	bard	inside			[1;32mUp the central stairwell[0;37m
 X	30539	30538	d		
 X	30539	30533	n		
 X	30539	30532	s		
 X	30539	30540	u		
 X	30539	30531	w		
-R	30540	bard	inside			[1\;32mThe Hall of the Muses[0\;37m
+R	30540	bard	inside			[1;32mThe Hall of the Muses[0;37m
 X	30540	30539	d		
 X	30540	30543	u		
-R	30542	bard	inside			[1\;32mBalcony[0\;37m
+R	30542	bard	inside			[1;32mBalcony[0;37m
 X	30542	30520	d		
-R	30543	bard	inside			[1\;32mAscending the Tower[0\;37m
+R	30543	bard	inside			[1;32mAscending the Tower[0;37m
 X	30543	30540	d		
 X	30543	30544	u		
-R	30544	bard	inside			[1\;32mAerial cloister[0\;37m
+R	30544	bard	inside			[1;32mAerial cloister[0;37m
 X	30544	30543	d		
-R	30546	bard	inside			[1\;32mThe lobby[0\;37m
+R	30546	bard	inside			[1;32mThe lobby[0;37m
 X	30546	30538	e		
 X	30546	30520	s		
-R	30547	bard	city			[1\;32mTravelling Gleeman Courier Service[0\;37m
+R	30547	bard	city			[1;32mTravelling Gleeman Courier Service[0;37m
 X	30547	30525	e		
 R	30549	lagoon	waterswim		hunt gatekeeper	The Shoreline
 X	30549	30550	n		
@@ -89304,7 +89325,7 @@ X	30784	30795	e
 X	30784	35471	n		
 X	30784	30787	s		
 X	30784	30793	w		
-R	30785	sohtwo	space1			Outer Space
+R	30785	sohtwo	space1	2		Outer Space
 X	30785	30796	e		
 X	30785	30786	n		
 X	30785	35471	s		
@@ -89679,20 +89700,20 @@ X	30897	30895	e
 X	30897	30896	w		
 R	30898	village	air			The last cloud
 X	30898	30891	s		
-R	30949	daoine	forest			[1\;32mAn Opening in the Roots[0\;37m
+R	30949	daoine	forest			[1;32mAn Opening in the Roots[0;37m
 X	30949	47108	n		
 X	30949	30950	s		
 X	30949	32540	u		
-R	30950	daoine	inside			[1\;32mA Hidden Tunnel[0\;37m
+R	30950	daoine	inside			[1;32mA Hidden Tunnel[0;37m
 X	30950	30951	d		
 X	30950	30949	n		
-R	30951	daoine	shop			[1\;32mUnderground Cavern[0\;37m
+R	30951	daoine	shop			[1;32mUnderground Cavern[0;37m
 X	30951	30953	s		
 X	30951	30950	u		
 X	30951	30952	w		
-R	30952	daoine	inside			[1\;32mThe Crawlspace[0\;37m
+R	30952	daoine	inside			[1;32mThe Crawlspace[0;37m
 X	30952	30951	e		
-R	30953	daoine	inside			[1\;32mA Calm and Peaceful Room[0\;37m
+R	30953	daoine	inside			[1;32mA Calm and Peaceful Room[0;37m
 X	30953	30951	n		
 R	30955	werewood	forest			On the Edge of a Dark Forest
 X	30955	30956	e		
@@ -90223,123 +90244,123 @@ R	31121	hell	insideice			Ice Room
 X	31121	31053	e		
 X	31121	31062	s		
 X	31121	31052	w		
-R	31122	crusaders	city			[1\;32mEntrance to the Crusader Clan Temple[0\;37m
+R	31122	crusaders	city			[1;32mEntrance to the Crusader Clan Temple[0;37m
 X	31122	32418	d		
 X	31122	32419	e		
 X	31122	31124	n		
 X	31122	31129	s		
 X	31122	49320	u		
 X	31122	31159	w		
-R	31123	crusaders	shop			[1\;32mPharmacy of Sir Richard[0\;37m
+R	31123	crusaders	shop			[1;32mPharmacy of Sir Richard[0;37m
 X	31123	31140	s		
-R	31124	crusaders	inside			[1\;32mThe Marble Hallway[0\;37m
+R	31124	crusaders	inside			[1;32mThe Marble Hallway[0;37m
 X	31124	31140	d		
 X	31124	41776	e		
 X	31124	31138	n		
 X	31124	31122	s		
 X	31124	31127	u		
 X	31124	41779	w		
-R	31125	crusaders	inside			[1\;32mHospitium[0\;37m
+R	31125	crusaders	inside			[1;32mHospitium[0;37m
 X	31125	41778	n		
 X	31125	41776	s		
-R	31126	crusaders	inside			[1\;32mThe Depository[0\;37m
+R	31126	crusaders	inside			[1;32mThe Depository[0;37m
 X	31126	31140	n		
-R	31127	crusaders	city			[1\;32mThe Shadowed Hall[0\;37m
+R	31127	crusaders	city			[1;32mThe Shadowed Hall[0;37m
 X	31127	31124	d		
 X	31127	31128	e		
 X	31127	31156	n		
 X	31127	31150	s		
 X	31127	31158	w		
-R	31128	crusaders	shop			[1\;32mThe Temple Armoury[0\;37m
+R	31128	crusaders	shop			[1;32mThe Temple Armoury[0;37m
 X	31128	31127	w		
-R	31129	crusaders	forest			[1\;32mEntering the Temple Gardens[0\;37m
+R	31129	crusaders	forest			[1;32mEntering the Temple Gardens[0;37m
 X	31129	31130	e		
 X	31129	31122	n		
 X	31129	31135	s		
-R	31130	crusaders	inside			[1\;32mThe Stables[0\;37m
+R	31130	crusaders	inside			[1;32mThe Stables[0;37m
 X	31130	31129	w		
-R	31131	crusaders	inside			[1\;32mThe Sunlit Hallway[0\;37m
+R	31131	crusaders	inside			[1;32mThe Sunlit Hallway[0;37m
 X	31131	41780	e		
-R	31132	crusaders	inside			[1\;32mThe Devotional Nave[0\;37m
+R	31132	crusaders	inside			[1;32mThe Devotional Nave[0;37m
 X	31132	31139	d		
 X	31132	41780	n		
-R	31133	crusaders	city			[1\;32mThe Temple Library[0\;37m
+R	31133	crusaders	city			[1;32mThe Temple Library[0;37m
 X	31133	31159	n		
 X	31133	41775	s		
-R	31134	crusaders	inside			[1\;32mThe Stone Belfry[0\;37m
+R	31134	crusaders	inside			[1;32mThe Stone Belfry[0;37m
 X	31134	31152	d		
 X	31134	47187	e		
-R	31135	crusaders	forest			[1\;32mA Small Path Through The Gardens[0\;37m
+R	31135	crusaders	forest			[1;32mA Small Path Through The Gardens[0;37m
 X	31135	31154	e		
 X	31135	31129	n		
 X	31135	31137	s		
-R	31136	crusaders	forest			[1\;32mBefore the Willow Trellis[0\;37m
+R	31136	crusaders	forest			[1;32mBefore the Willow Trellis[0;37m
 X	31136	31147	e		
-R	31137	crusaders	forest			[1\;32mPassing Among the Shaded Ferns[0\;37m
+R	31137	crusaders	forest			[1;32mPassing Among the Shaded Ferns[0;37m
 X	31137	31135	n		
 X	31137	31148	w		
-R	31138	crusaders	inside			[1\;32mThe Meeting of Many Paths[0\;37m
+R	31138	crusaders	inside			[1;32mThe Meeting of Many Paths[0;37m
 X	31138	31304	d		
 X	31138	27337	e		
 X	31138	30599	n		
 X	31138	31124	s		
 X	31138	6304	u		
 X	31138	30029	w		
-R	31139	crusaders	inside			[1\;32mThe Reliquary[0\;37m
+R	31139	crusaders	inside			[1;32mThe Reliquary[0;37m
 X	31139	31132	u		
-R	31140	crusaders	inside			[1\;32mThe Carpeted Hallway[0\;37m
+R	31140	crusaders	inside			[1;32mThe Carpeted Hallway[0;37m
 X	31140	31142	e		
 X	31140	31123	n		
 X	31140	31126	s		
 X	31140	31124	u		
 X	31140	31141	w		
-R	31141	crusaders	inside			[1\;32mThe Temple Treasury[0\;37m
+R	31141	crusaders	inside			[1;32mThe Temple Treasury[0;37m
 X	31141	31140	e		
-R	31142	crusaders	inside			[1\;32mThe Courier's Office[0\;37m
+R	31142	crusaders	inside			[1;32mThe Courier's Office[0;37m
 X	31142	31140	w		
-R	31143	crusaders	inside			[1\;32mThe Majestic Hallway[0\;37m
+R	31143	crusaders	inside			[1;32mThe Majestic Hallway[0;37m
 X	31143	31159	e		
 X	31143	41781	n		
 X	31143	41777	s		
 X	31143	41780	w		
-R	31145	crusaders	forest			[1\;32mThe Path To Enlightenment[0\;37m
+R	31145	crusaders	forest			[1;32mThe Path To Enlightenment[0;37m
 X	31145	31146	e		
 X	31145	31148	n		
-R	31146	crusaders	forest			[1\;32mGrove of Contemplation[0\;37m
+R	31146	crusaders	forest			[1;32mGrove of Contemplation[0;37m
 X	31146	31145	w		
-R	31147	crusaders	forest			[1\;32mThe Tranquil Clearing[0\;37m
+R	31147	crusaders	forest			[1;32mThe Tranquil Clearing[0;37m
 X	31147	31148	e		
 X	31147	31149	n		
 X	31147	31136	w		
-R	31148	crusaders	forest			[1\;32mThe Leafy Portico[0\;37m
+R	31148	crusaders	forest			[1;32mThe Leafy Portico[0;37m
 X	31148	31137	e		
 X	31148	31145	s		
 X	31148	31147	w		
-R	31149	crusaders	forest			[1\;32mBeneath a Swaying Arbor[0\;37m
+R	31149	crusaders	forest			[1;32mBeneath a Swaying Arbor[0;37m
 X	31149	31147	s		
-R	31150	crusaders	shop			[1\;32mThe Expedition Shop[0\;37m
+R	31150	crusaders	shop			[1;32mThe Expedition Shop[0;37m
 X	31150	31127	n		
-R	31151	crusaders	city			[1\;32mSanctuary[0\;37m
+R	31151	crusaders	city			[1;32mSanctuary[0;37m
 X	31151	41782	s		
-R	31152	crusaders	inside			[1\;32mBalcony Overlooking Waterfalls[0\;37m
+R	31152	crusaders	inside			[1;32mBalcony Overlooking Waterfalls[0;37m
 X	31152	31155	d		
 X	31152	31154	n		
 X	31152	31134	u		
-R	31153	crusaders	inside			[1\;32mCouncil Room[0\;37m
+R	31153	crusaders	inside			[1;32mCouncil Room[0;37m
 X	31153	41779	s		
-R	31154	crusaders	inside			[1\;32mPathway Along the Stream[0\;37m
+R	31154	crusaders	inside			[1;32mPathway Along the Stream[0;37m
 X	31154	31152	s		
 X	31154	31135	w		
-R	31155	crusaders	inside			[1\;32mLagoon at the Bottom of the Falls[0\;37m
+R	31155	crusaders	inside			[1;32mLagoon at the Bottom of the Falls[0;37m
 X	31155	49217	e		
 X	31155	31152	u		
-R	31156	crusaders	shop			[1\;32mThe Temple Weaponry[0\;37m
+R	31156	crusaders	shop			[1;32mThe Temple Weaponry[0;37m
 X	31156	31127	s		
-R	31157	crusaders	city			[1\;32mHall of Champions[0\;37m
+R	31157	crusaders	city			[1;32mHall of Champions[0;37m
 X	31157	41781	s		
-R	31158	crusaders	shop			[1\;32mThe Squires' Armoury[0\;37m
+R	31158	crusaders	shop			[1;32mThe Squires' Armoury[0;37m
 X	31158	31127	e		
-R	31159	crusaders	city			[1\;32mTemple of the Crusaders[0\;37m
+R	31159	crusaders	city			[1;32mTemple of the Crusaders[0;37m
 X	31159	31122	e		
 X	31159	31133	s		
 X	31159	31143	w		
@@ -91553,118 +91574,118 @@ R	31545	jotun	palace_room			Muspelheim
 X	31545	31544	s		
 R	31546	jotun	palace_room			Hel
 X	31546	31544	n		
-R	31550	tanelorn	field			[1\;32mThe Granite Highway[0\;37m
+R	31550	tanelorn	field			[1;32mThe Granite Highway[0;37m
 X	31550	31556	d		
 X	31550	31561	n		
 X	31550	31589	s		
 X	31550	31594	w		
-R	31551	tanelorn	field			[1\;32mA Caravan on the Steps[0\;37m
+R	31551	tanelorn	field			[1;32mA Caravan on the Steps[0;37m
 X	31551	31563	d		
 X	31551	31593	u		
-R	31552	tanelorn	city			[1\;32mPillar of Knowledge[0\;37m
+R	31552	tanelorn	city			[1;32mPillar of Knowledge[0;37m
 X	31552	31589	e		
 X	31552	31555	u		
-R	31553	tanelorn	city			[1\;32mPillar of Experience[0\;37m
+R	31553	tanelorn	city			[1;32mPillar of Experience[0;37m
 X	31553	31563	u		
 X	31553	31589	w		
-R	31554	tanelorn	city			[1\;32mPillar of Wisdom[0\;37m
+R	31554	tanelorn	city			[1;32mPillar of Wisdom[0;37m
 X	31554	31589	n		
 X	31554	31591	u		
-R	31555	tanelorn	city			[1\;32mA Peaceful Rest[0\;37m
+R	31555	tanelorn	city			[1;32mA Peaceful Rest[0;37m
 X	31555	31552	d		
 X	31555	31583	u		
 X	31555	31582	w		
 R	31556					
 R	31557					
-R	31558	tanelorn	city			[1\;32mA Crystal Room[0\;37m
+R	31558	tanelorn	city			[1;32mA Crystal Room[0;37m
 X	31558	31591	d		
-R	31560	tanelorn	field			[1\;32mThe Meadow of Portals[0\;37m
+R	31560	tanelorn	field			[1;32mThe Meadow of Portals[0;37m
 X	31560	6900	d		
 X	31560	26672	e		
 X	31560	32884	n		
 X	31560	4473	s		
 X	31560	5861	u		
 X	31560	31561	w		
-R	31561	tanelorn	city			[1\;32mThe Road Not Taken[0\;37m
+R	31561	tanelorn	city			[1;32mThe Road Not Taken[0;37m
 X	31561	31560	e		
 X	31561	31550	s		
 X	31561	32458	w		
-R	31562	tanelorn	inside			[1\;32mThe Silent Cliffs[0\;37m
+R	31562	tanelorn	inside			[1;32mThe Silent Cliffs[0;37m
 X	31562	31583	d		
 X	31562	31585	e		
 X	31562	31564	u		
-R	31563	tanelorn	inside			[1\;32mView Off a Pier[0\;37m
+R	31563	tanelorn	inside			[1;32mView Off a Pier[0;37m
 X	31563	31553	d		
 X	31563	31551	u		
-R	31564	tanelorn	forest			[1\;32mThe Tanelornian Gardens[0\;37m
+R	31564	tanelorn	forest			[1;32mThe Tanelornian Gardens[0;37m
 X	31564	31562	d		
 X	31564	31567	u		
-R	31565	tanelorn	inside			[1\;32mThe Wishing Well[0\;37m
+R	31565	tanelorn	inside			[1;32mThe Wishing Well[0;37m
 X	31565	31588	s		
-R	31566	tanelorn	shop			[1\;32mBlacksmith's Shop[0\;37m
+R	31566	tanelorn	shop			[1;32mBlacksmith's Shop[0;37m
 X	31566	31584	n		
 X	31566	31568	w		
-R	31567	tanelorn	inside			[1\;32mArcher's Aerie[0\;37m
+R	31567	tanelorn	inside			[1;32mArcher's Aerie[0;37m
 X	31567	31564	d		
 X	31567	31571	u		
-R	31568	tanelorn	field			[1\;32mOn the Festival Grounds[0\;37m
+R	31568	tanelorn	field			[1;32mOn the Festival Grounds[0;37m
 X	31568	31566	e		
 X	31568	31587	s		
 X	31568	31570	w		
-R	31569	tanelorn	inside			[1\;32mInner Courtyard[0\;37m
+R	31569	tanelorn	inside			[1;32mInner Courtyard[0;37m
 X	31569	31589	d		
 X	31569	31586	e		
 X	31569	31574	n		
 X	31569	31572	s		
 X	31569	31557	w		
-R	31570	tanelorn	field			[1\;32mOn the Festival Grounds[0\;37m
+R	31570	tanelorn	field			[1;32mOn the Festival Grounds[0;37m
 X	31570	31568	e		
 X	31570	31573	s		
-R	31571	tanelorn	inside			[1\;32mAn Unused Storeroom[0\;37m
+R	31571	tanelorn	inside			[1;32mAn Unused Storeroom[0;37m
 X	31571	31567	d		
 X	31571	31575	u		
-R	31572	tanelorn	inside			[1\;32mRoom For Rent?[0\;37m
+R	31572	tanelorn	inside			[1;32mRoom For Rent?[0;37m
 X	31572	31569	n		
-R	31573	tanelorn	field			[1\;32mOn the Festival Grounds[0\;37m
+R	31573	tanelorn	field			[1;32mOn the Festival Grounds[0;37m
 X	31573	31587	e		
 X	31573	31570	n		
-R	31574	tanelorn	inside			[1\;32mRanger's Roost[0\;37m
+R	31574	tanelorn	inside			[1;32mRanger's Roost[0;37m
 X	31574	31588	e		
 X	31574	31569	s		
 X	31574	31590	w		
-R	31575	tanelorn	inside			[1\;32mThe Marble Staircase[0\;37m
+R	31575	tanelorn	inside			[1;32mThe Marble Staircase[0;37m
 X	31575	31571	d		
-R	31582	tanelorn	inside			[1\;32mThe Duke's Barn[0\;37m
+R	31582	tanelorn	inside			[1;32mThe Duke's Barn[0;37m
 X	31582	31555	e		
-R	31583	tanelorn	city			[1\;32mA Tranquil Vision[0\;37m
+R	31583	tanelorn	city			[1;32mA Tranquil Vision[0;37m
 X	31583	31555	d		
 X	31583	31562	u		
-R	31584	tanelorn	shop			[1\;32mRowdy Ralph's Entertainment Emporium[0\;37m
+R	31584	tanelorn	shop			[1;32mRowdy Ralph's Entertainment Emporium[0;37m
 X	31584	31594	e		
 X	31584	31566	s		
-R	31585	tanelorn	city			[1\;32mThe Wizard's Warp[0\;37m
+R	31585	tanelorn	city			[1;32mThe Wizard's Warp[0;37m
 X	31585	31562	w		
-R	31586	tanelorn	inside			[1\;32mA Dissertation Hall[0\;37m
+R	31586	tanelorn	inside			[1;32mA Dissertation Hall[0;37m
 X	31586	31569	w		
-R	31587	tanelorn	field			[1\;32mOn the Festival Grounds[0\;37m
+R	31587	tanelorn	field			[1;32mOn the Festival Grounds[0;37m
 X	31587	31568	n		
 X	31587	31573	w		
-R	31588	tanelorn	city			[1\;32mThe Psionicist's Mind[0\;37m
+R	31588	tanelorn	city			[1;32mThe Psionicist's Mind[0;37m
 X	31588	31565	n		
 X	31588	31574	w		
-R	31589	tanelorn	city			[1\;32mBelow a floating city[0\;37m
+R	31589	tanelorn	city			[1;32mBelow a floating city[0;37m
 X	31589	31553	e		
 X	31589	31550	n		
 X	31589	31554	s		
 X	31589	31569	u		
 X	31589	31552	w		
 R	31590					
-R	31591	tanelorn	city			[1\;32mGoing to the Market[0\;37m
+R	31591	tanelorn	city			[1;32mGoing to the Market[0;37m
 X	31591	31554	d		
 X	31591	31558	u		
-R	31593	tanelorn	inside			[1\;32mTemple of the Berserker god[0\;37m
+R	31593	tanelorn	inside			[1;32mTemple of the Berserker god[0;37m
 X	31593	31551	d		
-R	31594	tanelorn	shop			[1\;32mThe Alembic and Pentameter[0\;37m
+R	31594	tanelorn	shop			[1;32mThe Alembic and Pentameter[0;37m
 X	31594	31550	e		
 X	31594	31584	w		
 R	31596	temple	city			Before the Temple of Shal'indrael
@@ -93361,84 +93382,84 @@ X	32293	32231	w
 R	32294	empire	field			Kriege's Training Field
 X	32294	32225	e		
 X	32294	32219	n		
-R	32342	watchmen	desert			[1\;32mTree of Insight[0\;37m
+R	32342	watchmen	desert			[1;32mTree of Insight[0;37m
 X	32342	32350	s		
 X	32342	32345	w		
-R	32343	watchmen	desert			[1\;32mIn the Hollow of the Tree of Insight[0\;37m
+R	32343	watchmen	desert			[1;32mIn the Hollow of the Tree of Insight[0;37m
 X	32343	32442	d		
 X	32343	32347	e		
 X	32343	32349	n		
 X	32343	32344	w		
-R	32344	watchmen	desert			[1\;32mSpectatorium[0\;37m
+R	32344	watchmen	desert			[1;32mSpectatorium[0;37m
 X	32344	32343	e		
 X	32344	32350	w		
-R	32345	watchmen	desert			[1\;32mOn a Flet High in the Boughs of the Tree[0\;37m
+R	32345	watchmen	desert			[1;32mOn a Flet High in the Boughs of the Tree[0;37m
 X	32345	32342	e		
 X	32345	32348	w		
-R	32346	watchmen	desert			[1\;32mIn a Blood-Spattered Grotto[0\;37m
+R	32346	watchmen	desert			[1;32mIn a Blood-Spattered Grotto[0;37m
 X	32346	32348	n		
 X	32346	32347	w		
-R	32347	watchmen	desert			[1\;32mUnder The Shadow of the Tree of Insight[0\;37m
+R	32347	watchmen	desert			[1;32mUnder The Shadow of the Tree of Insight[0;37m
 X	32347	32346	e		
 X	32347	32343	w		
-R	32348	watchmen	desert			[1\;32mAn Open Plaza Close to the Tree of Insight[0\;37m
+R	32348	watchmen	desert			[1;32mAn Open Plaza Close to the Tree of Insight[0;37m
 X	32348	32345	e		
 X	32348	32346	s		
-R	32349	watchmen	desert			[1\;32mIn the mists at the base of the tree[0\;37m
+R	32349	watchmen	desert			[1;32mIn the mists at the base of the tree[0;37m
 X	32349	11383	d		
 X	32349	1305	e		
 X	32349	19531	n		
 X	32349	32343	s		
 X	32349	23411	u		
 X	32349	1204	w		
-R	32350	watchmen	desert			[1\;32mBasking in Warm Sunlight[0\;37m
+R	32350	watchmen	desert			[1;32mBasking in Warm Sunlight[0;37m
 X	32350	32344	e		
 X	32350	32342	n		
-R	32359	shadokil	city			[1\;32mThe Dark[0\;37m
+R	32359	shadokil	city			[1;32mThe Dark[0;37m
 X	32359	32406	n		
 X	32359	32408	w		
 R	32405					
-R	32406	shadokil	inside			[1\;32mThe Dark[0\;37m
+R	32406	shadokil	inside			[1;32mThe Dark[0;37m
 X	32406	32418	d		
 X	32406	26341	e		
 X	32406	20622	n		
 X	32406	32359	s		
 X	32406	4473	u		
 X	32406	32405	w		
-R	32407	shadokil	inside			[1\;32mThe Vulgar Unicorn[0\;37m
+R	32407	shadokil	inside			[1;32mThe Vulgar Unicorn[0;37m
 X	32407	32416	d		
 X	32407	32408	e		
 X	32407	32409	n		
 X	32407	32411	s		
 X	32407	32698	u		
 X	32407	32415	w		
-R	32408	shadokil	city			[1\;32mThe Vulgar Unicorn[0\;37m
+R	32408	shadokil	city			[1;32mThe Vulgar Unicorn[0;37m
 X	32408	32359	e		
 X	32408	32412	n		
 X	32408	32413	s		
 X	32408	32407	w		
-R	32409	shadokil	inside			[1\;32mThe Vulgar Unicorn[0\;37m
+R	32409	shadokil	inside			[1;32mThe Vulgar Unicorn[0;37m
 X	32409	32410	e		
 X	32409	32407	s		
-R	32410	shadokil	city			[1\;32mA Dark Alley[0\;37m
+R	32410	shadokil	city			[1;32mA Dark Alley[0;37m
 X	32410	32409	w		
-R	32411	shadokil	inside			[1\;32mThe Dark [**> PK <**][0\;37m
+R	32411	shadokil	inside			[1;32mThe Dark [**> PK <**][0;37m
 X	32411	32416	e		
 X	32411	32407	n		
 X	32411	32414	w		
 R	32412					
-R	32413	shadokil	inside			[1\;32mThe Unicorn Corral[0\;37m
+R	32413	shadokil	inside			[1;32mThe Unicorn Corral[0;37m
 X	32413	32408	n		
 X	32413	32416	w		
-R	32414	shadokil	inside			[1\;32mThe Dark [**> PK <**][0\;37m
+R	32414	shadokil	inside			[1;32mThe Dark [**> PK <**][0;37m
 X	32414	32411	e		
 X	32414	32415	n		
 X	32414	32416	s		
-R	32415	shadokil	inside			[1\;32mThe Vulgar Unicorn [**> PK <**][0\;37m
+R	32415	shadokil	inside			[1;32mThe Vulgar Unicorn [**> PK <**][0;37m
 X	32415	32407	e		
 X	32415	32416	n		
 X	32415	32414	s		
-R	32416	shadokil	inside			[1\;32mPool of Screaming Shadows [**> PK <**][0\;37m
+R	32416	shadokil	inside			[1;32mPool of Screaming Shadows [**> PK <**][0;37m
 X	32416	32413	e		
 X	32416	32414	n		
 X	32416	32415	s		
@@ -93620,7 +93641,7 @@ X	32458	14165	u
 R	32459	aylor	city			Whitewind Avenue
 X	32459	32458	n		
 X	32459	32460	s		
-R	32460	aylor	hellfountain			[1\;33mWelcome to Grandmarket Boulevard![0\;37m
+R	32460	aylor	hellfountain			[1;33mWelcome to Grandmarket Boulevard![0;37m
 X	32460	32587	e		
 X	32460	32459	n		
 X	32460	32469	s		
@@ -93672,7 +93693,7 @@ X	32472	32471	w
 R	32473	aylor	hellfountain			Northeastern Grandmarket Boulevard
 X	32473	32474	s		
 X	32473	32472	w		
-R	32474	aylor	lottery			[1\;31mAardwolf [1\;33mLottery Headquarters[0\;37m
+R	32474	aylor	lottery			[1;31mAardwolf [1;33mLottery Headquarters[0;37m
 X	32474	32473	n		
 X	32474	32475	w		
 R	32475	aylor	hellfountain			Grandmarket Boulevard
@@ -100138,7 +100159,7 @@ X	34174	34176	e
 X	34174	34179	s		
 X	34174	34177	u		
 X	34174	55237	w		
-R	34176	amazonclan	forest			[1\;32mA T[1\;37mranquil, [1\;32mS[1\;37mylvan [1\;32mG[1\;37mlade[0\;37m
+R	34176	amazonclan	forest			[1;32mA T[1;37mranquil, [1;32mS[1;37mylvan [1;32mG[1;37mlade[0;37m
 X	34176	34174	w		
 R	34177					
 R	34179	amazonclan	inside			The Training Circle
@@ -100167,16 +100188,16 @@ X	34199	34197	n
 X	34199	34200	s		
 R	34200	amazonclan	inside			Royal Court
 X	34200	34199	n		
-R	34209	amazonclan	inside			[1\;32mA Clearing in the Jungle [COMBAT MAZE][0\;37m
+R	34209	amazonclan	inside			[1;32mA Clearing in the Jungle [COMBAT MAZE][0;37m
 X	34209	34212	s		
 X	34209	55236	u		
-R	34210	amazonclan	inside			[1\;32mThe Waystation of the Yanomami[0\;37m
+R	34210	amazonclan	inside			[1;32mThe Waystation of the Yanomami[0;37m
 X	34210	55237	d		
 X	34210	34212	w		
-R	34211	amazonclan	inside			[1\;32mMemorial Grounds[0\;37m
+R	34211	amazonclan	inside			[1;32mMemorial Grounds[0;37m
 X	34211	34212	e		
 X	34211	55238	u		
-R	34212	amazonclan	inside			[1\;32mBeginning of a Jungle[0\;37m
+R	34212	amazonclan	inside			[1;32mBeginning of a Jungle[0;37m
 X	34212	55236	n		
 X	34212	32581	w		
 R	34247					
@@ -101446,19 +101467,19 @@ X	34704	34711	d
 X	34704	34702	e		
 X	34704	34705	n		open north;n
 X	34704	34717	u		
-R	34705	hatchling	air			[0\;37mEvening[0\;37m
+R	34705	hatchling	air			[0;37mEvening[0;37m
 X	34705	34706	n		
 X	34705	34704	s		
-R	34706	hatchling	air			[0\;37mSunset[0\;37m
+R	34706	hatchling	air			[0;37mSunset[0;37m
 X	34706	34707	n		
 X	34706	34705	s		
-R	34707	hatchling	air			[0\;37mTwilight[0\;37m
+R	34707	hatchling	air			[0;37mTwilight[0;37m
 X	34707	34708	n		
 X	34707	34706	s		
-R	34708	hatchling	air			[0\;37mDusk[0\;37m
+R	34708	hatchling	air			[0;37mDusk[0;37m
 X	34708	34709	n		
 X	34708	34707	s		
-R	34709	hatchling	air			[0\;37mMoon rise[0\;37m
+R	34709	hatchling	air			[0;37mMoon rise[0;37m
 X	34709	34723	n		
 X	34709	34708	s		
 R	34710	hatchling	hellinside			Hopeless...
@@ -103927,10 +103948,10 @@ R	35647	wyrm	underground			The 4th Circle
 X	35647	35483	e		
 X	35647	35590	s		
 X	35647	35646	u		
-R	35648	manor3	inside			[0\;32mE[0\;33mm[1\;32mi[0\;32ml[0\;33me[0\;32me [0\;33ma[1\;32mn[0\;32md [0\;33mQ[0\;32mu[1\;32mi[0\;33mn[0\;32mn[1\;32mZ[0\;33ma[0\;32mi[0\;33m'[1\;32ms [0\;32mP[0\;33mo[1\;32mr[0\;32mc[0\;33mh[0\;37m
+R	35648	manor3	inside			[0;32mE[0;33mm[1;32mi[0;32ml[0;33me[0;32me [0;33ma[1;32mn[0;32md [0;33mQ[0;32mu[1;32mi[0;33mn[0;32mn[1;32mZ[0;33ma[0;32mi[0;33m'[1;32ms [0;32mP[0;33mo[1;32mr[0;32mc[0;33mh[0;37m
 X	35648	35649	n		
 X	35648	21549	w		
-R	35649	manor3	inside			[1\;33mT[1\;32mh[1\;34me [1\;31mE[0\;31mn[1\;33mt[1\;32me[1\;34mr[1\;31mt[0\;31ma[1\;33mi[1\;32mn[1\;34mm[1\;31me[0\;31mn[1\;33mt [1\;32mR[1\;34mo[1\;31mo[0\;31mm[0\;37m
+R	35649	manor3	inside			[1;33mT[1;32mh[1;34me [1;31mE[0;31mn[1;33mt[1;32me[1;34mr[1;31mt[0;31ma[1;33mi[1;32mn[1;34mm[1;31me[0;31mn[1;33mt [1;32mR[1;34mo[1;31mo[0;31mm[0;37m
 X	35649	32418	d		
 X	35649	55010	e		
 X	35649	35650	n		
@@ -103939,12 +103960,12 @@ X	35649	35678	u
 X	35649	35677	w		
 R	35650					
 R	35651					
-R	35677	manor3	inside			[1\;32mE[1\;33mm[1\;34mi[1\;32ml[1\;33me[1\;34me[1\;32m'[1\;33ms [1\;32mR[1\;34mo[1\;33mo[1\;32mm[0\;37m
+R	35677	manor3	inside			[1;32mE[1;33mm[1;34mi[1;32ml[1;33me[1;34me[1;32m'[1;33ms [1;32mR[1;34mo[1;33mo[1;32mm[0;37m
 X	35677	35649	e		
 X	35677	28847	w		
-R	35678	manor3	inside			[1\;31mT[0\;37mh[0\;31me [1\;31mO[0\;37mf[0\;31mf[1\;31mi[0\;37mc[0\;31me[0\;37m
+R	35678	manor3	inside			[1;31mT[0;37mh[0;31me [1;31mO[0;37mf[0;31mf[1;31mi[0;37mc[0;31me[0;37m
 X	35678	35649	d		
-R	35679	aylor	inside			[1\;32mLost and Found[0\;37m
+R	35679	aylor	inside			[1;32mLost and Found[0;37m
 X	35679	32615	s		
 R	35700	peninsula	forest			Nearing a crowded beach
 X	35700	17962	e		
@@ -105481,18 +105502,18 @@ X	36892	36886	s
 X	36892	36883	u		
 X	36892	36891	w		
 R	36893	zodiac	shore			Ocean Beach
-R	36894	zodiac	ocean			[0\;37mRocky Formation
-R	36895	zodiac	underwater			[0\;37mMurky Depths
+R	36894	zodiac	ocean			[0;37mRocky Formation
+R	36895	zodiac	underwater			[0;37mMurky Depths
 X	36895	10380	s		
 X	36895	36894	u		
 X	36895	36898	w		
-R	36896	zodiac	inside			[0\;34mIn the Middle of the Lake[0\;37m
+R	36896	zodiac	inside			[0;34mIn the Middle of the Lake[0;37m
 R	36897	zodiac	inside			At the bottom of the lake
 X	36897	36896	u		
 R	36898	zodiac	inside			Swimming Through The Murky Depths
 X	36898	36899	e		
 X	36898	36895	w		
-R	36899	zodiac	inside			[0\;37mPoor Visibility
+R	36899	zodiac	inside			[0;37mPoor Visibility
 X	36899	36898	n		
 X	36899	10380	s		
 R	37000	livingmine	plain	2		On the fringes of the Great Desert
@@ -106233,7 +106254,7 @@ X	37465	37461	e
 R	37466	whiteclaw	ice			Sheltered from the cold
 R	37489	dunes	air			Thrown Through the Air
 X	37489	42178	d		
-R	37700	sandcastle	desert			[1\;33mA Ferocious Sandstorm[0\;37m
+R	37700	sandcastle	desert			[1;33mA Ferocious Sandstorm[0;37m
 X	37700	37701	d		escape storm
 X	37700	37701	u		escape storm
 R	37701	sandcastle	desert	1		Unforgiving Heat
@@ -112052,7 +112073,7 @@ X	39639	39617	n
 X	39639	39638	s		
 X	39639	39619	w		
 R	39640	oceanpark	redcarpet			Offstage: No Park Guest Access
-X	39640	39641	s		
+X	39640	39641	s	2	
 X	39640	39616	u		
 R	39641	oceanpark	underground			Stage Makeup Design
 X	39641	39640	n		
@@ -112188,6 +112209,7 @@ R	39683	oceanpark	chaos_sea			An Oceanic Trench
 X	39683	39682	u		
 R	39684	oceanpark	moon			The Ocean's Great Secret
 X	39684	39685	e		
+X	39684	39747	enter fishery		
 X	39684	39691	n		
 R	39685	oceanpark	underwater			The Sleepy Starfish Inn
 X	39685	39686	e		
@@ -112433,6 +112455,7 @@ R	39752	oceanpark	plain			Green Salutations
 X	39752	39751	e		
 R	39753	oceanpark	plain			Nooks and Crannies
 X	39753	39754	e		
+X	39753	39760	enter cave		
 X	39753	39757	n		
 X	39753	39748	s		
 X	39753	39751	w		
@@ -113392,7 +113415,7 @@ X	40088	40086	w
 R	40091	winds	graveyard	3		Within a coffin
 R	40092	winds	space1			The Hammer and the Forge
 X	40092	39900	s		
-R	40093	winds	inside			[1\;33mFantasy [1\;31mSeries [1\;33mCard [1\;31mSorting [1\;33mArea[0\;37m
+R	40093	winds	inside			[1;33mFantasy [1;31mSeries [1;33mCard [1;31mSorting [1;33mArea[0;37m
 X	40093	39900	e		
 R	40094	winds	space1	1		Within the Oath
 R	40096	shadowsend	mountain			Into Shadow's End
@@ -115296,7 +115319,7 @@ X	41724	41725	w
 R	41725	uprising	hallway			A corner in a well-crafted hallway
 X	41725	41724	e		
 X	41725	41985	n		
-R	41726	cards	inside			High\/Low Game Room
+R	41726	cards	inside			High/Low Game Room
 X	41726	6256	d		
 R	41727	elemental	air			Caught in the wind
 X	41727	41706	e		
@@ -115312,33 +115335,33 @@ R	41740	manor3	inside			Glacier's Porch
 X	41740	21492	d		
 X	41740	41741	n		
 R	41741					
-R	41775	crusaders	city			[1\;32mThe Temple Archives[0\;37m
+R	41775	crusaders	city			[1;32mThe Temple Archives[0;37m
 X	41775	31133	n		
-R	41776	crusaders	city			[1\;32mChamber of Quests[0\;37m
+R	41776	crusaders	city			[1;32mChamber of Quests[0;37m
 X	41776	31125	n		
 X	41776	31124	w		
-R	41777	crusaders	city			[1\;32mThe Confessional[0\;37m
+R	41777	crusaders	city			[1;32mThe Confessional[0;37m
 X	41777	31143	n		
-R	41778	crusaders	city			[1\;32mThe Training Hall[0\;37m
+R	41778	crusaders	city			[1;32mThe Training Hall[0;37m
 X	41778	31125	s		
-R	41779	crusaders	city			[1\;32mGeneral Meeting Room[0\;37m
+R	41779	crusaders	city			[1;32mGeneral Meeting Room[0;37m
 X	41779	31124	e		op e;e
 X	41779	31153	n		open n;n;close s;lock s
-R	41780	crusaders	city			[1\;32mHall of Worship[0\;37m
+R	41780	crusaders	city			[1;32mHall of Worship[0;37m
 X	41780	31143	e		
 X	41780	41782	n		
 X	41780	31132	s		
 X	41780	31131	w		
-R	41781	crusaders	city			[1\;32mAisle of Candles[0\;37m
+R	41781	crusaders	city			[1;32mAisle of Candles[0;37m
 X	41781	31157	n		
 X	41781	31143	s		
 X	41781	41782	w		
-R	41782	crusaders	city			[1\;32mAltar of the Nameless One[0\;37m
+R	41782	crusaders	city			[1;32mAltar of the Nameless One[0;37m
 X	41782	41781	e		
 X	41782	31151	n		
 X	41782	41780	s		
 X	41782	41783	w		
-R	41783	crusaders	city			[1\;32mShrine of Peace[0\;37m
+R	41783	crusaders	city			[1;32mShrine of Peace[0;37m
 X	41783	41782	e		
 R	41788					
 R	41792					
@@ -117847,7 +117870,7 @@ X	43723	43708	n
 R	43724	lasertwo	city			A room in the lasertag arena.
 X	43724	43709	n		
 X	43724	43723	w		
-R	43726	lasertwo	inside			[1\;31mRed Team Base[0\;37m
+R	43726	lasertwo	inside			[1;31mRed Team Base[0;37m
 X	43726	43619	w		
 R	43727	lasertwo	inside			Lasertag Holding Room
 R	43781	birthday	inside			Sokoban Tent
@@ -118511,7 +118534,7 @@ X	44292	44289	s
 X	44292	44384	u		
 X	44292	44291	w		
 R	44293	firebird	inside			Tzar Afron's private chambers
-R	44295	manormount	inside			[1\;31mA Blood Splattered Porch[0\;37m
+R	44295	manormount	inside			[1;31mA Blood Splattered Porch[0;37m
 X	44295	39479	e		
 X	44295	44350	n		
 R	44296	manorville	cave			Down the rabbit hole
@@ -119413,7 +119436,7 @@ R	44703	manorwoods	inside			La Casa de la Bruja
 X	44703	44704	n		
 X	44703	44319	w		
 R	44704					
-R	44705	manorsea	inside			[1\;32mEntrance [0\;37mto [1\;37mYowza's [1\;32mLand [0\;37mof[1\;36m CHANCE[1\;37m!  [1\;33mGood Luck[1\;37m![0\;37m
+R	44705	manorsea	inside			[1;32mEntrance [0;37mto [1;37mYowza's [1;32mLand [0;37mof[1;36m CHANCE[1;37m!  [1;33mGood Luck[1;37m![0;37m
 X	44705	44706	n		
 X	44705	35003	s		
 R	44706					
@@ -119463,16 +119486,16 @@ R	45170	astral	bloodyroom			Atuara's hideout
 R	45176	aylor	inside			The Aylorian Morgue
 X	45176	32553	u		
 R	45177					
-R	45179	manorville	inside			[0\;37mBefore a Tower of [1\;37mIvory [0\;37mand [1\;33mGold[0\;37m
+R	45179	manorville	inside			[0;37mBefore a Tower of [1;37mIvory [0;37mand [1;33mGold[0;37m
 X	45179	45180	n		
 X	45179	44450	s		
 R	45180					
 R	45181					
-R	45184	manorville	inside			[1\;31mEntrance [1\;37mto [1\;32mPrince [1\;36mChronicles' [1\;33mMansion[0\;37m
+R	45184	manorville	inside			[1;31mEntrance [1;37mto [1;32mPrince [1;36mChronicles' [1;33mMansion[0;37m
 X	45184	45185	n		
 X	45184	44384	s		
 R	45185					
-R	45194	gaardian	inside			[1\;35mYesterday's News[0\;37m
+R	45194	gaardian	inside			[1;35mYesterday's News[0;37m
 X	45194	14220	d		
 X	45194	28913	e		
 X	45194	676	n		
@@ -119521,11 +119544,11 @@ R	45540
 R	45544	aylor	flowers1			The Memorial Garden
 X	45544	49608	n		
 X	45544	32558	s		
-R	45548	manorville	inside			[1\;31mE[1\;33mN[1\;31mT[1\;33mR[1\;31mA[1\;33mN[1\;31mC[1\;33mE [1\;31mT[1\;33mO [1\;31mH[1\;33mE[1\;31mL[1\;33mL[0\;37m [1\;31mA[1\;33mN[1\;31mD [1\;33mB[1\;31mE[1\;33mY[1\;31mO[1\;33mN[1\;31mD[0\;37m
+R	45548	manorville	inside			[1;31mE[1;33mN[1;31mT[1;33mR[1;31mA[1;33mN[1;31mC[1;33mE [1;31mT[1;33mO [1;31mH[1;33mE[1;31mL[1;33mL[0;37m [1;31mA[1;33mN[1;31mD [1;33mB[1;31mE[1;33mY[1;31mO[1;33mN[1;31mD[0;37m
 X	45548	44509	d		
 X	45548	45549	n		
 R	45549					
-R	45583	manorville	inside			[0\;34mA dim entryway[0\;37m
+R	45583	manorville	inside			[0;34mA dim entryway[0;37m
 X	45583	45584	n		
 X	45583	44391	s		
 R	45584					
@@ -119534,18 +119557,18 @@ X	45585	45586	n
 X	45585	44518	s		
 R	45586					
 R	45589					
-R	45591	twinlobe	inside			[1\;32mBeneath a Giant Brain[0\;37m
+R	45591	twinlobe	inside			[1;32mBeneath a Giant Brain[0;37m
 X	45591	15573	d		
 X	45591	45592	u		
-R	45592	twinlobe	inside			[1\;32mA Merging of the Mind[0\;37m
+R	45592	twinlobe	inside			[1;32mA Merging of the Mind[0;37m
 X	45592	45591	d		
 X	45592	45594	e		
 X	45592	45595	n		
 X	45592	45593	w		
 R	45593					
-R	45594	twinlobe	inside			[1\;32mRight Hemisphere[0\;37m
+R	45594	twinlobe	inside			[1;32mRight Hemisphere[0;37m
 X	45594	45592	w		
-R	45595	twinlobe	inside			[1\;32mFrontal Lobe[0\;37m
+R	45595	twinlobe	inside			[1;32mFrontal Lobe[0;37m
 X	45595	45592	s		
 R	45596					
 R	45604					
@@ -119558,7 +119581,7 @@ X	45610	45611	n
 X	45610	44291	s		
 R	45611					
 R	45614					
-R	45627	manormount	inside			[1\;30mA solitary log cabin[0\;37m
+R	45627	manormount	inside			[1;30mA solitary log cabin[0;37m
 X	45627	45628	n		
 X	45627	39479	w		
 R	45628					
@@ -119567,7 +119590,7 @@ X	45630	45631	n
 X	45630	39494	s		
 R	45631					
 R	45632					
-R	45634	manorville	inside			[0\;37mA hidden path[0\;37m
+R	45634	manorville	inside			[0;37mA hidden path[0;37m
 X	45634	45635	n		
 X	45634	44280	s		
 R	45635					
@@ -119724,7 +119747,7 @@ X	45711	45710	d
 X	45711	45712	u		
 R	45712	fury	bloodyroom			All of the Anger In One Spot
 X	45712	45711	d		
-R	45713	fury	redcircle			[1\;31mFURY!!!![0\;37m
+R	45713	fury	redcircle			[1;31mFURY!!!![0;37m
 R	45714	fury	darkspace			The Top of the Spiral
 X	45714	45717	d		
 R	45715	fury	well			Natreen
@@ -121551,7 +121574,7 @@ X	46856	46857	n
 X	46856	44341	s		
 R	46857					
 R	46863					
-R	46864	manorville	inside			[1\;37mLittleman's front porch[0\;37m
+R	46864	manorville	inside			[1;37mLittleman's front porch[0;37m
 X	46864	46863	n		
 X	46864	44278	s		
 R	46873					
@@ -121885,33 +121908,33 @@ R	47011	tanra	jungle			A large crater
 X	47011	47008	e		
 X	47011	47010	s		
 R	47012	tanra	quicksand			A sink hole
-R	47013	songpalace	forest			[0\;32mApproaching some ruins[0\;37m
+R	47013	songpalace	forest			[0;32mApproaching some ruins[0;37m
 X	47013	47014	n		
 X	47013	13635	u		
-R	47014	songpalace	forest			[0\;32mNearing the ruins[0\;37m
+R	47014	songpalace	forest			[0;32mNearing the ruins[0;37m
 X	47014	47015	e		
 X	47014	47013	s		
-R	47015	songpalace	forest			[0\;32mUnder a crumbled archway[0\;37m
+R	47015	songpalace	forest			[0;32mUnder a crumbled archway[0;37m
 X	47015	47016	n		
 X	47015	47014	w		
-R	47016	songpalace	city			[0\;37mAmong the ruins
+R	47016	songpalace	city			[0;37mAmong the ruins
 X	47016	47017	n		
 X	47016	47015	s		
 X	47016	47019	w		
-R	47017	songpalace	pillar			[0\;37mA stone platform
+R	47017	songpalace	pillar			[0;37mA stone platform
 X	47017	47016	s		
-R	47018	songpalace	road			[1\;37mBeginning of marble path[0\;37m
+R	47018	songpalace	road			[1;37mBeginning of marble path[0;37m
 X	47018	47040	e		
 X	47018	47020	n		
 X	47018	47041	w		
-R	47019	songpalace	field2			[0\;32mA quiet grove[0\;37m
+R	47019	songpalace	field2			[0;32mA quiet grove[0;37m
 X	47019	47016	e		
-R	47020	songpalace	road			[1\;37mPath through the gardens[0\;37m
+R	47020	songpalace	road			[1;37mPath through the gardens[0;37m
 X	47020	47025	e		
 X	47020	47021	n		
 X	47020	47018	s		
 X	47020	47024	w		
-R	47021	songpalace	road			[1\;37mNearing the palace[0\;37m
+R	47021	songpalace	road			[1;37mNearing the palace[0;37m
 X	47021	47023	e		
 X	47021	47026	n		
 X	47021	47020	s		
@@ -121922,159 +121945,159 @@ X	47022	47024	s
 R	47023	songpalace	flowers2			Garden of Prince Amepsmamptrer
 X	47023	47025	s		
 X	47023	47021	w		
-R	47024	songpalace	field2			[0\;32mGarden of Duke Nhoukym[0\;37m
+R	47024	songpalace	field2			[0;32mGarden of Duke Nhoukym[0;37m
 X	47024	47020	e		
 X	47024	47022	n		
-R	47025	songpalace	field2			[0\;32mGarden of Lady Maltesa[0\;37m
+R	47025	songpalace	field2			[0;32mGarden of Lady Maltesa[0;37m
 X	47025	47023	n		
 X	47025	47020	w		
-R	47026	songpalace	road			[1\;37mFoot of the steps[0\;37m
+R	47026	songpalace	road			[1;37mFoot of the steps[0;37m
 X	47026	47021	s		
 X	47026	47027	u		
-R	47027	songpalace	city			[1\;37mTop of the steps[0\;37m
+R	47027	songpalace	city			[1;37mTop of the steps[0;37m
 X	47027	47026	d		
 X	47027	47029	e		
 X	47027	47028	n		open n;north
 X	47027	47029	w		
-R	47028	songpalace	castle			[1\;33mAtrium of the Palace of Song[0\;37m
+R	47028	songpalace	castle			[1;33mAtrium of the Palace of Song[0;37m
 X	47028	47031	e		
 X	47028	47034	n		
 X	47028	47027	s		open s;south
 X	47028	47030	w		
-R	47029	songpalace	cloud2			[1\;37mClouds[0\;37m
+R	47029	songpalace	cloud2			[1;37mClouds[0;37m
 X	47029	47027	e		
 X	47029	47027	w		
-R	47030	songpalace	pillar			[1\;33mSouthwest Atrium[0\;37m
+R	47030	songpalace	pillar			[1;33mSouthwest Atrium[0;37m
 X	47030	47028	e		
 X	47030	47032	n		
 X	47030	47035	w		
-R	47031	songpalace	pillar			[1\;33mSoutheast Atrium[0\;37m
+R	47031	songpalace	pillar			[1;33mSoutheast Atrium[0;37m
 X	47031	47036	e		
 X	47031	47033	n		
 X	47031	47028	w		
-R	47032	songpalace	pillar			[1\;33mNorthwest Atrium[0\;37m
+R	47032	songpalace	pillar			[1;33mNorthwest Atrium[0;37m
 X	47032	47034	e		
 X	47032	47043	n		open n;north
 X	47032	47030	s		
-R	47033	songpalace	pillar			[1\;33mNortheast Atrium[0\;37m
+R	47033	songpalace	pillar			[1;33mNortheast Atrium[0;37m
 X	47033	47044	n		open n;north
 X	47033	47031	s		
 X	47033	47034	w		
-R	47034	songpalace	castle			[1\;33mNorth Atrium[0\;37m
+R	47034	songpalace	castle			[1;33mNorth Atrium[0;37m
 X	47034	47033	e		
 X	47034	47042	n		open north;n
 X	47034	47028	s		
 X	47034	47032	w		
-R	47035	songpalace	stairs			[1\;33mWestern staircase[0\;37m
+R	47035	songpalace	stairs			[1;33mWestern staircase[0;37m
 X	47035	47030	e		
 X	47035	47037	u		
-R	47036	songpalace	stairs			[1\;33mEastern staircase[0\;37m
+R	47036	songpalace	stairs			[1;33mEastern staircase[0;37m
 X	47036	47038	u		
 X	47036	47031	w		
-R	47037	songpalace	pillar			[1\;33mUpper Atrium[0\;37m
+R	47037	songpalace	pillar			[1;33mUpper Atrium[0;37m
 X	47037	47035	d		
 X	47037	47039	e		
 X	47037	47068	n		open n;north
-R	47038	songpalace	pillar			[1\;33mUpper Atrium[0\;37m
+R	47038	songpalace	pillar			[1;33mUpper Atrium[0;37m
 X	47038	47036	d		
 X	47038	47070	n		open n;north
 X	47038	47039	w		
-R	47039	songpalace	castle			[1\;33mUpper Atrium[0\;37m
+R	47039	songpalace	castle			[1;33mUpper Atrium[0;37m
 X	47039	47038	e		
 X	47039	47037	w		
-R	47040	songpalace	river			[1\;34mAn endless stream[0\;37m
+R	47040	songpalace	river			[1;34mAn endless stream[0;37m
 X	47040	47041	e		
 X	47040	47018	w		
-R	47041	songpalace	river			[1\;34mAn endless stream[0\;37m
+R	47041	songpalace	river			[1;34mAn endless stream[0;37m
 X	47041	47018	e		
 X	47041	47040	w		
-R	47042	songpalace	inside			[0\;35mBack Orchestra[0\;37m
+R	47042	songpalace	inside			[0;35mBack Orchestra[0;37m
 X	47042	47044	e		
 X	47042	47046	n		
 X	47042	47034	s		
 X	47042	47043	w		
-R	47043	songpalace	inside			[0\;35mBack Orchestra[0\;37m
+R	47043	songpalace	inside			[0;35mBack Orchestra[0;37m
 X	47043	47042	e		
 X	47043	47047	n		
 X	47043	47032	s		open south;s
-R	47044	songpalace	inside			[0\;35mBack Orchestra[0\;37m
+R	47044	songpalace	inside			[0;35mBack Orchestra[0;37m
 X	47044	47045	n		
 X	47044	47033	s		open s;south
 X	47044	47042	w		
-R	47045	songpalace	inside			[0\;35mMid Orchestra[0\;37m
+R	47045	songpalace	inside			[0;35mMid Orchestra[0;37m
 X	47045	47048	n		
 X	47045	47044	s		
 X	47045	47046	w		
-R	47046	songpalace	inside			[0\;35mMid Orchestra[0\;37m
+R	47046	songpalace	inside			[0;35mMid Orchestra[0;37m
 X	47046	47045	e		
 X	47046	47049	n		
 X	47046	47042	s		
 X	47046	47047	w		
-R	47047	songpalace	inside			[0\;35mMid Orchestra[0\;37m
+R	47047	songpalace	inside			[0;35mMid Orchestra[0;37m
 X	47047	47046	e		
 X	47047	47050	n		
 X	47047	47043	s		
-R	47048	songpalace	inside			[0\;35mFront Row[0\;37m
+R	47048	songpalace	inside			[0;35mFront Row[0;37m
 X	47048	47045	s		
 X	47048	47052	u		
 X	47048	47049	w		
-R	47049	songpalace	inside			[0\;35mFront Row[0\;37m
+R	47049	songpalace	inside			[0;35mFront Row[0;37m
 X	47049	47048	e		
 X	47049	47046	s		
 X	47049	47051	u		
 X	47049	47050	w		
-R	47050	songpalace	inside			[0\;35mFront Row[0\;37m
+R	47050	songpalace	inside			[0;35mFront Row[0;37m
 X	47050	47049	e		
 X	47050	47047	s		
 X	47050	47053	u		
-R	47051	songpalace	city			[1\;33mDownstage Centre[0\;37m
+R	47051	songpalace	city			[1;33mDownstage Centre[0;37m
 X	47051	47049	d		
 X	47051	47052	e		
 X	47051	47054	n		
 X	47051	47053	w		
-R	47052	songpalace	flowers1			[1\;33mDownstage Left[0\;37m
+R	47052	songpalace	flowers1			[1;33mDownstage Left[0;37m
 X	47052	47048	d		
 X	47052	47055	n		
 X	47052	47051	w		
-R	47053	songpalace	field2			[1\;33mDownstage Right[0\;37m
+R	47053	songpalace	field2			[1;33mDownstage Right[0;37m
 X	47053	47050	d		
 X	47053	47051	e		
 X	47053	47056	n		
-R	47054	songpalace	river			[0\;33mUpstage Centre[0\;37m
+R	47054	songpalace	river			[0;33mUpstage Centre[0;37m
 X	47054	47062	d		
 X	47054	47055	e		
 X	47054	47058	n		open n;north
 X	47054	47051	s		
 X	47054	47056	w		
-R	47055	songpalace	flowers2			[0\;33mUpstage Left[0\;37m
+R	47055	songpalace	flowers2			[0;33mUpstage Left[0;37m
 X	47055	47059	n		open n;north
 X	47055	47052	s		
 X	47055	47054	w		
-R	47056	songpalace	river			[0\;33mUpstage Right[0\;37m
+R	47056	songpalace	river			[0;33mUpstage Right[0;37m
 X	47056	47054	e		
 X	47056	47057	n		open n;north
 X	47056	47053	s		
 X	47056	47063	u		
-R	47057	songpalace	inside			[0\;37mBackstage
+R	47057	songpalace	inside			[0;37mBackstage
 X	47057	47058	e		
 X	47057	47061	n		
 X	47057	47056	s		open s;south
-R	47058	songpalace	inside			[0\;37mBackstage
+R	47058	songpalace	inside			[0;37mBackstage
 X	47058	47059	e		
 X	47058	47066	n		
 X	47058	47054	s		
 X	47058	47057	w		
-R	47059	songpalace	inside			[0\;37mBackstage
+R	47059	songpalace	inside			[0;37mBackstage
 X	47059	47060	n		open n;north
 X	47059	47055	s		
 X	47059	47058	w		
-R	47060	songpalace	inside			[0\;34mEnsemble Dressing Room[0\;37m
+R	47060	songpalace	inside			[0;34mEnsemble Dressing Room[0;37m
 X	47060	47059	s		
-R	47061	songpalace	palace_room			[1\;33mStar Dressing Room[0\;37m
+R	47061	songpalace	palace_room			[1;33mStar Dressing Room[0;37m
 X	47061	47057	s		open s;south
-R	47062	songpalace	hellinside			[0\;31mIn the Pit[0\;37m
+R	47062	songpalace	hellinside			[0;31mIn the Pit[0;37m
 X	47062	47054	u		
-R	47063	songpalace	air			[0\;37mIn the flies[0\;37m
+R	47063	songpalace	air			[0;37mIn the flies[0;37m
 X	47063	47056	d		
 R	47064	songpalace	office			Transdimensional Hallway
 X	47064	47065	n		
@@ -122087,23 +122110,23 @@ X	47066	47064	n
 X	47066	47058	s		
 R	47067	songpalace	office			Manager's Office
 X	47067	47065	s		
-R	47068	songpalace	inside			[0\;35mMezzanine[0\;37m
+R	47068	songpalace	inside			[0;35mMezzanine[0;37m
 X	47068	47069	e		
 X	47068	47071	n		open north;n
 X	47068	47037	s		open s;south
-R	47069	songpalace	inside			[0\;35mMezzanine[0\;37m
+R	47069	songpalace	inside			[0;35mMezzanine[0;37m
 X	47069	47070	e		
 X	47069	47072	n		
 X	47069	47068	w		
-R	47070	songpalace	inside			[0\;35mMezzanine[0\;37m
+R	47070	songpalace	inside			[0;35mMezzanine[0;37m
 X	47070	47073	n		open n;north
 X	47070	47038	s		open s;south
 X	47070	47069	w		
-R	47071	songpalace	inside			[1\;35mWest Box[0\;37m
+R	47071	songpalace	inside			[1;35mWest Box[0;37m
 X	47071	47068	s		open s;south
-R	47072	songpalace	inside			[1\;35mRoyal Dress Circle[0\;37m
+R	47072	songpalace	inside			[1;35mRoyal Dress Circle[0;37m
 X	47072	47069	s		
-R	47073	songpalace	inside			[1\;35mEast Box[0\;37m
+R	47073	songpalace	inside			[1;35mEast Box[0;37m
 X	47073	47070	s		
 R	47077					
 R	47090					
@@ -122111,7 +122134,7 @@ R	47098	manorville	inside			Hype's Porch
 X	47098	44416	e		
 X	47098	47099	n		
 R	47099					
-R	47100	manormount	inside			[0\;33mVIC[0\;37m
+R	47100	manormount	inside			[0;33mVIC[0;37m
 X	47100	44733	d		
 X	47100	47101	n		
 R	47101					
@@ -122119,11 +122142,11 @@ R	47102	manorville	inside			The Porch of Destiny
 X	47102	47103	n		
 X	47102	44275	u		
 R	47103					
-R	47106	manorsea	inside			[0\;36mThe [1\;31mM[0\;36myst[1\;31me[0\;36mr[1\;31mi[0\;36mous Ar[1\;31mch[0\;37m
+R	47106	manorsea	inside			[0;36mThe [1;31mM[0;36myst[1;31me[0;36mr[1;31mi[0;36mous Ar[1;31mch[0;37m
 X	47106	44270	e		
 X	47106	47107	n		
 R	47107					
-R	47108	daoine	inside			[1\;32mCookie Distribution Center[0\;37m
+R	47108	daoine	inside			[1;32mCookie Distribution Center[0;37m
 X	47108	34451	d		
 X	47108	36451	e		
 X	47108	6900	n		
@@ -122141,7 +122164,7 @@ R	47127	manorville	inside			Gwynyfar's and BatteryMan's Treehouse Porch
 X	47127	47128	n		
 X	47127	44387	w		
 R	47128					
-R	47129	manorville	hallway			[1\;32mA Series of Tubes[0\;37m
+R	47129	manorville	hallway			[1;32mA Series of Tubes[0;37m
 X	47129	47130	n		
 X	47129	44500	u		
 R	47130					
@@ -122170,20 +122193,20 @@ R	47181
 R	47183					
 R	47185	manorville	inside			Manor of Lyudia and Supersaiyan
 X	47185	44276	u		
-R	47186	manorville	inside			[1\;31mR[1\;36mEALM [1\;31mO[1\;36mF [1\;31mT[1\;36mHE [1\;31mD[1\;36mRAGON [1\;31mL[1\;36mORD[0\;37m
+R	47186	manorville	inside			[1;31mR[1;36mEALM [1;31mO[1;36mF [1;31mT[1;36mHE [1;31mD[1;36mRAGON [1;31mL[1;36mORD[0;37m
 X	47186	44504	d		
 X	47186	47236	n		
 R	47187	crusaders	inside			Little Attic
 X	47187	31134	w		
-R	47188	manorville	inside			[0\;33mPeaceful [0\;32mMeadow[0\;37m
+R	47188	manorville	inside			[0;33mPeaceful [0;32mMeadow[0;37m
 X	47188	47189	n		
 X	47188	44289	w		
 R	47189					
-R	47190	manorwoods	inside			[0\;32mA Forgotten Path[0\;37m
+R	47190	manorwoods	inside			[0;32mA Forgotten Path[0;37m
 X	47190	47191	n		
 X	47190	44309	w		
 R	47191					
-R	47195	bootcamp	inside			[1\;32mBoot Camp Headquarters[0\;37m
+R	47195	bootcamp	inside			[1;32mBoot Camp Headquarters[0;37m
 X	47195	32418	d		
 X	47195	47200	e		
 X	47195	47218	n		
@@ -122191,35 +122214,35 @@ X	47195	49393	s
 X	47195	47220	u		
 X	47195	49260	w		
 R	47196					
-R	47200	bootcamp	field			[1\;32mMudpits[0\;37m
+R	47200	bootcamp	field			[1;32mMudpits[0;37m
 X	47200	47210	d		
 X	47200	49392	e		
 X	47200	47195	w		
-R	47202	manorsea	inside			[38\;5\;201mWi[38\;5\;207mst[38\;5\;213meri[38\;5\;219ma M[38\;5\;213ma[38\;5\;207mno[38\;5\;201mr[0\;37m 
+R	47202	manorsea	inside			[38;5;201mWi[38;5;207mst[38;5;213meri[38;5;219ma M[38;5;213ma[38;5;207mno[38;5;201mr[0;37m 
 X	47202	44730	e		
 X	47202	47203	n		
-R	47203	manorsea	inside			[38\;5\;201mWi[38\;5\;207mst[38\;5\;213meri[38\;5\;219ma M[38\;5\;213ma[38\;5\;207mno[38\;5\;201mr[0\;37m 
+R	47203	manorsea	inside			[38;5;201mWi[38;5;207mst[38;5;213meri[38;5;219ma M[38;5;213ma[38;5;207mno[38;5;201mr[0;37m 
 X	47203	47228	e		
 X	47203	47202	s		
-R	47210	bootcamp	city			[1\;32mA supply closet[0\;37m
+R	47210	bootcamp	city			[1;32mA supply closet[0;37m
 X	47210	50099	d		
 X	47210	47200	u		
-R	47213	manorville	inside			[0\;37mThe L[1\;37mexin[0\;37mgton[0\;37m
+R	47213	manorville	inside			[0;37mThe L[1;37mexin[0;37mgton[0;37m
 X	47213	44419	d		
 X	47213	47214	n		
 R	47214					
-R	47218	bootcamp	city			[1\;32mVoting Room[0\;37m
+R	47218	bootcamp	city			[1;32mVoting Room[0;37m
 X	47218	49257	d		
 X	47218	47195	s		
 R	47220					
-R	47228	manorsea	inside			[38\;5\;140mPrivate Garden[0\;37m
+R	47228	manorsea	inside			[38;5;140mPrivate Garden[0;37m
 X	47228	26366	e		
 X	47228	29585	n		
 X	47228	28963	s		
 X	47228	32418	u		
 X	47228	47203	w		
 R	47236					
-R	47238	manorville	inside			[1\;33mBefore the cave of the Xyndor[0\;37m
+R	47238	manorville	inside			[1;33mBefore the cave of the Xyndor[0;37m
 X	47238	47239	n		
 X	47238	44392	s		
 R	47239					
@@ -123883,7 +123906,7 @@ R	49185
 R	49187					
 R	49189					
 R	49193					
-R	49201	manorville	inside			[38\;5\;057mOutside Antistes's Haven[0\;37m
+R	49201	manorville	inside			[38;5;057mOutside Antistes's Haven[0;37m
 X	49201	49202	n		
 X	49201	44270	u		
 R	49202					
@@ -123906,7 +123929,7 @@ X	49230	44275	d
 X	49230	49231	n		
 R	49231					
 R	49239					
-R	49241	manormount	inside			[0\;37mOn the [0\;33mPorch[0\;37m of a Quiet [0\;33mCabin[0\;37m:[0\;37m
+R	49241	manormount	inside			[0;37mOn the [0;33mPorch[0;37m of a Quiet [0;33mCabin[0;37m:[0;37m
 X	49241	49242	n		
 X	49241	39500	s		
 R	49242					
@@ -123914,33 +123937,33 @@ R	49247	manorsea	inside			Gunsnroses' Porch
 X	49247	49248	n		
 X	49247	44561	w		
 R	49248					
-R	49251	manorville	inside			[1\;36mNYAN CAT FLIES THROUGH THE SKY!![0\;37m
+R	49251	manorville	inside			[1;36mNYAN CAT FLIES THROUGH THE SKY!![0;37m
 X	49251	49252	n		
 X	49251	44522	s		
-R	49252	manorville	inside			[1\;36mNYAN CAT, FLY THROUGH MY HEART!![0\;37m
+R	49252	manorville	inside			[1;36mNYAN CAT, FLY THROUGH MY HEART!![0;37m
 X	49252	43250	e		
 X	49252	36645	n		
 X	49252	49251	s		
 X	49252	32418	u		
 X	49252	36798	w		
-R	49256	bootcamp	shop			[1\;32mBoot Clan Public Hall[0\;37m
+R	49256	bootcamp	shop			[1;32mBoot Clan Public Hall[0;37m
 X	49256	50102	e		
 X	49256	35200	n		
 X	49256	50103	s		
 X	49256	49392	w		
 R	49257					
-R	49260	bootcamp	city			[1\;32mMedical lounge[0\;37m
+R	49260	bootcamp	city			[1;32mMedical lounge[0;37m
 X	49260	47196	d		
 X	49260	47195	e		
 R	49261					
 R	49264					
-R	49266	xunti	inside			[1\;32mTemplo Mayor[0\;37m
+R	49266	xunti	inside			[1;32mTemplo Mayor[0;37m
 X	49266	49571	n		
 X	49266	49577	s		
 X	49266	12729	u		
 X	49266	49575	w		
 R	49269					
-R	49273	manorsea	inside			[0\;37mThe [1\;31mE[0\;31mdg[1\;31me[0\;37m
+R	49273	manorsea	inside			[0;37mThe [1;31mE[0;31mdg[1;31me[0;37m
 X	49273	49274	n		
 X	49273	50295	s		
 X	49273	44537	u		
@@ -123955,24 +123978,24 @@ X	49320	31122	d
 R	49321					
 R	49329					
 R	49331					
-R	49335	gaardian	shop			[1\;35mThe GaardBucks Get Wired Cafe[0\;37m
+R	49335	gaardian	shop			[1;35mThe GaardBucks Get Wired Cafe[0;37m
 X	49335	20029	n		
-R	49345	bootcamp	city			[1\;32mCourtyard[0\;37m
+R	49345	bootcamp	city			[1;32mCourtyard[0;37m
 X	49345	50103	e		
 X	49345	49392	n		
 R	49367					
 R	49369					
-R	49373	tao	shop			[1\;32mFizzbough's Herbal Shop[0\;37m
+R	49373	tao	shop			[1;32mFizzbough's Herbal Shop[0;37m
 X	49373	29220	s		
 X	49373	29221	w		
-R	49375	manorville	inside			[1\;37mAn [0m[38\;5\;112mEn[38\;5\;118mch[38\;5\;119man[38\;5\;120mted [38\;5\;119mFo[38\;5\;118mre[38\;5\;112mst[0\;37m
+R	49375	manorville	inside			[1;37mAn [0m[38;5;112mEn[38;5;118mch[38;5;119man[38;5;120mted [38;5;119mFo[38;5;118mre[38;5;112mst[0;37m
 X	49375	44410	d		
 X	49375	49376	n		
 R	49376					
-R	49391	bootcamp	city			[1\;32mThe recruiting hallway[0\;37m
+R	49391	bootcamp	city			[1;32mThe recruiting hallway[0;37m
 X	49391	50102	n		
 X	49391	50103	w		
-R	49392	bootcamp	shop			[1\;32mRecreation Room[0\;37m
+R	49392	bootcamp	shop			[1;32mRecreation Room[0;37m
 X	49392	49256	e		
 X	49392	49345	s		
 X	49392	47200	w		
@@ -123989,7 +124012,7 @@ X	49418	44279	u
 R	49419					
 R	49420					
 R	49426					
-R	49435	manorwoods	inside			[1\;32mAuresian Respite[0\;37m
+R	49435	manorwoods	inside			[1;32mAuresian Respite[0;37m
 X	49435	49436	n		
 X	49435	44360	s		
 R	49436					
@@ -124008,7 +124031,7 @@ R	49451
 R	49458					
 R	49460					
 R	49465					
-R	49469	manorville	inside			A small landing in the [0\;33mold tree[0\;37m
+R	49469	manorville	inside			A small landing in the [0;33mold tree[0;37m
 X	49469	44513	d		
 X	49469	49470	n		
 R	49470					
@@ -124026,7 +124049,7 @@ X	49489	49490	n
 X	49489	44381	w		
 R	49490					
 R	49491					
-R	49497	manorwoods	inside			[1\;32mStanding Before a [1\;31mM[1\;37mu[0\;31ml[0\;36mt[1\;36mi-C[0\;32mo[1\;32ml[1\;34mo[0\;34mr[0\;37me[0\;33md[1\;32m Archway.[0\;37m
+R	49497	manorwoods	inside			[1;32mStanding Before a [1;31mM[1;37mu[0;31ml[0;36mt[1;36mi-C[0;32mo[1;32ml[1;34mo[0;34mr[0;37me[0;33md[1;32m Archway.[0;37m
 X	49497	44448	e		
 X	49497	49498	n		
 R	49498					
@@ -124044,26 +124067,26 @@ X	49555	44381	e
 X	49555	49556	n		
 R	49556					
 R	49569					
-R	49571	xunti	inside			[1\;32mPassage of Skulls[0\;37m
+R	49571	xunti	inside			[1;32mPassage of Skulls[0;37m
 X	49571	49573	e		
 X	49571	49266	s		
 X	49571	49572	w		
-R	49572	xunti	inside			[1\;32mAmoxcalli[0\;37m
+R	49572	xunti	inside			[1;32mAmoxcalli[0;37m
 X	49572	49571	e		
-R	49573	xunti	inside			[1\;32mChamber of Water[0\;37m
+R	49573	xunti	inside			[1;32mChamber of Water[0;37m
 X	49573	49574	n		
 X	49573	49571	w		
-R	49574	xunti	inside			[1\;32mPassage Of Virgins[0\;37m
+R	49574	xunti	inside			[1;32mPassage Of Virgins[0;37m
 X	49574	49573	s		
-R	49575	xunti	inside			[1\;32mPassage of Fire[0\;37m
+R	49575	xunti	inside			[1;32mPassage of Fire[0;37m
 X	49575	49266	e		
 X	49575	49576	s		
-R	49576	xunti	inside			[1\;32mA Sacrificial Pyre[0\;37m
+R	49576	xunti	inside			[1;32mA Sacrificial Pyre[0;37m
 X	49576	49575	n		
-R	49577	xunti	inside			[1\;32mPassage of Blood[0\;37m
+R	49577	xunti	inside			[1;32mPassage of Blood[0;37m
 X	49577	49266	n		
 X	49577	49578	s		
-R	49578	xunti	inside			[1\;32mThe Entrance Way[0\;37m
+R	49578	xunti	inside			[1;32mThe Entrance Way[0;37m
 X	49578	49577	n		
 X	49578	49579	s		
 R	49579					
@@ -124076,7 +124099,7 @@ R	49619	manorville	inside			Fischer's Front Porch
 X	49619	49620	n		
 X	49619	44275	w		
 R	49620					
-R	49622	manorville	inside			[1\;36mA Winding Cobblestone Path[0\;37m
+R	49622	manorville	inside			[1;36mA Winding Cobblestone Path[0;37m
 X	49622	49623	n		
 X	49622	44286	s		
 R	49623					
@@ -124085,7 +124108,7 @@ X	49626	44276	d
 X	49626	49627	n		
 R	49627					
 R	49636					
-R	49638	manorville	inside			[1\;33mThe [1\;32mthrone[0\;37m
+R	49638	manorville	inside			[1;33mThe [1;32mthrone[0;37m
 X	49638	44405	e		
 X	49638	49639	n		
 R	49639					
@@ -124216,7 +124239,7 @@ X	49962	49963	n
 X	49962	49961	s		
 R	49963	cove	tunnel			The lip of a ravine
 X	49963	49962	s		
-R	49964	cove	bloodyroom	1		[0\;31m_[1\;37m\\[0\;31m|[1\;37mT[0\;37mhe [1\;37mR[0\;37mavine of [1\;37mB[0\;37mones[0\;31m|[1\;37m\/[0\;31m_[0\;37m
+R	49964	cove	bloodyroom	1		[0;31m_[1;37m\\[0;31m|[1;37mT[0;37mhe [1;37mR[0;37mavine of [1;37mB[0;37mones[0;31m|[1;37m/[0;31m_[0;37m
 R	49965	cove	forest			To the berry patch
 X	49965	49966	e		
 X	49965	49955	w		
@@ -124313,17 +124336,17 @@ X	50002	50001	n
 X	50002	44566	s		
 R	50008					
 R	50011					
-R	50012	manorville	inside			[0\;33mMountain of Rock[0\;37m
+R	50012	manorville	inside			[0;33mMountain of Rock[0;37m
 X	50012	44280	d		
 X	50012	50011	n		
 R	50017					
 R	50026					
-R	50027	manorwoods	inside			[0\;31mThe Ruins of Thundera[0\;37m
+R	50027	manorwoods	inside			[0;31mThe Ruins of Thundera[0;37m
 X	50027	50026	n		
 X	50027	44299	w		
 R	50030					
 R	50032					
-R	50037	manorville	inside			[1\;31mC[0\;31ma[1\;31ms[0\;33mi[1\;33mn[0\;33mo [1\;31mo[0\;31mf [1\;31mL[0\;33me[1\;33mg[0\;33ma[1\;31ml[0\;31mi[1\;31mz[0\;33me[1\;33md [0\;33mT[1\;31mh[0\;31mi[1\;31me[0\;33mv[1\;33me[0\;33mr[1\;31my[0\;37m
+R	50037	manorville	inside			[1;31mC[0;31ma[1;31ms[0;33mi[1;33mn[0;33mo [1;31mo[0;31mf [1;31mL[0;33me[1;33mg[0;33ma[1;31ml[0;31mi[1;31mz[0;33me[1;33md [0;33mT[1;31mh[0;31mi[1;31me[0;33mv[1;33me[0;33mr[1;31my[0;37m
 X	50037	50038	n		
 X	50037	44505	s		
 R	50038					
@@ -124350,19 +124373,19 @@ X	50089	50088	n
 X	50089	44412	s		
 R	50092					
 R	50098					
-R	50099	bootcamp	city			[1\;32mHall of heroes[0\;37m
+R	50099	bootcamp	city			[1;32mHall of heroes[0;37m
 X	50099	50100	e		
 X	50099	47210	u		
-R	50100	bootcamp	city			[1\;32mHall of heroes[0\;37m
+R	50100	bootcamp	city			[1;32mHall of heroes[0;37m
 X	50100	50101	e		
 X	50100	50099	w		
-R	50101	bootcamp	city			[1\;32mHall of heroes[0\;37m
+R	50101	bootcamp	city			[1;32mHall of heroes[0;37m
 X	50101	50103	u		
 X	50101	50100	w		
-R	50102	bootcamp	shop			[1\;32mMilitary Surplus Store[0\;37m
+R	50102	bootcamp	shop			[1;32mMilitary Surplus Store[0;37m
 X	50102	49391	s		
 X	50102	49256	w		
-R	50103	bootcamp	shop			[1\;32mPost Exchange(P.X)[0\;37m
+R	50103	bootcamp	shop			[1;32mPost Exchange(P.X)[0;37m
 X	50103	50101	d		
 X	50103	49391	e		
 X	50103	49256	n		
@@ -124377,26 +124400,26 @@ R	50114
 R	50115	manorville	inside			Aleyra's Porch
 X	50115	50114	n		
 X	50115	44506	u		
-R	50123	touchstone	shop			[1\;32mSenior Explorers Hut[0\;37m
+R	50123	touchstone	shop			[1;32mSenior Explorers Hut[0;37m
 X	50123	28358	n		
 R	50127					
 R	50129					
-R	50136	crimson	inside			[1\;32mTombed to Hel[0\;37m
+R	50136	crimson	inside			[1;32mTombed to Hel[0;37m
 X	50136	27991	u		
 R	50140					
-R	50146	touchstone	inside			[1\;32mThe Eastern Cavern[0\;37m
+R	50146	touchstone	inside			[1;32mThe Eastern Cavern[0;37m
 X	50146	28343	d		
 X	50146	50152	n		
 X	50146	28357	u		
 X	50146	28346	w		
-R	50152	touchstone	shop			[1\;32mMartial Expedition Hut[0\;37m
+R	50152	touchstone	shop			[1;32mMartial Expedition Hut[0;37m
 X	50152	50146	s		
 R	50155					
 R	50156					
 R	50157	manormount	inside			Pleiades' Porch
 X	50157	39522	e		
 X	50157	50156	n		
-R	50160	manorville	inside			[1\;33mC[0\;33mla[1\;32md[0\;32md[1\;31ma[0\;31mgh [1\;31mC[0\;32ma[1\;32ms[0\;33mtl[1\;33me[0\;37m
+R	50160	manorville	inside			[1;33mC[0;33mla[1;32md[0;32md[1;31ma[0;31mgh [1;31mC[0;32ma[1;32ms[0;33mtl[1;33me[0;37m
 X	50160	44506	d		
 X	50160	50161	n		
 R	50161					
@@ -124413,13 +124436,13 @@ X	50184	50185	n
 R	50185					
 R	50189					
 R	50195					
-R	50196	manorville	inside			[38\;5\;43mInside a [38\;5\;44mmagical [38\;5\;45mcavern[0\;37m
+R	50196	manorville	inside			[38;5;43mInside a [38;5;44mmagical [38;5;45mcavern[0;37m
 X	50196	44401	d		
 X	50196	50195	n		
-R	50202	manormount	inside			[0\;32mC[1\;32my[0\;32mt[1\;32ma[0\;32mn[1\;32m'[0\;32ms [1\;32mIPA [0\;32mC[1\;32mr[0\;32ma[1\;32mf[0\;32mt [1\;32mB[0\;32mr[1\;32me[0\;32mw[1\;32me[0\;32mr[1\;32my[0\;37m
+R	50202	manormount	inside			[0;32mC[1;32my[0;32mt[1;32ma[0;32mn[1;32m'[0;32ms [1;32mIPA [0;32mC[1;32mr[0;32ma[1;32mf[0;32mt [1;32mB[0;32mr[1;32me[0;32mw[1;32me[0;32mr[1;32my[0;37m
 X	50202	50203	n		
 X	50202	39479	u		
-R	50203	manormount	inside			[1\;32mA dimly lit tavern[0\;37m
+R	50203	manormount	inside			[1;32mA dimly lit tavern[0;37m
 X	50203	32418	d		
 X	50203	50202	s		
 X	50203	50226	w		
@@ -124434,7 +124457,7 @@ R	50241	manorville	inside			Elchanan's Porch
 X	50241	50240	n		
 X	50241	44451	u		
 R	50242					
-R	50251	manorville	inside			[1\;31mEntrance to the[0\;37m [0\;31mV[0\;37m[1\;31mi[0\;37m[0\;31mk[0\;37m[1\;31mi[0\;37m[0\;31mn[0\;37m[1\;31mg[0\;37m [0\;31mC[0\;37m[1\;31ma[0\;37m[0\;31mm[0\;37m[1\;31mp[0\;37m
+R	50251	manorville	inside			[1;31mEntrance to the[0;37m [0;31mV[0;37m[1;31mi[0;37m[0;31mk[0;37m[1;31mi[0;37m[0;31mn[0;37m[1;31mg[0;37m [0;31mC[0;37m[1;31ma[0;37m[0;31mm[0;37m[1;31mp[0;37m
 X	50251	50252	n		
 X	50251	44297	s		
 R	50252					
@@ -124525,7 +124548,7 @@ R	52127	manorville	inside			A tree house overlooking the pond
 X	52127	44421	d		
 X	52127	52126	n		
 R	52128					
-R	52134	druid	hills			[1\;32mDruim na nDruadh[0\;37m
+R	52134	druid	hills			[1;32mDruim na nDruadh[0;37m
 X	52134	29582	n		
 R	52140					
 R	52141	manorville	inside			Vellius' Porch
@@ -124536,7 +124559,7 @@ R	52143	manorville	inside			Somewhere Over the Plains
 X	52143	44381	d		
 X	52143	52142	n		
 R	52144					
-R	52145	manorwoods	inside			[1\;37mEntrance [1\;32mto [1\;33mRampager's [1\;36mPalace[1\;31m![0\;37m
+R	52145	manorwoods	inside			[1;37mEntrance [1;32mto [1;33mRampager's [1;36mPalace[1;31m![0;37m
 X	52145	44300	e		
 X	52145	52144	n		
 R	52148	manorville	inside			Trepid's Porch
@@ -124566,11 +124589,11 @@ R	52182	manorville	inside			Urru's Porch
 X	52182	52181	n		
 X	52182	44271	w		
 R	52190					
-R	52191	manorsea	inside			[38\;5\;055mDe[38\;5\;054mca[0\;35mden[38\;5\;054mce [38\;5\;238mof [0\;34mMi[38\;5\;020mdni[0\;34mght[0\;37m
+R	52191	manorsea	inside			[38;5;055mDe[38;5;054mca[0;35mden[38;5;054mce [38;5;238mof [0;34mMi[38;5;020mdni[0;34mght[0;37m
 X	52191	44451	d		
 X	52191	52190	n		
 R	52193					
-R	52198	emerald	inside			[1\;32mHassan's Ready Room [0\;37m
+R	52198	emerald	inside			[1;32mHassan's Ready Room [0;37m
 X	52198	811	n		
 X	52198	834	s		
 R	52201					
@@ -124609,13 +124632,13 @@ R	52265	manorville	inside			SorlagPie's lawn
 X	52265	44291	e		
 X	52265	52264	n		
 R	52498					
-R	52499	manorville	inside			[1\;37mAscending towards a floating [0\;37mE[0\;37ms[1\;37mta[0\;37mt[0\;37me[0\;37m
+R	52499	manorville	inside			[1;37mAscending towards a floating [0;37mE[0;37ms[1;37mta[0;37mt[0;37me[0;37m
 X	52499	44500	d		
 X	52499	52498	n		
 R	52513					
 R	52515					
 R	52516					
-R	52519	manorville	inside			[1\;31mB[0\;31moom [1\;32mC[0\;32mlap![0\;37m
+R	52519	manorville	inside			[1;31mB[0;31moom [1;32mC[0;32mlap![0;37m
 X	52519	44382	d		
 X	52519	52520	n		
 R	52520					
@@ -124664,7 +124687,7 @@ X	52585	52584	n
 X	52585	39520	s		
 R	52586					
 R	52594					
-R	52595	manorville	inside			[38\;5\;57mA [38\;5\;220mS[38\;5\;238mardauka[38\;5\;220mr[38\;5\;57m Outpost[0\;37m
+R	52595	manorville	inside			[38;5;57mA [38;5;220mS[38;5;238mardauka[38;5;220mr[38;5;57m Outpost[0;37m
 X	52595	52594	n		
 X	52595	44419	u		
 R	52603					
@@ -124711,7 +124734,7 @@ R	52673	manorville	inside			A menacing mansion
 X	52673	52672	n		
 X	52673	44272	w		
 R	52674					
-R	52675	manormount	inside			[0\;35mA [0\;36mMoonlit [1\;32mGarden[0\;37m
+R	52675	manormount	inside			[0;35mA [0;36mMoonlit [1;32mGarden[0;37m
 X	52675	52674	n		
 X	52675	39488	u		
 R	52680					
@@ -124720,7 +124743,7 @@ R	52682	manorville	inside			Daresia's Porch
 X	52682	52681	n		
 X	52682	44451	w		
 R	52683					
-R	52684	manorville	inside			[1\;32mThe Castle Gates[0\;37m
+R	52684	manorville	inside			[1;32mThe Castle Gates[0;37m
 X	52684	52683	n		
 X	52684	44401	s		
 R	52686					
@@ -124748,7 +124771,7 @@ R	52711
 R	52712					
 R	52718					
 R	52719					
-R	52720	manorville	inside			[0\;37mA [38\;5\;060mb[38\;5\;030ml[38\;5\;025mu[38\;5\;030me[38\;5\;130ms[38\;5\;060mt[38\;5\;030mon[38\;5\;025me[0\;37m path
+R	52720	manorville	inside			[0;37mA [38;5;060mb[38;5;030ml[38;5;025mu[38;5;030me[38;5;130ms[38;5;060mt[38;5;030mon[38;5;025me[0;37m path
 X	52720	52719	n		
 X	52720	44411	s		
 R	52723					
@@ -124784,11 +124807,11 @@ X	52761	52762	n
 X	52761	44521	s		
 R	52762					
 R	52763					
-R	52764	manorville	inside			[0\;33mForest [1\;37mof Unknown [1\;31mPleasures[0\;37m
+R	52764	manorville	inside			[0;33mForest [1;37mof Unknown [1;31mPleasures[0;37m
 X	52764	44390	e		
 X	52764	52763	n		
 R	52769					
-R	52770	manorville	inside			[1\;32mCavern of the Ranger[0\;37m
+R	52770	manorville	inside			[1;32mCavern of the Ranger[0;37m
 X	52770	52769	n		
 X	52770	44406	u		
 R	52772					
@@ -124806,7 +124829,7 @@ X	52800	52801	n
 X	52800	44512	u		
 R	52801					
 R	52802					
-R	52804	manorville	inside			[1\;33m-[1\;31m=[1\;33m-[0\;36mHightower[1\;33m-[1\;31m=[1\;33m-[0\;37m
+R	52804	manorville	inside			[1;33m-[1;31m=[1;33m-[0;36mHightower[1;33m-[1;31m=[1;33m-[0;37m
 X	52804	44391	d		
 X	52804	52805	n		
 R	52805					
@@ -124824,7 +124847,7 @@ R	52817	manorville	inside			Ghul's Porch
 X	52817	44426	d		
 X	52817	52818	n		
 R	52818					
-R	52820	manorville	inside			[38\;5\;99mA[38\;5\;105mn [38\;5\;111mO[38\;5\;117md[38\;5\;123md [38\;5\;240mV[38\;5\;244mo[38\;5\;248mi[38\;5\;252md[0\;37m
+R	52820	manorville	inside			[38;5;99mA[38;5;105mn [38;5;111mO[38;5;117md[38;5;123md [38;5;240mV[38;5;244mo[38;5;248mi[38;5;252md[0;37m
 X	52820	44390	d		
 X	52820	52821	n		
 R	52821					
@@ -124859,11 +124882,11 @@ R	52862	manorville	inside			Adra's Little Universe
 X	52862	44522	d		
 X	52862	52863	n		
 R	52863					
-R	52864	manorville	inside			[1\;31mLundfu's[0\;37m [1\;34mPorch[0\;37m
+R	52864	manorville	inside			[1;31mLundfu's[0;37m [1;34mPorch[0;37m
 X	52864	52865	n		
 X	52864	44508	u		
 R	52865					
-R	52869	manorville	inside			[0\;37mA Granite Portico[0\;37m
+R	52869	manorville	inside			[0;37mA Granite Portico[0;37m
 X	52869	52870	n		
 X	52869	44409	s		
 R	52870					
@@ -124876,7 +124899,7 @@ R	52876	manorville	inside			A ramshackle wooden porch
 X	52876	52877	n		
 X	52876	44505	u		
 R	52877					
-R	52883	manorville	inside			[38\;5\;238mEntrance to [1\;31mH[0\;31me[1\;31ml[0\;31ml[0\;37m
+R	52883	manorville	inside			[38;5;238mEntrance to [1;31mH[0;31me[1;31ml[0;31ml[0;37m
 X	52883	52884	n		
 X	52883	44289	u		
 R	52884					
@@ -124918,7 +124941,7 @@ X	55006	54999	n
 X	55006	55005	s		
 R	55008	blackclaw	mountain			A hidden path within Black Claw Crag
 R	55009	blackclaw	mountain			A small ledge overlooking a pit of jagged stone
-R	55010	manor3	inside			[38\;5\;26mQui[38\;5\;33mnn[38\;5\;019mZai[38\;5\;26m's [38\;5\;38mStu[38\;5\;33mdy[0\;37m
+R	55010	manor3	inside			[38;5;26mQui[38;5;33mnn[38;5;019mZai[38;5;26m's [38;5;38mStu[38;5;33mdy[0;37m
 X	55010	40497	s		
 X	55010	35649	w		
 R	55013					
@@ -124958,7 +124981,7 @@ R	55073	manorville	inside			Gateway to the Galaxy
 X	55073	52686	e		
 X	55073	55072	s		
 X	55073	55074	u		
-R	55074	manorville	inside			[1\;37mUnder the [1\;37mT[1\;36mw[1\;37mi[1\;36mn[1\;37mk[1\;36ml[1\;37mi[1\;36mn[1\;37mg [1\;34mNight[1\;37m Sky[0\;37m
+R	55074	manorville	inside			[1;37mUnder the [1;37mT[1;36mw[1;37mi[1;36mn[1;37mk[1;36ml[1;37mi[1;36mn[1;37mg [1;34mNight[1;37m Sky[0;37m
 X	55074	55073	d		
 R	55077	manorville	inside			Gulltoppr's Porch
 X	55077	44450	d		
@@ -124992,15 +125015,15 @@ X	55113	44415	e
 X	55113	55114	n		
 R	55114					
 R	55115					
-R	55118	manorville	inside			[1\;37mCheyenne [0\;33mMountain [1\;37mComplex[0\;37m
+R	55118	manorville	inside			[1;37mCheyenne [0;33mMountain [1;37mComplex[0;37m
 X	55118	55119	n		
 X	55118	44401	w		
 R	55119					
-R	55123	manormount	inside			[1\;37mHidden gully[0\;37m
+R	55123	manormount	inside			[1;37mHidden gully[0;37m
 X	55123	55124	n		
 X	55123	39522	w		
 R	55124					
-R	55134	manorville	inside			[38\;5\;231mInfront of The Wolf's Den[0\;37m
+R	55134	manorville	inside			[38;5;231mInfront of The Wolf's Den[0;37m
 X	55134	44395	e		
 X	55134	55135	n		
 R	55135					
@@ -125064,19 +125087,19 @@ R	55232	manorville	inside			The Beer Garden
 X	55232	44386	d		
 X	55232	55233	n		
 R	55233					
-R	55236	amazonclan	forest			[1\;32mAn Overgrown Temple[0\;37m
+R	55236	amazonclan	forest			[1;32mAn Overgrown Temple[0;37m
 X	55236	34209	d		
 X	55236	55237	e		
 X	55236	34212	s		
 X	55236	55239	u		
 X	55236	34211	w		
-R	55237	amazonclan	forest			[1\;32mChamber of Darkness[0\;37m
+R	55237	amazonclan	forest			[1;32mChamber of Darkness[0;37m
 X	55237	34174	e		
 X	55237	34210	u		
 X	55237	55236	w		
-R	55238	amazonclan	inside			[1\;32mAmazon Tribunal[0\;37m
+R	55238	amazonclan	inside			[1;32mAmazon Tribunal[0;37m
 X	55238	34211	d		
-R	55239	amazonclan	forest			[1\;32mThe Locus of a Bespoiled Temple[0\;37m
+R	55239	amazonclan	forest			[1;32mThe Locus of a Bespoiled Temple[0;37m
 X	55239	55236	d		
 X	55239	55240	u		
 R	55240					
@@ -125109,7 +125132,7 @@ X	55299	44427	d
 X	55299	55300	n		
 R	55300					
 R	55302					
-R	55304	manorville	inside			[1\;37mThe [1\;32mTipsy Dragon [1\;37mParking lot[0\;37m
+R	55304	manorville	inside			[1;37mThe [1;32mTipsy Dragon [1;37mParking lot[0;37m
 X	55304	55305	n		
 X	55304	44404	s		
 R	55305					
@@ -125128,7 +125151,7 @@ X	55331	44513	e
 X	55331	55332	n		
 R	55332					
 R	55337					
-R	55339	manorville	inside			[1\;31mA [0\;33mRickety [1\;35mCovered [1\;34mPorch[0\;37m
+R	55339	manorville	inside			[1;31mA [0;33mRickety [1;35mCovered [1;34mPorch[0;37m
 X	55339	44508	d		
 X	55339	55340	n		
 R	55340					
@@ -125166,13 +125189,13 @@ X	55432	55434	e
 X	55432	55433	n		
 X	55432	55435	s		
 X	55432	55436	w		
-R	55433	immhomes	bloodyroom			[1\;32mAardwolf's Birthday Extravaganza... With Cake![0\;37m
+R	55433	immhomes	bloodyroom			[1;32mAardwolf's Birthday Extravaganza... With Cake![0;37m
 X	55433	55432	s		
-R	55434	immhomes	palace_room			[1\;32mAardwolf's Birthday Extravaganza... With Cake![0\;37m
+R	55434	immhomes	palace_room			[1;32mAardwolf's Birthday Extravaganza... With Cake![0;37m
 X	55434	55432	w		
-R	55435	immhomes	bloodyroom			[1\;32mAardwolf's Birthday Extravaganza... With Cake![0\;37m
+R	55435	immhomes	bloodyroom			[1;32mAardwolf's Birthday Extravaganza... With Cake![0;37m
 X	55435	55432	n		
-R	55436	immhomes	palace_room			[1\;32mAardwolf's Birthday Extravaganza... With Cake![0\;37m
+R	55436	immhomes	palace_room			[1;32mAardwolf's Birthday Extravaganza... With Cake![0;37m
 X	55436	55432	e		
 R	55441	manorville	inside			New Room
 X	55441	55442	n		
@@ -125195,7 +125218,7 @@ R	55469
 R	55471	fractal	ruins	1		A Strange Undercroft
 X	55471	32450	u		
 R	55473					
-R	55481	manorwoods	inside			[0\;33mStone steps[1\;30m of the [1\;37mJedi[1\;30m Temple[0\;37m
+R	55481	manorwoods	inside			[0;33mStone steps[1;30m of the [1;37mJedi[1;30m Temple[0;37m
 X	55481	44337	e		
 X	55481	55482	n		
 R	55482					

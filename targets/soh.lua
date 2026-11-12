@@ -17,7 +17,7 @@
 local util = require("core.util")
 local colors = require("core.colors")
 local theme = require("core.theme")
-local travel = require("nav.travel")   -- same_area: soh and sohtwo are one area
+local mapper = require("nav.mapper")   -- same_area: soh and sohtwo are one area
 
 local say, warn = util.say, util.warn
 local FILE = rune.config_dir .. "/data/soh.lua"
@@ -88,7 +88,7 @@ function soh.keyword(name)
   return (k:gsub("%b[]", ""):match("^[^%s/]+"))
 end
 function soh.for_mob(name, zone)
-  return name and travel.same_area(zone, "soh") and soh.keyword(name) or nil
+  return name and mapper.same_area(zone, "soh") and soh.keyword(name) or nil
 end
 
 function soh.label(name, zone)

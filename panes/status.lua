@@ -87,7 +87,7 @@ end
 -- health, padded to 3 so the name never moves, then its name (GMCP sends it
 -- with the game's @-colour codes, taken out) cut to ENEMY_W; green under 20
 -- (nearly dead), red otherwise. Out of a fight your state ("standing")
-local ENEMY_W = 20
+local ENEMY_W = 25
 local function enemy_segment()
   if game.state ~= 8 then return state_names[game.state or 0] or "?" end
   local pct = game.enemypct or 0
@@ -121,7 +121,7 @@ local function status_row2()
   return table.concat(f, " ") .. theme.muted(" | ") .. table.concat(right, " ")
 end
 
-local SCROLLED = " SCROLLED - Ctrl+End "
+local SCROLLED = "SCR"   -- right-aligned under row 1's REC
 
 -- REC at row 1's right end (tt++ ticking.tin): Rune's /log open - it flashes
 -- each second, black on red, then bright red (the terminal's blink didn't
@@ -169,16 +169,30 @@ function rune.log.start(path, opts)
   return ok, err
 end
 
+-- At /log stop, the file's path goes to the clipboard (the user,
+-- 2026-11-11), to paste where it's wanted. rune.log.stop is what /log
+-- stop calls, so wrapping it covers it
+local log_stop = rune.log.stop
+function rune.log.stop()
+  local path = rune.log.status()
+  local ok = log_stop()
+  if ok and path then
+    rune.clipboard.set(path)
+    util.say("[log] path copied to the clipboard.")
+  end
+  return ok
+end
+
 -- Row 1: the fields on the left, REC at the right end
 rune.ui.bar("status1", function()
   return { left = status_row1(), right = rec() }
 end)
 
--- Row 2. SCROLLED is looked at on each render (rune._state.scroll_mode:
+-- Row 2. SCR is looked at on each render (rune._state.scroll_mode:
 -- "live" or "scrolled" - nothing tells when it changes)
 rune.ui.bar("status2", function()
   local left = status_row2()
-  -- Right: SCROLLED, when the main pane is scrolled back (new output is
+  -- Right: SCR, when the main pane is scrolled back (new output is
   -- below what you see)
   local right = rune._state.scroll_mode == "scrolled" and theme.scrolled(SCROLLED) or ""
   return { left = left, right = right }
