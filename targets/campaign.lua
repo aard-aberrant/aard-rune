@@ -52,6 +52,20 @@ local notes_until = 0 -- a hidden reply's notes are hidden until then
 local reply_until = 0 -- a typed cp command's reply is read until then
 local on_cp = false   -- on a campaign: the kill's triggers are on
 local last_enemy = "" -- the last enemy GMCP char.status named, lowercased
+-- Zone -> how many campaign mobs it had: the most any cp check listed this
+-- campaign (a cp check lists only those still to kill, so a kill can't
+-- lower it). For the area line's "k of N". Kept in rune.session, so a
+-- /reload keeps it; after a restart mid-campaign it starts from the next cp
+-- check, and an area with kills behind it counts from there
+local TOTALS = "campaign_totals"   -- rune.session: "zone=n,zone=n"
+local totals = {}
+for z, n in (rune.session.get(TOTALS) or ""):gmatch("([^,=]+)=(%d+)") do totals[z] = tonumber(n) end
+local function totals_save()
+  local parts = {}
+  for z, n in pairs(totals) do parts[#parts + 1] = z .. "=" .. n end
+  rune.session.set(TOTALS, table.concat(parts, ","))
+end
+local function totals_clear() totals = {}; rune.session.set(TOTALS, "") end
 local REPLY_WAIT = 120   -- tt++'s: the game answers only once a fight is over
 -- Both groups exist only while on (util.group)
 local reply_trig, live_trig = util.group(), util.group()
@@ -96,13 +110,18 @@ local function row()
   local first = CYAN .. #list .. " left, " .. time
   local t = target.get()
   local room = cur.room or (t and t.src == "campaign" and t.room) or nil
-  -- The area's line counts the campaign mobs still in it (the target's
-  -- included, Dead ones too), when there's more than one
+  -- The area's line, when it had more than one campaign mob: "k of N" - N
+  -- its mobs (totals), k the one you're on, by kills there so far, in any
+  -- order (the user, 2026-11-15). Still to kill (the target's included,
+  -- Dead ones too) is n; the current mob killed, it was the (N - n)th
   local area = cur.area_name
   if area and cur.zone then
     local n = 0
     for _, e in ipairs(list) do if e.zone == cur.zone then n = n + 1 end end
-    if n > 1 then area = area .. " (" .. n .. " left)" end
+    local all = math.max(totals[cur.zone] or 0, n)
+    if all > 1 then
+      area = area .. " (" .. math.max(1, all - n + (cur_dead and 0 or 1)) .. " of " .. all .. ")"
+    end
   end
   -- Listed Dead (not repopped yet) in the last cp check: (DEAD) after its name
   local mob = soh.label(cur.mob, cur.zone)
@@ -127,6 +146,7 @@ end
 
 local function reset()
   list, ends, cur, cur_dead, skipped, on_cp = {}, nil, nil, false, {}, false
+  totals_clear()
   tick.stop()
   target.clear("campaign")
   row()
@@ -190,6 +210,13 @@ reply("^You have (\\d+) days?, (\\d+) hours? and (\\d+) minutes? left to finish 
     reading = false
     ends = os.time() + tonumber(m[1]) * 86400 + tonumber(m[2]) * 3600 + tonumber(m[3]) * 60
     place_all()
+    -- each area's count, kept at its most (totals, above)
+    local per, grew = {}, false
+    for _, e in ipairs(list) do if e.zone then per[e.zone] = (per[e.zone] or 0) + 1 end end
+    for z, n in pairs(per) do
+      if n > (totals[z] or 0) then totals[z], grew = n, true end
+    end
+    if grew then totals_save() end
     if cur and not cur_dead and count(cur.mob) < cur.n then
       cur_dead = true
       target.clear("campaign")
@@ -245,7 +272,8 @@ local function started()
   check_quietly()
 end
 reply("tells you 'Good luck in your campaign!'", function(_, ctx)
-  if ctx.line:clean():find("tells you 'Good luck in your campaign!'$") then started() end
+  -- a new campaign: the last one's area counts go (if its end was missed)
+  if ctx.line:clean():find("tells you 'Good luck in your campaign!'$") then totals_clear(); started() end
 end, "cp_started", "contains")
 reply("You are already on an active campaign!", started, "cp_on_already", "exact")
 
