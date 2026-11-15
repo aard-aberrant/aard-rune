@@ -274,8 +274,8 @@ end
 local function check_last()
   if S.phase ~= "run" then return end
   if idle() then
-    gossip("Last call for spellups in the " .. A.red .. "-=Masaki=-" .. A.white .. " clan hall, n u from recall. I don't know you're here if you don't smile at me ('"
-      .. A.bright_green .. "smile " .. me() .. A.white .. "').")
+    gossip("Last call for spellups in the " .. A.red .. "-=Masaki=-" .. A.cyan .. " clan hall, n u from recall. I don't know you're here if you don't smile at me ('"
+      .. A.bright_green .. "smile " .. me() .. A.cyan .. "').")
     S.phase = "last"
     at(30, check_done)
   else
@@ -288,8 +288,8 @@ local function open()
   S.phase = "run"
   local h = tonumber(os.date("!%H", os.time() - 5 * 3600))
   S.tod = (h >= 2 and h < 12) and "morning" or (h >= 12 and h < 18) and "afternoon" or "evening"
-  gossip("Good " .. S.tod .. "! Spellups in the " .. A.red .. "-=Masaki=-" .. A.white .. " clan hall (n u from recall) for the next couple of minutes. "
-    .. "Sit for cancel, smile at me when ready. " .. A.bright_yellow .. "You MUST" .. A.white .. " '" .. A.bright_green .. "smile " .. me() .. A.white .. "'.")
+  gossip("Good " .. S.tod .. "! Spellups in the " .. A.red .. "-=Masaki=-" .. A.cyan .. " clan hall (n u from recall) for the next couple of minutes. "
+    .. "Sit for cancel, smile at me when ready. " .. A.bright_yellow .. "You MUST" .. A.cyan .. " '" .. A.bright_green .. "smile " .. me() .. A.cyan .. "'.")
   at(120, check_last)
   drain()
 end

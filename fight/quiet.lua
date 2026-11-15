@@ -16,7 +16,10 @@
 -- (debug quiet, live 2026-11-07; the game sends no prompt Rune sees):
 --   🧠 +1,234  💰 +5,678  💀 4
 -- (a brain for xp, a money bag for gold, a skull for kills - the user,
--- 2026-11-10)
+-- 2026-11-10; after the xp, a gem and the share of it that was 'rare kill'
+-- bonus, as a whole percent rounded up, when there was one - the user,
+-- 2026-11-13):
+--   🧠 +1,234 💎 7%  💰 +5,678  💀 4)
 -- Gold is what you keep: the coins you got, less what you shared away, plus
 -- your share of others', less the clan's tax. Every other line shows as it
 -- comes (campaign, banish, an item from the corpse ...), and so do these
@@ -67,8 +70,10 @@ local layout = require("core.layout")
 local TRI = "\238\130\178"   -- U+E0B2, one column
 local XP, GOLD, DIM = T.xp.on, T.gold.on, T.text.on
 -- The icons, before their amounts: emoji, two columns each (U+1F9E0 brain,
--- U+1F4B0 money bag - the coin, U+1FA99, drew like a moon - U+1F480 skull)
+-- U+1F4B0 money bag - the coin, U+1FA99, drew like a moon - U+1F480 skull,
+-- U+1F48E gem for a rare kill's bonus)
 local BRAIN, BAG, SKULL = "\240\159\167\160", "\240\159\146\176", "\240\159\146\128"
+local GEM = "\240\159\146\142"
 
 local function show()
   if not t then return end
@@ -81,7 +86,16 @@ local function show()
     parts[#parts + 1] = icon .. " " .. code .. amount
     width = width + 3 + #amount
   end
-  if t.xp > 0 then part(BRAIN, XP, "+" .. commas(t.xp)) end
+  if t.xp > 0 then
+    part(BRAIN, XP, "+" .. commas(t.xp))
+    -- a gem after it, and the share of the xp that was rare kills' bonus,
+    -- in whole percent rounded up (so never 0%)
+    if t.rare then
+      local pct = tostring(math.ceil(t.rare * 100 / t.xp))
+      parts[#parts] = parts[#parts] .. " " .. GEM .. " " .. pct .. "%"
+      width = width + 5 + #pct   -- space, gem (2), space, digits, %
+    end
+  end
   if t.gold ~= 0 then part(BAG, GOLD, (t.gold > 0 and "+" or "") .. commas(t.gold)) end
   local kills = t.kills
   t = nil
@@ -105,7 +119,10 @@ end
 local REWARDS = {
   { "^You receive ([%d,+]+) experience points?%.$", function(x) add_xp(x); t.kills = t.kills + 1 end },
   { "^You receive ([%d,]+) bonus experience points?", add_xp },
-  { "^You receive ([%d,]+) '[^']+' experience bonus%.$", add_xp },
+  { "^You receive ([%d,]+) '([^']+)' experience bonus%.$", function(n, kind)
+      add_xp(n)
+      if kind == "rare kill" then t.rare = (t.rare or 0) + num(n) end
+    end },
   { "^You get ([%d,]+) gold coins? from ", function(n) local c = tot(); c.gold = c.gold + num(n) end },
   { "^You share ([%d,]+) gold coins? with .-Your share is ([%d,]+) gold%.$", function(all, mine)
       local c = tot()

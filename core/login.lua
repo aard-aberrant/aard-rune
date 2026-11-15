@@ -16,6 +16,9 @@
 -- output or as a prompt (a partial line, on: "prompt"), and which these are
 -- isn't known, so both are watched - only until you're in the game.
 -- send_raw: no alias or ; expansion.
+-- Once in the game (a real login, not a /reload), heighten senses - below.
+
+local game = require("core.game")   -- on_login: in the game
 
 local env = {}
 local f = io.open(rune.config_dir .. "/.env", "r")
@@ -41,7 +44,6 @@ local name = env.NAME
 local cred = name and name ~= "" and { name = name, password = env.PASSWORD ~= "" and env.PASSWORD or nil } or nil
 
 if cred and cred.name then
-  local game = require("core.game")   -- on_login: in the game, so the watch goes
   local name_sent, pw_sent = false, false
   local trigs = {}
 
@@ -71,5 +73,25 @@ if cred and cred.name then
   end
   arm()
   rune.hooks.on("connecting", arm, { name = "login_reset" })
-  game.on_login(disarm)
+  game.on_login(disarm)   -- in the game, so the watch goes
 end
+
+-- Heighten senses at each real login - Rune started, or a reconnect - with
+-- or without .env; not after a /reload (the user, 2026-11-13). With it off,
+-- a dark room (home) shows nothing - "You see nothing but darkness...",
+-- DARKNESS in the minimap. Sent even when it's up: the reply, "Your senses
+-- are already heightened." (the user, 2026-11-13), shows, as the casting
+-- lines do. Registered here, before nav/minimap.lua loads, so it is sent
+-- before the minimap's login "map" - the game answers in order, so that map
+-- is drawn after you can see. Not while fighting (state 8).
+-- game.on_login fires after a /reload too; rune.session (kept across a
+-- /reload, not a restart) tells them apart: "1" from login to disconnect
+local IN_GAME = "login_in_game"
+local reloaded = rune.session.get(IN_GAME) == "1"   -- in the game before this /reload
+game.on_login(function()
+  local skip = reloaded
+  reloaded = false
+  rune.session.set(IN_GAME, "1")
+  if not skip and game.state ~= 8 then rune.send_raw("heighten") end
+end)
+rune.hooks.on("disconnected", function() rune.session.set(IN_GAME, "0") end, { name = "login_left_game" })

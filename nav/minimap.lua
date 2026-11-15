@@ -289,6 +289,7 @@ end, { name = "minimap_room" })
 --   map avoid <exit>           routes never take this exit (unavoid: they may again)
 --   map renames [apply <vnum|all>]  rooms the game now names differently (nav/mapper.lua)
 --   map label <word> / unlabel <word> / labels   room labels, for find and ga (nav/mapper.lua)
+--   map note <text> / unnote   this room's note, on the minimap (nav/mapper.lua)
 --   map exit <vnum> <command>  add an exit GMCP doesn't list (custom exits)
 --   map record, plan, edit, drop, apply   record a way past a room (nav/maprec.lua)
 rune.alias.exact("map", function(args)
@@ -322,6 +323,12 @@ rune.alias.exact("map", function(args)
     return
   elseif sub == "labels" then
     mapper.list_labels()
+    return
+  elseif sub == "note" then
+    if rest == "" then util.warn("[map] map note <text> (map unnote removes it)") else mapper.note(rest) end
+    return
+  elseif sub == "unnote" and rest == "" then
+    mapper.note("")
     return
   end
   show_next = true

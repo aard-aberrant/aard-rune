@@ -13,18 +13,19 @@ function util.err(s) rune.echo(theme.error(s)) end
 -- there, so a redraw that changes nothing costs one string compare
 local shown = {}
 -- Triggers, from Rune's source (lua/core/50_triggers.lua, matcher.go) and
--- benchmarks of this config (2026-11-06): every registered trigger is
--- matched in Go against every line, DISABLED ONES TOO - enabled is checked
--- only after a match, and a line with any match at all goes through the Lua
--- dispatch (a line with none, and no open span, skips Lua). So no catch-all
--- stays registered: a block is a span (rune.trigger opts.span, e.g. the
--- minimap), and a reader exists only while it's needed (util.group,
+-- benchmarks of this config (2026-11-06): every enabled trigger is matched
+-- in Go against every line; disabled ones are skipped (Rune #169 - before
+-- it they were matched too). A line with any match at all goes through the
+-- Lua dispatch (a line with none, and no open span, skips Lua). So no
+-- catch-all stays on: a block is a span (rune.trigger opts.span, e.g. the
+-- minimap), and a reader is on only while it's needed (util.group,
 -- util.await, util.eat_blanks below). A catch-all is starts("") (a regex
 -- ".*" costs ~0.5 us more a line); a pattern that can't be anchored with a
 -- literal start (^.+, (\w+) ..., an alternation) is contains/starts plus a
 -- check in Lua - those ran 600-1300 ns a line, anchored ones 10-90. Adding
--- or removing a trigger rebuilds the matcher, so one toggled every round
--- (autocast's) stays registered, disabled.
+-- or removing a trigger rebuilds the matcher; enabling or disabling one only
+-- resyncs it, so a trigger toggled often stays registered and is switched
+-- (util.group, autocast's).
 
 function util.pane(name, text)
   if shown[name] == text then return end
@@ -123,33 +124,29 @@ rune.trigger.starts("", function(_, ctx)
   end
 end, { name = "util_hide_partial", on = "prompt" })
 
--- Triggers that exist only while on: declared once, added by set(true),
--- removed by set(false) - in place of enable/disable, since a disabled
--- trigger is still matched on every line, and any match at all (disabled
--- too) sends the line through Rune's Lua dispatch. Only for groups that are
--- off for long stretches: each add or remove rebuilds the matcher.
+-- Triggers switched on and off together: declared once, disabled while
+-- off. Rune's matcher skips disabled triggers (Rune #169), so an off group
+-- costs nothing per line.
 --   local g = util.group(hides)   hides: true for a group that hides lines
 --   g.add(kind, pattern, fn, opts)   kind: regex, exact, starts, contains
 --   g.set(on)    g.is_on()
 function util.group(hides)
-  local specs, live = {}, nil
+  local list, on = {}, false
   local g = {}
-  local function make(s) return rune.trigger[s[1]](s[2], s[3], s[4]) end
   function g.add(kind, pattern, fn, opts)
-    local s = { kind, pattern, fn, opts }
-    specs[#specs + 1] = s
-    if live then live[#live + 1] = make(s) end
+    local t = rune.trigger[kind](pattern, fn, opts)
+    if not on then t:disable() end
+    list[#list + 1] = t
   end
-  function g.set(on)
-    if on and not live then
-      live = {}
-      for i, s in ipairs(specs) do live[i] = make(s) end
-    elseif not on and live then
-      for _, t in ipairs(live) do t:remove() end
-      live = nil
+  function g.set(v)
+    v = not not v
+    if v == on then return end
+    on = v
+    for _, t in ipairs(list) do
+      if on then t:enable() else t:disable() end
     end
   end
-  function g.is_on() return live ~= nil end
+  function g.is_on() return on end
   if hides then util.hider(g.is_on) end
   return g
 end
@@ -157,7 +154,7 @@ end
 -- Hide the blank line(s) the game sends after a line a trigger has just
 -- hidden (tt++ ||gag_line). `clean` is that line's text, so the eater skips
 -- it if it sees it (it can, when the eater was on already). Off again at
--- the first line that isn't blank. The eater exists only while it's eating
+-- the first line that isn't blank. The eater is enabled only while it's eating
 local eat_skip
 local eater = util.group(true)
 eater.add("starts", "", function(_, ctx)

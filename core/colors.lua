@@ -129,7 +129,7 @@ colors.game = {
 
 -- Aardwolf's own color codes, for text we send to the game (gossip)
 colors.aard = {
-  red = "@r", bright_green = "@G", bright_yellow = "@Y", white = "@w",
+  red = "@r", bright_green = "@G", bright_yellow = "@Y", cyan = "@c",   -- cyan: back to gossip's own color
 }
 
 -- Helpers -----------------------------------------------------------------

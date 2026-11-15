@@ -9,7 +9,7 @@
 --   X  from  to    exit     flags cmds
 -- data: 1 no portal, 2 no recall, 3 both. note: the rmsg room message.
 -- flags: 2 = avoid. cmds: what to send for the exit, ";"-joined, empty when
--- it's just the exit name.
+-- it's just the exit name. name: plain text, no color codes (title() below).
 --
 -- Updated from GMCP room.info as you walk, with the tt++ automapper's rules
 -- (modules/gmcp.tin's ||gmcp_hook_room_info):
@@ -125,6 +125,15 @@ local function clean(s)
   return (tostring(s or ""):gsub("[\t\r\n]", " "))
 end
 
+-- A room title from the game as the map keeps it: no color codes (the user,
+-- 2026-11-15 - an immortal's colored title isn't saved, and a colored one
+-- compares the same as plain). Used by room.info, for a new room's title
+-- and the rename check; the file has none (stripped by hand 2026-11-15).
+-- colors.strip takes ANSI escapes (ESC[...m) only; whether the game ever
+-- sends Aardwolf @-codes in a GMCP name isn't known, and an @ can be a real
+-- character, so those are left alone
+local function title(s) return clean(colors.strip(tostring(s or ""))) end
+
 function M.save()
   local vnums = {}
   for v in pairs(M.rooms) do vnums[#vnums + 1] = v end
@@ -161,12 +170,13 @@ end
 -- here - a line in map/mapnames.log, beside the map, once per room per
 -- session: date, vnum, area, the map's name, the game's, TAB-separated.
 -- "map renames" lists them, "map renames apply" takes them (below).
--- Cost: one string compare per room.info
+-- Color doesn't count: the game's name is compared without it (title()).
+-- Cost: one string compare per room.info (two gsubs only when they differ)
 M.names_log = rune.config_dir .. "/map/mapnames.log"
 local name_logged = {}   -- vnum -> the game's name logged this session
 local function check_name(v, r, sent)
   if sent == nil or sent == r.name then return end
-  sent = clean(sent)
+  sent = title(sent)
   if sent == "" or sent == r.name or name_logged[v] == sent then return end
   name_logged[v] = sent
   util.append_file(M.names_log, table.concat({ os.date("%Y-%m-%d %H:%M"), v, r.area, r.name, sent }, "\t"), "[map]")
@@ -178,7 +188,7 @@ function M.room_info(d)
   M.here = v
   local r = M.rooms[v] or placeholder(v)
   if r.name == "" then
-    r.name, r.area, r.terrain = clean(d.name), clean(d.zone), clean(d.terrain)
+    r.name, r.area, r.terrain = title(d.name), clean(d.zone), clean(d.terrain)
     M.dirty = true
   else
     check_name(v, r, d.name)
@@ -318,6 +328,22 @@ local function here()
   return M.here
 end
 
+-- Room notes (nav/minimap.lua's map command: map note, unnote) - the
+-- room's rmsg, saved with the map and shown on the minimap from the next
+-- room update
+--   map note <text>   set the note of the room you're in (replacing any)
+--   map unnote        remove it ("" as text)
+function M.note(text)
+  local v = here()
+  if not v then return end
+  local r = M.rooms[v]
+  if not r then util.warn("[map] room " .. v .. " isn't on the map."); return end
+  r.note = text
+  M.dirty = true
+  util.say(text == "" and ("[map] room " .. v .. "'s note removed.")
+    or ("[map] room " .. v .. "'s note: " .. text))
+end
+
 --   map label <word>    label the room you're in
 function M.label(args)
   local name = util.trim(args):lower()
@@ -369,7 +395,8 @@ end
 -- map renames (nav/minimap.lua's map command): the rooms map/mapnames.log
 -- says the game names differently, where the map still has the name the
 -- log saw (the latest line for a room wins) - so one renamed since, or
--- applied, drops out. Read only when asked. Returns { v, area, old, new }s, by vnum
+-- applied, drops out. Read only when asked. Returns { v, area, old, new,
+-- line }s, by vnum (line: the log line as written, for apply's rewrite)
 local function renames()
   local fh = io.open(M.names_log, "r")
   if not fh then return {} end
@@ -378,7 +405,7 @@ local function renames()
     local _, v, area, old, new = line:match("^([^\t]*)\t(%d+)\t([^\t]*)\t([^\t]*)\t([^\t]*)$")
     v = tonumber(v)
     local r = v and M.rooms[v]
-    if r and r.name == old and new ~= old then by[v] = { v = v, area = area, old = old, new = new } end
+    if r and r.name == old and new ~= old then by[v] = { v = v, area = area, old = old, new = new, line = line } end
   end
   fh:close()
   local out = {}
@@ -393,6 +420,10 @@ local function quoted(s) return "\"" .. s .. "\"" end
 --   map renames                 list them
 --   map renames apply <vnum>    take the game's name for that room
 --   map renames apply all       for all of them
+-- After an apply the log is rewritten with only what's still pending - one
+-- line per room, the latest - so applied, stale and repeated lines go (the
+-- user, 2026-11-15). The map itself is saved by the next autosave; if Rune
+-- dies before that, the room is logged again on the next visit
 function M.renames(args)
   local list = renames()
   local what = util.trim(args)
@@ -407,15 +438,20 @@ function M.renames(args)
   end
   local which = what:match("^apply%s+(%S+)$")
   if not which then util.warn("[map] map renames [apply <vnum|all>]"); return end
-  local n = 0
+  local n, pending = 0, {}
   for _, e in ipairs(list) do
     if which == "all" or tonumber(which) == e.v then
       M.rooms[e.v].name = e.new
       n = n + 1
+    else
+      pending[#pending + 1] = e.line
     end
   end
   if n == 0 then util.warn("[map] renames: nothing to apply for " .. which .. " - map renames lists them."); return end
   M.dirty = true
+  util.write_file(M.names_log, function(fh)
+    for _, line in ipairs(pending) do fh:write(line, "\n") end
+  end, "[map]")
   util.say("[map] renames: " .. n .. " room name" .. (n == 1 and "" or "s") .. " taken from the game - saved with the map.")
 end
 
@@ -450,6 +486,8 @@ help.add("map info", "map info", "where you are on the map: room, area, exits, a
 help.add("map label", "map label <word>", "label this room, for find and ga")
 help.add("map unlabel", "map unlabel <word>", "remove a label from this room")
 help.add("map labels", "map labels", "every room label")
+help.add("map note", "map note <text>", "set this room's note (shown on the minimap), replacing any")
+help.add("map unnote", "map unnote", "remove this room's note")
 help.add("mapsave", "mapsave", "save the map now (it saves itself every 60 s and on disconnect)")
 
 return M

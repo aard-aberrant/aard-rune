@@ -69,8 +69,8 @@ end, { name = "tags_desc", priority = 90, span = { to = "^\\{/rdesc\\}$", max = 
 -- follows each room (a hidden line still reaches later triggers). A step
 -- is one room (a portal or home step too); a count that's off only means
 -- one room more or less shows.
--- The hider (a catch-all) exists only while a walk runs - added by
--- hide_rooms, removed when the walk ends - and between hidden rooms it lets
+-- The hider (a catch-all) is on only while a walk runs - enabled by
+-- hide_rooms, disabled when the walk ends - and between hidden rooms it lets
 -- lines through. The room being hidden is kept. If the walk stops short - a wrong exit
 -- (tags.walk_stopped, from nav/travel.lua), a fight, a closed door - it's
 -- printed after all: at once for a wrong exit or a fight (an aggressive mob

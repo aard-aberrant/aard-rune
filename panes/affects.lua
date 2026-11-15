@@ -120,8 +120,12 @@ local dirty = true
 local next_draw = 0  -- os.time of the next redraw due to time passing
 
 local function mins(secs) return math.ceil(secs / 60) end
--- Seconds until a "Nm" (minutes rounded up) shows one less
-local function till_minute(left) return left - (mins(left) - 1) * 60 end
+-- Seconds until a "Nm" (minutes rounded up) shows one less, or a "1m"
+-- turns "30s"
+local function till_minute(left)
+  if left > 30 and left <= 60 then return left - 30 end
+  return left - (mins(left) - 1) * 60
+end
 -- Seconds until a time_style colour changes (at 120, 60 and 0 s left)
 local function till_colour(left)
   if left > 120 then return left - 120 elseif left > 60 then return left - 60 end
@@ -136,9 +140,11 @@ local function time_style(left)
 end
 
 
--- A label and its minutes left (4 more wide: " 45m"), in `style`
+-- A label and its minutes left (4 more wide: " 45m"), or " 30s" for the
+-- last 30 s (the histogram's 30s band), in `style`
 local function timed(style, label, left)
-  return style(label .. " " .. rjust(math.min(math.max(mins(left), 0), 99), 2) .. "m")
+  local t = left <= 30 and "30s" or rjust(math.min(math.max(mins(left), 0), 99), 2) .. "m"
+  return style(label .. " " .. t)
 end
 
 -- A tracked good affect's line, label and timer

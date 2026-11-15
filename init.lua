@@ -164,12 +164,18 @@ rune.gmcp.on("char.base", class_check, { name = "init_class_modules" })
 profile.startup_end()   -- the requires above, timed after /profile startup
 
 -- /reload starts every table above empty, and the game only sends char.*
--- and group when something changes - ask for both now so the bar and the
--- group pane fill at once (the plain "request group" form, confirmed live).
--- The room too: the mapper and the travel commands need to know where you are
+-- and group when something changes - ask for both so the bar and the group
+-- pane fill at once (the plain "request group" form, confirmed live). The
+-- room too: the mapper and the travel commands need to know where you are.
+-- char now: its char.base is what fires game.on_login after a /reload. The
+-- rest at each login (and so after a /reload too): sent at load on a fresh
+-- start they went out before you were in the game, and no room came until
+-- you moved (2026-11-13: qx after a login found no room)
 rune.gmcp.send("request char")
-rune.gmcp.send("request group")
-rune.gmcp.send("request room")
-rune.gmcp.send("request quest")   -- QST
+game.on_login(function()
+  rune.gmcp.send("request group")
+  rune.gmcp.send("request room")
+  rune.gmcp.send("request quest")   -- QST
+end)
 
 util.say("[init] loaded.")

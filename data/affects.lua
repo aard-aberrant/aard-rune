@@ -42,9 +42,9 @@ return {
     [29]  = { good = false, label = "CURS" },
     [237] = { good = false, label = "WEB" },
     [81]  = { good = false, label = "WEAK" },
-    [6]   = { good = false, label = "BLND" },
+    [6]   = { good = false, label = "BLND", also = { "fire breath" } },
   },
-  bad_extra = { ["kobold stench"] = true, ["green death"] = true },
+  bad_extra = { ["kobold stench"] = true, ["green death"] = true, ["fire breath"] = true },
   recoveries = {
     { name = "humility",     label = "HUML",     sn = 602, only = { "Priest" } },
     { name = "augmentation", label = "AUGM",         sn = 532, only = { "Priest" } },

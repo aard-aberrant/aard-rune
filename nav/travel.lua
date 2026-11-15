@@ -558,7 +558,9 @@ end, { name = "travel_speedwalk" })
 -- no-portal), so routes from it walk out instead. Both wordings seen: the
 -- first in tt++ (modules/paths.tin, for recall and home), the second for
 -- home in nynewoods 23576 (2026-11-06)
+local home_refused   -- below: a g waiting to be home stops
 rune.trigger.regex("^You cannot (recall|return home) from this room\\.$", function()
+  home_refused()
   local r = M.here and M.rooms[M.here]
   if not r then return end
   if r.data == "" or r.data == "0" then r.data = "2"
@@ -851,12 +853,44 @@ end
 -- Home in the dark (heighten senses off): no room tags, but "You see
 -- nothing but darkness..." (seen live 2026-11-09), shown, then the same. No
 -- room otherwise (home refused): nothing is hidden but eqdata. It ends at {/eqdata}; 10 s if that never comes
+-- Only home is sent at first; the chores and eqdata wait until you're
+-- confirmed home: GMCP room.info with home_vnum, or "You are already in
+-- your home!". Refused, or the first room.info after it isn't home (from
+-- some areas home lands elsewhere first - Aylor, seen live 2026-11-13):
+-- the routine ends at once, nothing more sent (the user, 2026-11-13 - a
+-- refused home sent gulp and the bank anyway). No timeout before that (the
+-- user: a 10 s one held the next g); instead nothing is hidden and nothing
+-- else waits until it's confirmed, and a new g replaces it. The darkness
+-- line doesn't confirm: there, room.info must
 local quiet_line = util.group(true)   -- one catch-all, only while it's needed
-local quiet = { hiding = false, timer = util.slot() }
+local quiet = { hiding = false, timer = util.slot(), unconfirmed = false }
 local function quiet_off()
+  quiet.unconfirmed = false
   quiet_line.set(false)
   T.home_done()
 end
+-- Not home: the routine stops, nothing more sent
+local function not_home(why)
+  if not quiet.unconfirmed then return end
+  quiet_off()
+  warn("[travel] g: " .. why .. " - not home, the chores weren't sent.")
+end
+function home_refused() not_home("home refused") end
+-- Home confirmed: the chores, then eqdata (whose reply ends the hiding)
+local function at_home()
+  if not quiet.unconfirmed then return end
+  quiet.unconfirmed = false
+  local rest = {}
+  for i = 2, #T.cfg.home_cmds do rest[#rest + 1] = T.cfg.home_cmds[i] end
+  if rest[1] then rune.send_raw(table.concat(rest, "\n")) end
+  quiet.timer.start(10, quiet_off)
+  if not eq.check_worn() then quiet_off() end   -- no {/eqdata} coming: hide nothing
+end
+rune.gmcp.on("room.info", function()
+  if not quiet.unconfirmed then return end
+  if game.room.num == T.cfg.home_vnum then at_home()
+  else not_home("landed in " .. tostring(game.room.name)) end
+end, { name = "travel_home_arrived" })
 quiet_line.add("starts", "", function(_, ctx)
   local clean = ctx.line:clean()
   if clean:find("^{/eqdata}") then
@@ -868,8 +902,10 @@ quiet_line.add("starts", "", function(_, ctx)
       or clean:find("^You see nothing but darkness%.%.%.%s*$") then
       quiet.hiding, quiet.first = true, true
     end
+    if clean == "You are already in your home!" then at_home() end
     return
   end
+  if quiet.unconfirmed then return end   -- no chores sent yet: nothing to hide
   -- The blank line that follows a room shows, as when you walk in
   if quiet.first then
     quiet.first = false
@@ -891,7 +927,7 @@ local busy = {}
 local waiting   -- the g or qc typed while one ran
 function T.home_busy(fn) busy[#busy + 1] = fn end
 function T.home_running()
-  if quiet_line.is_on() then return true end
+  if quiet_line.is_on() and not quiet.unconfirmed then return true end
   for _, on in ipairs(busy) do if on() then return true end end
   return false
 end
@@ -911,11 +947,10 @@ end
 
 local function home_routine()
   if T.home_after(home_routine, "[travel] g") then return end
-  quiet.hiding = false
+  quiet.timer.stop()   -- an unconfirmed g before this one is replaced
+  quiet.hiding, quiet.unconfirmed = false, true
   quiet_line.set(true)
-  quiet.timer.start(10, quiet_off)
-  rune.send_raw(table.concat(T.cfg.home_cmds, "\n"))
-  if not eq.check_worn() then quiet_off() end   -- no {/eqdata} coming: hide nothing
+  rune.send_raw(T.cfg.home_cmds[1])
 end
 
 -- To one of `zones`, the nearest (a picker if several reach): one zone's
@@ -1021,14 +1056,12 @@ end
 -- the blank line(s) after it - callers say what came of it
 local where_asked, where_cb = 0, nil
 local where_got    -- the answer line, held until {/where} closes the reply
-local where_timeout = util.slot()   -- 5 s after a where is sent
 local where_line = util.group(true)   -- one catch-all, only inside a reply
 
 -- The reply is over: the blank line(s) after it hidden, cb told. The answer
 -- goes out only now - cb may ask the next where at once, and this reply's
 -- {/where} must not be taken for that one's
 local function where_done(clean)
-  where_timeout.stop()
   where_line.set(false)
   util.eat_blanks(clean)
   where_asked = 0
@@ -1045,7 +1078,7 @@ local function where_done(clean)
 end
 
 -- The reply's lines after its {where} tag, up to {/where} - all hidden.
--- On only for those few lines (5 s at most)
+-- On only for those few lines
 where_line.add("starts", "", function(_, ctx)
   local clean = ctx.line:clean()
   if clean:find("^{where}") then return end   -- the tag line that turned it on
@@ -1055,30 +1088,28 @@ where_line.add("starts", "", function(_, ctx)
   return false
 end, { name = "travel_where_line", priority = 5 })
 
--- Before core/tags.lua cuts the tag out. Only within 5 s of asking. The answer
+-- Before core/tags.lua cuts the tag out. Only while one is asked. The answer
 -- may come on the tag's line, the closing tag too
 tags.on("where", function(rest, ctx)
-  if os.time() - where_asked > 5 then return end
+  if where_asked == 0 then return end
   where_got = not util.blank(rest) and rest or nil
   if rest:find("{/where}", 1, true) then where_done(ctx.line:clean()); return false end
   where_line.set(true)
   if where_got then return false end   -- else core/tags.lua hides the bare tag
 end)
 
+-- No timeout (the user, 2026-11-13 - a slow reply came after a 5 s one
+-- gave up, and was misread or shown): the reply's {/where} ends it. One
+-- still waiting when another is asked is replaced - its cb hears so
 function T.where(kw, cb)
+  local old = where_asked ~= 0 and where_cb
   where_asked, where_cb, where_got = os.time(), cb, nil
-  -- No reply in 5 s: cb hears so (else a waiting check would wait forever)
-  where_timeout.start(5, function()
-    if where_asked == 0 then return end
-    where_line.set(false)
-    where_asked, where_got = 0, nil
-    cb(nil, "no where reply from the game.")
-  end)
+  if old then old(nil, "replaced by a newer where.") end
   rune.send_raw("where " .. kw)
 end
 
 -- A where question still waiting for its answer
-function T.where_busy() return os.time() - where_asked <= 5 end
+function T.where_busy() return where_asked ~= 0 end
 
 -- Probe (tt++ campaign.tin's where plan): finds a mob by its full name.
 -- where is asked with `kw` first if given, then each of

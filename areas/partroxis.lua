@@ -30,11 +30,21 @@
 -- the looted item's line takes it on to Grax and the next. Each move waits
 -- for GMCP to show its room before the next (tt++'s confirm-move: moves sent
 -- back to back raced it). The dwarf's room (5830) is a best guess.
+-- At each kill the mob becomes the target (targets/target.lua: a bare k
+-- attacks it; the keywords hendry, elf, dwarf are guesses - where checks
+-- them), dropped once its item is looted. The loot line comes while GMCP
+-- still says fighting, so the next run waits for the fight's end (seen
+-- live 2026-11-13: started at once, the walk refused to move).
+-- graxkeys next resumes (kept until a /reload or leaving the zone): a run
+-- cut short starts over - each after a kill begins with a walk, so it can
+-- from anywhere, and a command sent twice only gets an error; stopped at a
+-- kill, the target is set again; a run held for a fight's end goes on.
 local A = ...
 local util = require("core.util")
 local game = require("core.game")      -- room, fighting
 local tags = require("core.tags")      -- a speedrun's rooms hidden
 local travel = require("nav.travel")   -- graxkeys' walks (tt++'s vf)
+local tgt = require("targets.target")   -- graxkeys' kills (the maze has its own target)
 
 local say, warn, trim = util.say, util.warn, util.trim
 
@@ -305,7 +315,7 @@ A.help("mazerun", "mazerun [mob]", "maze: auto-run to that mob's room (a picker 
 A.help("mazeabort", "mazeabort", "maze: stop an auto-run and forget its target (partroxis)")
 A.help("mazehere", "mazehere [n]", "maze: show or set the room number (partroxis)")
 A.help("mazeexit", "mazeexit", "maze: hunt elf, buy rock, drop rock (partroxis)")
-A.help("graxkeys", "graxkeys", "Grax's three-key quest, from Grax's room 5814 (partroxis)")
+A.help("graxkeys", "graxkeys [next]", "Grax's three-key quest, from Grax's room 5814; next resumes where it stopped (partroxis)")
 A.alias.exact("mazenext", function() mazenext() end)
 A.alias.exact("mazehere", mazehere)
 local function run_to(n)
@@ -372,22 +382,23 @@ end)
 --   { "cmd", to = vnum }   send cmd, wait for room `to` (no to: any new room)
 --   { vf = vnum }          walk there (nav/travel.lua), wait for it
 --   { say = "cmd" }        send, no wait (give, uncurse, open)
---   { wait = "name", msg } stop: the item's loot line starts the next run
+--   { wait = "name", kw, msg } stop, kw the target: the item's loot line
+--                          starts the next run, once the fight's over
 local RUNS = {
   start = {
     { "enter part" }, { "enter foothills" }, { vf = 5859 },
-    { wait = "hendry", msg = "Kill Hendry for his dagger - make sure autoloot is on. I'll go on once you loot it." },
+    { wait = "hendry", kw = "hendry", msg = "Kill Hendry for his dagger - make sure autoloot is on. I'll go on once you loot it." },
   },
   hendry = {
     { say = "uncurse" }, { vf = 5815 }, { "enter partroxis" }, { "enter ocean" }, { "enter partroxis" },
     { say = "give dagger grax" }, { "enter partroxis" }, { "enter tree" }, { say = "open n" }, { "n" }, { "n" }, { "u" },
-    { wait = "elf", msg = "Kill the elf for the map. I'll go on once you loot it." },
+    { wait = "elf", kw = "elf", msg = "Kill the elf for the map. I'll go on once you loot it." },
   },
   elf = {
     { vf = 5824 }, { "enter partroxis" }, { "enter ocean" }, { "enter partroxis" },
     { say = "give map grax" }, { "enter partroxis" }, { "enter canyon", to = 5816 }, { vf = 5828 },
     { say = "open n" }, { "n" }, { vf = 5830 },
-    { wait = "dwarf", msg = "Kill the dwarf for the vision (the room's a best guess - move if needed). I'll go on once you loot it." },
+    { wait = "dwarf", kw = "dwarf", msg = "Kill the dwarf for the vision (the room's a best guess - move if needed). I'll go on once you loot it." },
   },
   dwarf = {
     { vf = 5816 }, { "enter partroxis" }, { "enter ocean" }, { "enter partroxis" }, { say = "give vision grax" },
@@ -395,6 +406,9 @@ local RUNS = {
   },
 }
 local waiting_for     -- the kill a run stopped at: "hendry", "elf", "dwarf"
+local queued          -- the run a loot started, held until the fight ends
+local current         -- the run going, kept if it's cut short (graxkeys next)
+local stopped_at      -- the wait step a run stopped at (graxkeys next)
 local move            -- the move that's out: { to, from, gen, after }
 local move_timer   -- the wait for the move's room
 
@@ -402,15 +416,18 @@ local function run(list, i)
   i = i or 1
   local s = list[i]
   if not s then return end
+  current, stopped_at = list, nil
   local function after() run(list, i + 1) end
   if s.say then rune.send_raw(s.say); after(); return end
   if s.wait then
+    current, stopped_at = nil, s
     waiting_for = s.wait
+    if s.kw then tgt.set({ kw = s.kw, src = "graxkeys" }) end
     warn("[graxkeys] " .. s.msg)
     util.beep()
     return
   end
-  if s.done then say("[graxkeys] done - Grax's Trust, Hope and Ambition all turned in."); return end
+  if s.done then current = nil; say("[graxkeys] done - Grax's Trust, Hope and Ambition all turned in."); return end
   move = { to = s.vf or s.to, from = game.room.num, after = after }
   local secs = s.vf and 10 or 3
   if move_timer then move_timer:cancel() end
@@ -419,7 +436,7 @@ local function run(list, i)
     if move then
       move = nil
       warn("[graxkeys] no arrival after " .. (s.vf and ("walking to " .. s.vf) or ("\"" .. s[1] .. "\""))
-        .. ". Sort out your position and re-run graxkeys, or the step, by hand.")
+        .. ". Sort out your position, then graxkeys next.")
     end
   end)
   if s.vf then travel.go_vnum(s.vf, "graxkeys " .. s.vf) else rune.send_raw(s[1]) end
@@ -436,12 +453,40 @@ A.gmcp.on("room.info", function()
   end
 end)
 
-A.alias.exact("graxkeys", function()
+-- graxkeys next: see the top
+local function resume()
+  if game.state == 8 then
+    say(queued and "[graxkeys] going on when the fight's over."
+      or "[graxkeys] you're fighting - graxkeys next once it's over.")
+    return
+  end
+  if queued then
+    local list = queued
+    queued = nil
+    run(list)
+  elseif current == RUNS.start then
+    warn("[graxkeys] the start was cut short - back to room 5814 and graxkeys.")
+  elseif current then
+    move = nil
+    if move_timer then move_timer:cancel(); move_timer = nil end
+    say("[graxkeys] starting this step over.")
+    run(current)
+  elseif stopped_at then
+    run({ stopped_at })
+  else
+    say("[graxkeys] nothing to resume - graxkeys from room 5814, or finish by hand.")
+  end
+end
+
+A.alias.exact("graxkeys", function(args)
+  local a = trim(args)
+  if a == "next" then resume(); return end
+  if a ~= "" then warn("[graxkeys] graxkeys, or graxkeys next."); return end
   if game.room.num ~= 5814 then
     warn("[graxkeys] start in room 5814 (you're in " .. tostring(game.room.num) .. ") - not starting.")
     return
   end
-  waiting_for = nil
+  waiting_for, queued, current, stopped_at = nil, nil, nil, nil
   run(RUNS.start)
 end)
 
@@ -451,11 +496,25 @@ local function looted(item, kill)
   A.trigger.contains(item, function(_, ctx)
     if waiting_for ~= kill then return end
     if kill == "hendry" and not ctx.line:clean():find("You get .*The Accursed Dagger") then return end
-    waiting_for = nil
+    waiting_for, stopped_at = nil, nil
+    tgt.clear("graxkeys")
+    if game.state == 8 then
+      queued = RUNS[kill]
+      say("[graxkeys] " .. item .. " looted - going on when the fight's over.")
+      return
+    end
     say("[graxkeys] " .. item .. " looted - going on.")
     run(RUNS[kill])
   end)
 end
+
+-- The fight's over: the held run goes on
+A.gmcp.on("char.status", function()
+  if not queued or game.state == 8 then return end
+  local list = queued
+  queued = nil
+  run(list)
+end)
 looted("The Accursed Dagger", "hendry")
 looted("Map of the Viewing Chamber", "elf")
 looted("Strange Vision", "dwarf")
@@ -463,7 +522,7 @@ looted("Strange Vision", "dwarf")
 A.on_unload(function()
   stop_moving()
   exits_end()
-  move = nil
+  move, queued, current, stopped_at = nil, nil, nil, nil
 end)
 
 -- Loaded by the zone's first room.info, which the handlers above missed
