@@ -17,9 +17,17 @@ local copy = require("modules.copy")   -- /copy chat: each line the pane gets
 -- a restart starts it empty (a /reload keeps it)
 local CHAT_ONLY = "log_chat_only"
 
-local function chat(text)
-  text = text:gsub("\n", " ")
-  rune.pane.write("chats", text)
+-- (prototype) The chat lines are a stream (aard.chat): the chats panel
+-- shows them (an append widget, below); /copy and the log take them here
+local view = require("ui.view")
+local C = view.provides("aard.chat", "channels, tells and remote socials, as they come", {
+  ["chat.line"] = { "stream", "one line: { time = os.time(), text = the line in the game's colors }" },
+})
+local function chat(msg)
+  msg = msg:gsub("\n", " ")
+  local now = os.time()
+  C.emit("chat.line", { time = now, text = msg })
+  local text = theme.muted(os.date("%H:%M", now)) .. " " .. msg
   copy.keep(text)
   if rune.log.status() then
     rune.log.write(rune.session.get("log_raw") and text or colors.strip(text))
@@ -86,7 +94,7 @@ rune.gmcp.on("comm.channel", function(d)
   if d.chan == "mobsay" then
     rune.echo(d.msg)
   else
-    chat(theme.muted(os.date("%H:%M")) .. " " .. d.msg)
+    chat(d.msg)
   end
 end, { name = "aard_channel" })
 
@@ -113,7 +121,7 @@ rune.trigger.starts("*", function(_, ctx)
     dbg.log((social and "moved: " or "left: ") .. colors.show(raw))
   end
   if not social then return end
-  chat(theme.muted(os.date("%H:%M")) .. " " .. raw)
+  chat(raw)
   return util.hide(ctx)
 end, { name = "remote_social" })
 
@@ -129,6 +137,11 @@ rune.trigger.regex("^-+ Player : ", function(_, ctx)
     if not util.blank(l:clean()) then rune.echo(l:raw()) end
   end
 end, { name = "chats_finger", gag = true, span = { to = "^-+$", max = 40 } })
+
+-- The chats panel: each line appended (ui/widgets/chat.lua)
+require("ui.layout")
+require("ui.widgets.chat")   -- panel:chat
+require("ui.screen").panels.chats:chat()
 
 -- Scrolling the chats pane. PgUp/PgDn and Ctrl+Home/Ctrl+End scroll the
 -- main output (Rune's defaults); the same keys with Alt scroll chats, and

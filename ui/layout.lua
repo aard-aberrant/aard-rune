@@ -36,51 +36,24 @@ function layout.affects_w()
   return math.max(layout.left_w() - layout.MINIMAP_W - 1, 10)
 end
 
-local function apply(picking)
-  rune.ui.layout({
-    type = "row",
-    dividers = true,
-    children = {
-      {
-        type = "column",
-        dividers = true,
-        children = {
-          { type = "pane", name = "group", border = "none" },
-          { type = "pane", name = "info", size = layout.INFO_H, border = "none" },
-          {
-            type = "row",
-            size = layout.MINIMAP_H,
-            dividers = true,
-            children = {
-              { type = "pane", name = "minimap", size = layout.MINIMAP_W, border = "none" },
-              { type = "pane", name = "affects", border = "none" },
-            },
-          },
-        },
-      },
-      {
-        type = "column",
-        size = layout.RIGHT_W,
-        dividers = true,
-        children = {
-          { type = "pane", name = "chats", size = layout.CHATS_H, border = "none" },
-          { type = "pane", name = "output", border = "none" },
-          -- the status rows: two native bars (panes/status.lua), in a column
-          -- of their own so no divider comes between them
-          {
-            type = "column",
-            size = 2,
-            children = {
-              { type = "bar", name = "status1" },
-              { type = "bar", name = "status2" },
-            },
-          },
-          { type = "input", size = not picking and 1 or nil },
-        },
-      },
-    },
-  })
-end
+-- The panels (ui/screen.lua): rectangles, in cells. Negative x / y count
+-- from the right / bottom edge; a negative w / h ends that far from it; no
+-- w / h takes the rest. A border is inside the rectangle; a side between
+-- two panels is drawn as Rune's divider line. The right column is RIGHT_W
+-- wide; the left column the rest, its right border the line between them
+local screen = require("ui.screen")
+local R, LEFT = layout.RIGHT_W, -(layout.RIGHT_W)   -- the left column ends where the right begins
+local below = layout.INFO_H + 1 + layout.MINIMAP_H  -- info and the minimap row, under the group pane
+screen:panel { name = "group",   x = 0, y = 0, w = LEFT, h = -below, border = "right bottom" }
+screen:panel { name = "info",    x = 0, y = -below, w = LEFT, h = layout.INFO_H + 1, border = "right bottom" }
+screen:panel { name = "minimap", x = 0, y = -layout.MINIMAP_H, w = layout.MINIMAP_W + 1, border = "right" }
+screen:panel { name = "affects", x = layout.MINIMAP_W + 1, y = -layout.MINIMAP_H, w = LEFT, border = "right" }
+screen:panel { name = "chats",   x = -R, y = 0, h = layout.CHATS_H + 1, border = "bottom" }
+screen:output { x = -R, y = layout.CHATS_H + 1, h = -4, border = "bottom" }
+screen:panel { name = "status1", x = -R, y = -4, h = 1 }
+screen:panel { name = "status2", x = -R, y = -3, h = 2, border = "bottom" }
+screen:input { x = -R, y = -1 }
+local apply = screen.apply
 
 -- Pickers (find, g's area list, Ctrl+R history, the / command list) draw
 -- inside the input's area, so a one-row input leaves them no room (tried

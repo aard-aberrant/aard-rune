@@ -125,6 +125,7 @@ view.shape("ratio", { desc = "a value and its maximum: { cur, max }",
 view.shape("list", { desc = "a list of records", check = function(v) return type(v) == "table" end })
 view.shape("record", { desc = "named values (a table) - set a new one at each change",
   check = function(v) return type(v) == "table" end })
+view.shape("stream", { desc = "events, each one counts: S.emit(name, event), never set", check = function() return true end })
 view.shape("block", { desc = "text the game colored, several lines", check = function(v) return type(v) == "string" end })
 
 -- Data --------------------------------------------------------------------
@@ -153,6 +154,7 @@ local function request()
 end
 
 local armed = {}   -- touchers used since the last pass: reset at the next
+function view._rearm() for k = #armed, 1, -1 do armed[k](); armed[k] = nil end end   -- (prototype)
 
 local depth = 0
 local function notify(names)
@@ -196,6 +198,7 @@ function view.provides(module, desc, decls)
   table.sort(names)
   modules[module] = { desc = desc or "", names = names }
   local S, pending = {}, {}
+  if view._on_provide then view._on_provide() end
   local function check(name)
     local d = decl[name]
     if not d or d.module ~= module then fail(module .. " doesn't provide " .. tostring(name), 3) end
@@ -227,6 +230,12 @@ function view.provides(module, desc, decls)
     if any and not requested then request() end
   end
   function S.set(name, v) put(name, check(name), v) end
+  -- (prototype) a stream's event: to whatever shows it (ui/screen.lua's append)
+  function S.emit(name, ev)
+    check(name)
+    local f = view._on_emit
+    if f then f(name, ev) end
+  end
   -- S.setter(name): a function(v) that sets name - checked once (a
   -- module's hot path: every GMCP vitals and status)
   function S.setter(name)
@@ -265,6 +274,7 @@ function view.provides(module, desc, decls)
   end
   -- (no subscriber of any pending name and debug off: only the list cleared)
   function S.publish()
+    if view._on_publish then view._on_publish() end   -- (prototype)
     local np = #pending
     if np == 0 then return end
     local any = dbg and dbg.on
@@ -295,6 +305,8 @@ function view.unprovide(module)
   request()
 end
 
+-- (prototype) the raw tables, for ui/screen.lua's readers
+function view._raw() return store, getters end
 function view.get(name)
   local g = getters[name]
   if g then return g() end
@@ -947,6 +959,17 @@ mark_watchers = function(name)
     if changed then mark(i); any = true else all = false end
   end
   return all, any
+end
+-- (prototype) ui/screen.lua's widgets hear every change first
+do
+  local old_mark = mark_watchers
+  mark_watchers = function(name)
+    local f = view._on_change
+    if not f then return old_mark(name) end
+    local a1, b1 = f(name)
+    if watchers[name] then local a2, b2 = old_mark(name); return a1 and a2, b1 or b2 end
+    return a1, b1
+  end
 end
 local function flags(i)
   if i.build and not i.children then   -- later: its widget, if its data exists now

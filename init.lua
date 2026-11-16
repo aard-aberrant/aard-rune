@@ -94,7 +94,7 @@ require("panes.info")           -- the info pane: bcc, alerts, infomsg, quest, c
 require("modules.timer")        -- timer
 require("panes.affects")        -- the affects pane, saf, affectsreset
 require("modules.eq")           -- eqwear, eqsave, eqcheck, eqsets
-require("modules.minimap")      -- the minimap pane, from the game's map tag
+require("panes.minimap")        -- the minimap pane (modules/minimap.lua: the game's map tag)
 require("modules.mapper")       -- map/aard.map, kept current from GMCP room.info
 require("modules.maprec")       -- map record: custom exits from what you do
 require("modules.travel")       -- routes and g, ga, find, label

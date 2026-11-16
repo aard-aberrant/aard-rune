@@ -1,213 +1,38 @@
--- The status rows (require("panes.status")): two rows between the main output
--- and the input, under the layout's divider line, like the tt++ status box.
--- Two native Rune bars, status1 and status2 (rune.ui.bar; ui/layout.lua
--- places them): Rune calls their renderers every 250 ms on its own steady
--- clock, lines up each row's left and right parts, and redraws only a row
--- whose text changed (ui/tui/widget/bar.go).
---   row 1, timers and running measures: TCK QST [row1] POP 3MN DPS PUP 2XP
---          2QP [row1_end]; REC (Rune's /log) at the right end
---   row 2, you: HP MN MV ALN LVL TNL | AC [row2] and the enemy (name and
---          health) - your state out of a fight
--- Each segment is a generic widget (ui/view.lua) on data a module
--- publishes - quest, repop, moons, dps, pup, doubles, autocast know nothing
--- of this file; the configuration here binds them (to move to the user's
--- layout file, phase 5). A module's data not there (not loaded): its
--- segment is left out. The [slots] take more: status.add(slot, widget[,
--- pos]), the segment's text alone - the row puts the spaces between.
---   status.add("row1" | "row1_end" | "row2", widget, pos)
+-- The status rows (require("panes.status")) - PROTOTYPE on ui/screen.lua:
+-- two Rune bars, status1 and status2, each a one-row panel of data
+-- widgets. A widget: its data, a processor (its result compared - only a
+-- change redraws it) and a formatter (the text, colors included).
+--   row 1: TCK QST POP 3MN DPS PUP 2XP 2QP; REC at the right end
+--   row 2: HP MN MV ALN LVL TNL | AC, the enemy or your state; SCR right
+-- A segment whose module isn't loaded shows nothing, its space with it (a
+-- formatter puts the space before its label).
 
 local util = require("lib.util")
 local colors = require("ui.colors")
 local theme = require("ui.theme")
 local mix, bg = colors.mix, colors.bg
--- This module's colors: theme.rec.* - /theme lists them, data/theme.lua
--- changes them (ui/theme.lua)
 local T = theme.define("rec", "REC (status bar)", {
   { "on",     mix(theme.black_tc, bg(theme.red)), "REC while a log is open, flashing with rec.flash" },
   { "flash",  theme.red,                          "REC's other flash" },
 })
-require("modules.game")   -- publishes aard.char (hp, mana, tick ...) to the engine
+require("modules.game")   -- publishes aard.char (hp, mana, tick ...)
+require("ui.layout")      -- the panels
 local view = require("ui.view")
-local w, h, ref = view.widgets, view.helpers, view.ref
-local eq, any, all, no, above, below = h.eq, h.any, h.all, h.no, h.above, h.below
+local screen = require("ui.screen")
+require("ui.widgets.meter")       -- panel:meter (HP MN MV)
+require("ui.widgets.countdown")   -- panel:countdown (TCK 2XP 2QP)
+require("ui.widgets.value")       -- panel:value (QST POP 3MN ALN LVL TNL, the enemy)
+require("ui.widgets.indicator")   -- panel:indicator (REC AC SCR)
+require("ui.widgets.dps")         -- panel:dps
+require("ui.widgets.pup")         -- panel:pup
+local panel = screen.panels
+local F, P = require("ui.format"), require("ui.process")
+local paint, pad, rpad, width, num, clock = screen.paint, screen.pad, screen.rpad, screen.width, F.num, F.clock
 
-local status = { row1 = {}, row1_end = {}, row2 = {} }
-function status.add(slot, item, pos) view.slot_add(status[slot], item, pos) end
-
--- Rune's /log open (REC): set by the wrappers of rune.log.start/stop below
 local LOG = view.provides("rune.log", "Rune's /log", {
   ["log.open"] = { "boolean", "a /log file is open" },
 })
 LOG.set("log.open", rune.log.status() ~= nil)
-
--- The rows are built from the engine's widgets on the modules' data (the
--- modular display plan): each piece is rebuilt only when what it shows
--- changed. The styles below are the layout's - by role, so data/theme.lua
--- still applies - and move to the user's layout file in phase 5.
-view.add_styles({
-  value = "value", unavailable = "unavailable", muted = "muted",
-  -- HP MN MV: under 60 label and number together yellow, red under 20;
-  -- 60 and up a plain label and a green number (tt++ util.tin's ||pct_color)
-  meter_label = { { below = 20, "danger" }, { below = 60, "caution" } },
-  meter_value = { { below = 60, "plain" }, "good" },   -- the number: under 60 meter_label colors it
-  tck = { { below = 10, "danger" }, "value" },
-  aln = { { below = -875, "danger" }, { above = 875, "good" }, "value" },
-  tnl = { { below = 300, "danger" }, "value" },
-  enemy = { { below = 20, "good" }, "danger" },   -- nearly dead: green
-  -- The segments other modules add: "<widget>.<slot>" (each module's
-  -- widget names its slots); their own color groups as "quest.ready"
-  ["rec.off"] = "off", ["rec.on"] = "rec.on", ["rec.flash"] = "rec.flash",
-  ["qst.mins"] = { { below = 3, "danger" }, "value" }, ["qst.ready"] = "quest.ready",
-  ["qst.active"] = "quest.active", ["qst.warn"] = "danger", ["qst.none"] = "unavailable",
-  ["pop.value"] = "value", ["pop.low"] = "danger", ["pop.guess"] = "muted", ["pop.none"] = "unavailable",
-  ["moon.unknown"] = "moon.unknown", ["moon.up"] = "moon.up", ["moon.none"] = "unavailable",
-  ["moon.soon"] = "moon.soon", ["moon.later"] = "muted",
-  ["pup.avg"] = "emphasis",
-  ["dps.rate"] = "on", ["dps.time"] = "value", ["dps.last"] = "muted", ["dps.none"] = "unavailable",
-  ["pup.on"] = "on", ["pup.over"] = "muted", ["pup.none"] = "unavailable",
-  ["dxp.on"] = "double.xp", ["dxp.off"] = "unavailable", ["dqp.on"] = "double.qp", ["dqp.off"] = "unavailable",
-  ["ac.on"] = "on", ["ac.off"] = "off",
-})
-
--- "HP 88.2" - the percentage with one decimal, padded after the number to 5
--- so the labels never move (the tt++ status row, modules/statusbar.tin);
--- under 60 label and number in one color span; "HP --" faint until max is
--- known
-local function meter(label, name)
-  return w.first(
-    w.pad(w.text(label .. " {" .. name .. ".pct|fixed:1|style:meter_value}",
-      { style = "meter_label", by = name .. ".pct" }), #label + 6),
-    w.join(w.lit(label .. " --", "unavailable"), "   "))
-end
-
--- Status row 1 (tt++ ticking.tin): timers and running measures - clocks
--- and countdowns (TCK QST POP 3MN 2XP 2QP), the fight's measures (DPS PUP)
--- and REC. Each label plain, its value cyan unless marked, padded so the
--- labels never move; a segment with nothing running shows a gray "--",
--- padded to its usual width (DPS, PUP):
---   TCK  seconds to the next tick (game.tick()); red under 10. "--" until the
---        first tick
--- then the segments below, a space between each
-
--- QST (modules/quest.lua's aard.quest): minutes until you can quest again,
--- red under 3 - RD once the wait has run out (before the game says so) or
--- the game says ready - AC on a quest (red after the game's warning) - "--"
--- not known. Built at the first pass (later): the quest module loads after
--- this file; not loaded, no QST
-local qst = w.later(function() return w.cases("QST", {
-  { when = all(eq("quest.state", "wait"), above(ref("quest.ready_at.left.min"), 0)),
-    "{quest.ready_at.left.min|pad:2|style:qst.mins}" },
-  { when = any(eq("quest.state", "wait"), eq("quest.state", "ready")), "RD", style = "qst.ready" },
-  { when = all(eq("quest.state", "active"), "quest.warn"), "AC", style = "qst.warn" },
-  { when = eq("quest.state", "active"), "AC", style = "qst.active" },
-  { "--", style = "qst.none" },
-}) end)
-
--- POP (modules/repop.lua's aard.repop): MM:SS to this area's next repop, red
--- for the last 10 s, gray when an estimate; "--" once past or not known.
--- 5 columns so the row doesn't shift
-local pop = w.later(function() return w.cases("POP", {
-  { when = below(ref("pop.next.due"), 11), "{pop.next.due|mmss}", style = "pop.low" },
-  { when = no("pop.sure"), "{pop.next.due|mmss}", style = "pop.guess" },
-  { "{pop.next.due|mmss}", style = "pop.value" },
-  { "--   ", style = "pop.none" },
-}) end)
-
--- 3MN (modules/moons.lua's aard.moons): the three moons, 7 columns - "??" a
--- weather reading owed; all up: ticks until one sets ("--" not known);
--- else ticks until all are up and for how long ("now/3t", "12t/3t"), soon
--- (4 or fewer) colored, later gray; "--" not known
-local moon = w.later(function()
-  local function c(t) t.width = 7; return t end
-  local lo = h.min(ref("moon.lo"), 999)
-  return w.cases("3MN", {
-    c{ when = "moon.need", "??", style = "moon.unknown" },
-    c{ when = all("moon.allup", below(ref("moon.setleft"), 0)), "--", style = "moon.none" },
-    c{ when = "moon.allup", "{n}t", style = "moon.up", vars = { n = h.sum(ref("moon.setleft"), 1) } },
-    c{ when = eq("moon.ok", false), "--", style = "moon.none" },
-    c{ when = below(ref("moon.lo"), 1), "now/{moon.len}t", style = "moon.soon" },
-    c{ when = below(ref("moon.lo"), 5), "{lo}t/{moon.len}t", style = "moon.soon", vars = { lo = lo } },
-    c{ "{lo}t/{moon.len}t", style = "moon.later", vars = { lo = lo } },
-  })
-end)
-
--- DPS (modules/dps.lua's aard.dps): damage per second and combat time,
--- 11 columns - the rate "--" under 5 s; after a reset the last session's,
--- gray, until new damage; "--" before any
-local dps = w.later(function() return w.cases("DPS", {
-  { when = eq("dps.shown", "none"), "--", style = "dps.none" },
-  { when = eq("dps.shown", "live"), "{dps.rate|pad:5|style:dps.rate} {dps.secs|clock|pad:5|style:dps.time}" },
-  { when = eq("dps.shown", "live"), "{dps.secs|as:--|pad:5|style:dps.none} {dps.secs|clock|pad:5|style:dps.time}" },
-  { when = eq("dps.shown", "last"), "{dps.rate|pad:5|style:dps.last} {dps.secs|clock|pad:5|style:dps.last}" },
-  { "{dps.secs|as:--|pad:5|style:dps.none} {dps.secs|clock|pad:5|style:dps.last}" },
-}, { pad = 11 }) end)
-
--- PUP (modules/pup.lua's aard.pup): "23s / 25s (104)" - the last gap, the
--- average (underlined), the count; gray once the session is over; "--"
--- before the first. 15 columns
-local pup = w.later(function() return w.cases("PUP", {
-  { when = "pup.live", "{pup.last}s / {pup.avg|after:s|style:pup.avg} ({pup.n})", style = "pup.on" },
-  { "{pup.last}s / {pup.avg|after:s|style:pup.avg} ({pup.n})", style = "pup.over" },
-  { "--", style = "pup.none" },
-}, { pad = 15 }) end)
-
--- 2XP / 2QP (modules/doubles.lua's aard.doubles): minutes of double
--- experience / quest points left, dim when none
-local function double(label, name, key)
-  return w.later(function() return w.cases("", {
-    { when = above(ref(name .. ".left.min"), 0), label .. " {" .. name .. ".left.min|pad:2}", style = key .. ".on" },
-    { label, style = key .. ".off" },
-  }, { pad = 6 }) end)
-end
-
--- Row 1: TCK (seconds to the next tick, from the clock on every pass; red
--- under 10; "--" until the first tick), QST, the row1 slot, POP, 3MN, DPS,
--- PUP, 2XP, 2QP, the row1_end slot
-local row1_left = w.spaced(
-  w.first(w.text("TCK {tick.left|pad:2|style:tck}"), w.join("TCK ", w.lit("--", "unavailable"))),
-  qst, w.slot(status.row1), pop, moon, dps, pup,
-  double("2XP", "double.xp", "dxp"), double("2QP", "double.qp", "dqp"), w.slot(status.row1_end))
-
--- Row 2's last field (tt++ statusbar.tin): the enemy while fighting - its
--- health, padded to 3 so the name never moves, then its name cut to 25
--- with a "…"; green under 20 (nearly dead), red otherwise. Out of a fight
--- your state ("standing")
-local enemy = w.first(
-  w.text("{ehp|rpad:3} {en|ell:25}", { style = "enemy", by = "enemy_hp", vars = {
-    ehp = h.when(ref("enemy_hp"), ref("fighting")), en = h.when(ref("enemy"), ref("fighting")) } }),
-  w.text("{state}"), "?")
-
--- Row 2: you. HP MN MV (meter, above), then
---   ALN  alignment, red under -875, green over 875
---   LVL  your level, left out at 201 and up
---   (ALN padded after to 5, room for the minus sign: "ALN 2500  TNL",
---   "ALN -2500 TNL". LVL unpadded - it changes width seldom)
---   TNL  experience to the next level, red under 300
--- then " | ", AC (modules/autocast.lua's aard.autocast: autocast on, dim
--- off), the row2 slots and the enemy, a space between each.
--- Not yet: ALN's lock colour
-local row2_left = w.join(
-  w.spaced(meter("HP", "hp"), meter("MN", "mana"), meter("MV", "moves"),
-    w.text("ALN {align|pad:5|style:aln}"),
-    w.text("LVL {lvl|style:value}", { vars = { lvl = h.below(ref("level"), 201) } }),
-    w.first(w.text("TNL {tnl|pad:4|style:tnl}"), w.join("TNL ", w.lit("--  ", "unavailable")))),
-  w.lit(" | ", "muted"),
-  w.spaced(w.later(function() return w.cases("", {
-    { when = "ac.on", "AC", style = "ac.on" }, { "AC", style = "ac.off" } }) end),
-    w.slot(status.row2), enemy))
-
-local SCROLLED = "SCR"   -- right-aligned under row 1's REC
-
--- REC at row 1's right end (tt++ ticking.tin): Rune's /log open - it flashes
--- each second, black on red, then bright red (the terminal's blink didn't
--- show in tt++); dim when not logging. log.open is set at load from
--- rune.log.status() (the open log's path or nil) and by the start/stop
--- wrappers below - /log goes through them. Rebuilt each second while open
-local rec = w.cases("", {
-  { when = all(h.even(), "log.open"), "REC", style = "rec.on" },
-  { when = "log.open", "REC", style = "rec.flash" },
-  { "REC", style = "rec.off" },
-})
 
 -- /log's files (Rune's /log start [raw] [file]): in util.state_dir's
 -- userlogs/ (~/.local/state/rune/userlogs), not Rune's config_dir/logs.
@@ -241,7 +66,7 @@ function rune.log.start(path, opts)
   local fh = io.open(path, "r")
   if fh then fh:close() end
   local ok, err = log_start(path, opts)
-  if ok then LOG.set("log.open", true) end
+  if ok then LOG.set("log.open", true); LOG.publish() end
   if ok then util.say("[log] " .. (fh and "appending to the existing " or "new file ") .. "userlogs/" .. rel .. ".") end
   return ok, err
 end
@@ -253,7 +78,7 @@ local log_stop = rune.log.stop
 function rune.log.stop()
   local path = rune.log.status()
   local ok = log_stop()
-  if ok then LOG.set("log.open", rune.log.status() ~= nil) end
+  if ok then LOG.set("log.open", rune.log.status() ~= nil); LOG.publish() end
   if ok and path then
     rune.clipboard.set(path)
     util.say("[log] path copied to the clipboard.")
@@ -261,15 +86,135 @@ function rune.log.stop()
   return ok
 end
 
--- Row 1: the fields on the left, REC at the right end
-view.bar("status1", { left = { row1_left }, right = { rec } })
 
--- Row 2. Right: SCR, when the main pane is scrolled back (new output is
--- below what you see) - looked at on each pass (rune._state.scroll_mode:
--- "live" or "scrolled" - nothing tells when it changes). No refresh hooks
--- here any more: aard.char's set asks for the pass itself
-view.bar("status2", { left = { row2_left }, right = { w.calls({ function()
-  return rune._state.scroll_mode == "scrolled" and theme.scrolled(SCROLLED) or nil
-end }) } })
+-- Row 1 ---------------------------------------------------------------------
+local row1 = panel.status1
 
-return status
+-- TCK: seconds to the next tick, red under 10; "--" until the first tick
+row1:countdown { source = "tick", label = "TCK ", w = 2,
+  color = F.rule({ 10 }, { "danger", "value" }),   -- red under 10
+  missing = "TCK " .. paint(theme.unavailable, "--") }
+
+-- QST: minutes until you can quest (red under 3), RD, AC (red after the
+-- warning), "--"
+-- (theme.quest, .moon and .double come with their modules, after this
+-- file: read when drawn)
+local qst_minutes = F.rule({ 3 }, { "danger", "value" })   -- red under 3
+local QST_COLOR = { RD = function() return theme.quest.ready end, ACW = function() return theme.danger end,
+                    AC = function() return theme.quest.active end, ["--"] = function() return theme.unavailable end }
+row1:value { source = { "quest.state", "quest.ready_at", "quest.warn" }, every = 1, label = " QST ", w = 2,
+  process = function(state, at, warn, now)
+    if state == "wait" and at and at > now then return (P.mins_left(at, now)) end
+    if state == "wait" or state == "ready" then return "RD" end
+    if state == "active" then return warn and "ACW" or "AC" end
+    return "--"
+  end,
+  show = function(k) return k == "ACW" and "AC" or tostring(k) end,
+  color = function(k) return type(k) == "number" and qst_minutes(k) or QST_COLOR[k]() end }
+
+-- POP: MM:SS to the area's repop, red the last 10 s, gray an estimate
+-- (seconds and the band in one integer; -1: not known)
+row1:value { source = { "pop.next", "pop.sure" }, every = 1, label = " POP ",
+  process = function(t, sure, now)
+    local d = t and t - now
+    if not d or d < 0 then return -1 end
+    return d * 3 + (d < 11 and 0 or not sure and 1 or 2)
+  end,
+  show = function(k)
+    if k < 0 then return "--   " end
+    local d = (k - k % 3) / 3
+    return clock(d, true)
+  end,
+  color = function(k)
+    if k < 0 then return theme.unavailable end
+    local band = k % 3
+    return band == 0 and theme.danger or band == 1 and theme.muted or theme.value
+  end }
+
+-- 3MN: the three moons (a Shaman's module), 7 columns: the state's letter,
+-- then the text
+local MOON_COLOR = { u = "unknown", p = "up", s = "soon" }
+row1:value { source = { "moon.need", "moon.allup", "moon.setleft", "moon.ok", "moon.lo", "moon.len" },
+  label = " 3MN ", w = 7, missing = "",
+  process = function(need, allup, setleft, ok, lo, len)
+    if need then return "u??" end
+    if allup and setleft and setleft < 0 then return "n--" end
+    if allup and setleft then return "p" .. num(setleft + 1) .. "t" end
+    if ok == false then return "n--" end
+    if lo and len then
+      if lo < 1 then return "snow/" .. num(len) .. "t" end
+      local l = num(math.min(lo, 999)) .. "t/" .. num(len) .. "t"
+      return (lo < 5 and "s" or "l") .. l
+    end
+  end,
+  show = function(k) return k:sub(2) end,
+  color = function(k)
+    local b = k:sub(1, 1)
+    return b == "n" and theme.unavailable or b == "l" and theme.muted or theme.moon[MOON_COLOR[b]]
+  end }
+
+-- DPS and PUP (ui/widgets/dps.lua, pup.lua)
+row1:dps()
+row1:pup()
+
+-- 2XP / 2QP: minutes of double experience / quest points left; the label
+-- dim while none
+local function double(label, name, color)
+  row1:widget { text = " " }
+  local off = pad(paint(theme.unavailable, label), 6)
+  row1:countdown { source = name, unit = "m", label = label .. " ", whole = true, w = 2,
+    color = function() return theme.double[color] end, zero = off, missing = off }
+end
+double("2XP", "double.xp", "xp")
+double("2QP", "double.qp", "qp")
+
+-- REC (right): a /log open, flashing each second; dim when not logging
+row1:indicator { x = -3, source = "log.open", every = 1, text = "REC",
+  process = function(open, now) return open and (now % 2 == 0 and 2 or 1) or 0 end,
+  colors = { [2] = T.on, [1] = T.flash, [0] = theme.off } }
+
+-- Row 2 ---------------------------------------------------------------------
+local row2 = panel.status2
+row2:meter { source = "hp", label = "HP", w = 8 }
+row2:widget { text = " " }
+row2:meter { source = "mana", label = "MN", w = 8 }
+row2:widget { text = " " }
+row2:meter { source = "moves", label = "MV", w = 8 }
+
+-- ALN: red under -875, green over 875; left out until known
+row2:value { source = "align", label = " ALN ", w = 5, missing = "",
+  color = F.rule({ -875, 876 }, { "danger", "value", "good" }) }
+-- LVL: left out at 201 and up
+row2:value { source = "level", label = " LVL ", missing = "",
+  process = function(l) return l and l < 201 and l or nil end }
+-- TNL: red under 300
+row2:value { source = "tnl", label = " TNL ", w = 4, missing = " TNL " .. paint(theme.unavailable, "--  "),
+  color = F.rule({ 300 }, { "danger", "value" }) }
+row2:widget { text = paint(theme.muted, " | ") }
+-- AC: autocast on, dim off
+row2:indicator { source = "ac.on", text = "AC", colors = { [true] = theme.on, [false] = theme.off, ["nil"] = theme.off } }
+row2:widget { text = " " }
+-- The enemy while fighting (its health, its name cut to 25; green under
+-- 20, nearly dead), else your state (no color): a letter for which, then
+-- the text
+row2:value { source = { "fighting", "enemy_hp", "enemy", "state" },
+  process = function(f, ehp, en, state)
+    if f and ehp and en then return (ehp < 20 and "g" or "d") .. rpad(num(ehp), 3) .. " " .. en end
+    return state and ("s" .. state) or "s?"
+  end,
+  show = function(k)
+    local s = k:sub(2)
+    if k:sub(1, 1) ~= "s" and width(s) > 29 then s = colors.crop(s, 28):gsub("\27%[0m$", "") .. "…" end
+    return s
+  end,
+  color = function(k)
+    local b = k:sub(1, 1)
+    return b == "g" and theme.good or b == "d" and theme.danger or nil
+  end }
+
+-- SCR (right): the main pane scrolled back - nothing says when, so looked
+-- at on every refresh
+row2:indicator { x = -3, every = 0, text = "SCR", colors = { [true] = theme.scrolled },
+  process = function() return rune._state.scroll_mode == "scrolled" end }
+
+return {}

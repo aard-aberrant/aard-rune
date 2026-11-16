@@ -42,6 +42,7 @@ local V = view.provides("aard.char", "your character, from Aardwolf GMCP char.* 
   enemy    = { "text",      "who you're fighting, \"\" when no one", standard = true },
   enemy_hp = { "number",    "the enemy's health, percent" },
   tick     = { "timestamp", "when the next tick is due (30 s after the last)", standard = true },
+  subclass = { "text",      "your subclass, as GMCP char.base spells it" },
 })
 local STATE_NAMES = {
   [1] = "login", [2] = "motd", [3] = "standing", [4] = "afk", [5] = "note",
@@ -99,6 +100,7 @@ on("char.base", function(d)
   if d.name then game.name = d.name:lower() end
   game.tier = tonumber(d.tier) or game.tier
   game.subclass = d.subclass or game.subclass
+  V.set("subclass", game.subclass)
   if not logged_in then
     logged_in = true
     for _, fn in ipairs(login_fns) do fn() end
@@ -138,8 +140,15 @@ on("char.maxstats", function(d)
   vitals()
 end)
 
+local R = view.provides("aard.room", "the room you're in, from GMCP room.info", {
+  ["room.num"]  = { "number", "the room's number (vnum); -1 in a maze", standard = true },
+  ["room.zone"] = { "text",   "the room's zone (area keyword)", standard = true },
+  ["room.name"] = { "text",   "the room's name, in the game's colors", standard = true },
+})
 on("room.info", function(d)
   game.room = { num = tonumber(d.num), zone = d.zone or "", name = d.name or "" }
+  R.set("room.num", game.room.num); R.set("room.zone", game.room.zone); R.set("room.name", game.room.name)
+  R.publish()
 end)
 
 -- (comm.tick may come with no table). Worked out from the clock when asked,

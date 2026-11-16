@@ -1,23 +1,24 @@
--- The minimap pane (require("modules.minimap")). Not drawn from a map file: with
+-- The minimap (require("modules.minimap")): what the minimap pane shows,
+-- as data (panes/minimap.lua draws it). Not drawn from a map file: with
 -- "tags map" on, the game sends its own ASCII map with every room, between
--- <MAPSTART> and <MAPEND>
--- (modules/map.tin does the same in tt++). The lines in between are hidden
--- from the main output and kept, colours and all, by one Rune span
--- trigger (nothing looks at other lines). At <MAPEND> the pane is redrawn
--- whole:
---   zone | vnum (GMCP room.info, from game.room), in yellow
---   the room name: every line before the first whitespace-only one (the
---     game wraps a long name onto a second line, then sends blank lines)
---   the room's note (rmsg) from the mapper, in cyan, at most 2 lines
---   the rest of the block exactly as sent - its own blank lines, then the
---     map. The game keeps your # on the same row and column every time
---     (84 of 88 blocks in a /log capture, 2026-11-06), so nothing is
---     shifted or trimmed; trimming blank rows was what made it move
---   the [ Exits: ... ] line, on the row above the pane's bottom one, which
---     stays blank
--- Every line is cut at the pane's width (layout.MINIMAP_W). Down and up exits (< and >) become arrows,
--- as in map.tin, your # becomes MAP_ME and other players' * MAP_PLAYER.
---
+-- <MAPSTART> and <MAPEND> (modules/map.tin does the same in tt++). The lines
+-- in between are hidden from the main output and kept, colors and all, by
+-- one Rune span trigger (nothing looks at other lines).
+-- Data (ui/view.lua):
+--   map.block   the last block: { name = rows, map = rows, exits = row or
+--               nil }, raw (the game's colors; a color left on at a line's
+--               end put in front of the next):
+--                 name: every line before the first whitespace-only one
+--                   (the game wraps a long name onto a second line, then
+--                   sends blank lines)
+--                 map: the rest as sent, its own blank lines too, at most
+--                   MINIMAP_H rows. The game keeps your # on the same row
+--                   and column every time (84 of 88 blocks in a /log
+--                   capture, 2026-11-06), so nothing is shifted or trimmed
+--                 exits: the [ Exits: ... ] line
+--   map.word    RUNNING / FIGHTING / DARKNESS in place of the map; nil: the map
+--   map.note    the shown room's note (rmsg) from the mapper, "" for none
+-- The header (zone | vnum) is modules/game.lua's room.zone and room.num.
 -- Running (the user, 2026-11-08): a run - the game's run, runto - sends no
 -- map block for the rooms it passes, while GMCP room.info still comes for
 -- every room, so the map stood still under a changing header. The rule:
@@ -35,30 +36,20 @@
 
 local util = require("lib.util")
 local colors = require("ui.colors")
-local theme = require("ui.theme")
--- This module's colors: theme.map.* - /theme lists them, data/theme.lua
--- changes them (ui/theme.lua)
-local T = theme.define("map", "The minimap", {
-  { "header",  theme.yellow,   "zone | vnum" },
-  { "word",    theme.bold,     "RUNNING / FIGHTING / DARKNESS" },
-  { "note",    theme.cyan,     "the room's note" },
-  { "me",      theme.green_tc, "your dot" },
-  { "player",  theme.red,      "another player's square" },
-})
 local game = require("modules.game")       -- the room's zone and vnum
 local view = require("ui.view")       -- fighting and state changes (aard.char)
 local mapper = require("modules.mapper")   -- the room's note
 local maprec = require("modules.maprec")   -- map record / plan / edit / drop / apply
-local layout = require("ui.layout")   -- the pane's size
+local layout = require("ui.layout")   -- the most map rows kept
 
 local minimap = {}
-local W, H = layout.MINIMAP_W, layout.MINIMAP_H
-local MAP_NOTE = 2      -- most lines a room note may take
--- drawn in place of your #: a dot (theme.map.me)
-local MAP_ME = T.me("●")
--- drawn in place of another player's *: a square (theme.map.player),
--- the user's pick - the game's own red * was too hard to see
-local MAP_PLAYER = T.player("■")
+local H = layout.MINIMAP_H
+
+local V = view.provides("aard.minimap", "the game's map block, and what the minimap shows in its place", {
+  ["map.block"] = { "record", "the last map block: name (rows), map (rows), exits (a row or nil) - raw, the game's colors" },
+  ["map.word"]  = { "text",   "RUNNING, FIGHTING or DARKNESS in place of the map; nil: the map" },
+  ["map.note"]  = { "text",   "the shown room's note from the mapper, \"\" for none" },
+})
 
 local map_buf = {}   -- { raw = ..., clean = ... } for each line of the block
 local show_next = false   -- the next block answers a map you typed: show it
@@ -67,57 +58,26 @@ local dark = false        -- in a room you can't see: DARKNESS until the next bl
 
 local function blank(line) return util.blank(line.clean) end
 
-local crop = colors.crop   -- a raw line cut to w visible columns, codes kept
-
--- Your #, by its colour code (colors.game.me): a bold magenta #, the only
--- one on the map (the user). The code comes right in front of it - the game sends a
--- code before nearly every coloured character - so a plain find for code
--- and character does it, and the swap puts the code back after the dot.
--- Measured on lunar (2026-11-09, real blocks): ~6 us a map block; the old
--- walk, a Lua step per character, cost ~340 us. Another player
--- is a bold red * (colors.game.player; shops' and forests' * are other colours):
--- per row a plain find, and a gsub only on a row that has one (~1 us a row)
-local ME, PLAYER = colors.game.me, colors.game.player
-local ME_CODE = ME .. "#"
-local ME_SWAP = ME .. MAP_ME .. ME
-local PLAYER_CODE, PLAYER_PAT = PLAYER .. "*", colors.pattern(PLAYER .. "*")
-local PLAYER_SWAP = PLAYER .. MAP_PLAYER .. PLAYER
-
--- The last colour code in a raw line, or nil if it has none. The game sets
--- a colour once and lets it run on into the next line, as a terminal would
--- (a wrapped room name's second line has no code of its own), but crop ends
--- every line with a reset - so the colour still on at the end of one line
--- is put in front of the next
+-- The last color code in a raw line, or nil if it has none. The game sets
+-- a color once and lets it run on into the next line, as a terminal would
+-- (a wrapped room name's second line has no code of its own) - so the
+-- color still on at the end of one line is put in front of the next
 local last_sgr = colors.last
 
--- The header: zone | vnum, in yellow
-local function header()
-  local room = game.room
-  local head = room.zone or ""
-  if room.num and room.num ~= -1 then head = head .. " | " .. room.num end
-  return T.header(head)
-end
-
--- On a run: the header, and RUNNING in the middle of the pane (FIGHTING
--- when a fight broke the run, DARKNESS in a room you can't see)
+-- A word in place of the map (RUNNING when running, FIGHTING when a fight
+-- broke the run, DARKNESS in a room you can't see)
 local stale = false   -- RUNNING or FIGHTING is up: no map block for this room yet
 local block_seen = false   -- a map block came since the last room.info
-local map_num   -- the room whose map the pane shows; nil while a word is up
-local function word_layout(word)
+local map_num   -- the room whose map is shown; nil while a word is up
+local parts     -- the last block (map.block)
+local function show_word(word)
   stale, map_num = word ~= "DARKNESS", nil
-  local out = { header() }
-  local mid = math.floor(H / 2)
-  while #out < mid do out[#out + 1] = "" end
-  out[#out + 1] = string.rep(" ", math.floor((W - #word) / 2)) .. T.word(word)
-  util.pane("minimap", table.concat(out, "\n"))
+  V.set("map.word", word)
+  V.publish()
 end
 
--- The map block, made into the pane's rows once, at the block: the room
--- name, the map (your # marked) and the exits row, each cropped. Drawing
--- (draw_map) adds the header and note - those come from GMCP room.info,
--- which can come after the block, and then only they are redone
-local parts   -- { name = { row, ... }, map = { row, ... }, exits = row or nil }
-
+-- The map block, split once, at the block: the room name, the map and the
+-- exits row
 local function build_map()
   local lines = map_buf
   local i, n = 1, #lines
@@ -128,60 +88,35 @@ local function build_map()
   while i <= n and not blank(lines[i]) do
     local raw = carry .. lines[i].raw
     carry = last_sgr(raw) or carry
-    p.name[#p.name + 1] = crop(raw, W)
+    p.name[#p.name + 1] = raw
     i = i + 1
   end
   -- the exits line, if any, is the last non-blank line
   local last = n
   while last >= i and blank(lines[last]) do last = last - 1 end
   if last >= i and lines[last].clean:match("^%s*%[ Exits:") then
-    p.exits = crop(lines[last].raw, W)
+    p.exits = lines[last].raw
     last = last - 1
   end
   while last >= i and blank(lines[last]) do last = last - 1 end
-  -- the map as sent (as many rows as fit are drawn), your # and other
-  -- players marked
-  local marked = false
+  -- the map as sent
   for k = i, last do
     if #p.map >= H then break end
     local raw = carry .. lines[k].raw
     carry = last_sgr(raw) or carry
-    if not marked then
-      local h = raw:find(ME_CODE, 1, true)
-      if h then
-        raw, marked = raw:sub(1, h - 1) .. ME_SWAP .. raw:sub(h + #ME_CODE), true
-      end
-    end
-    if raw:find(PLAYER_CODE, 1, true) then raw = raw:gsub(PLAYER_PAT, PLAYER_SWAP) end
-    p.map[#p.map + 1] = crop((raw:gsub("<", "▼"):gsub(">", "▲")), W)
+    p.map[#p.map + 1] = raw
   end
   parts = p
+  V.set("map.block", p)
 end
 
-local function draw_map()
-  local p = parts
-  local out = { header() }
-  for _, r in ipairs(p.name) do out[#out + 1] = r end
-  -- the room's note (rmsg, from the mapper)
+-- The map shown: no word, the room's note
+local function show_map()
   local room = game.room
   local mr = room.num and mapper.rooms[room.num]
-  if mr and mr.note ~= "" then
-    for k, l in ipairs(util.wrap(mr.note, W)) do
-      if k > MAP_NOTE then break end
-      out[#out + 1] = T.note(l)
-    end
-  end
-  -- the map, as many rows as fit above the exits row
-  for _, r in ipairs(p.map) do
-    if #out >= H - 2 then break end
-    out[#out + 1] = r
-  end
-  if p.exits then
-    while #out < H - 2 do out[#out + 1] = "" end
-    out[#out + 1] = p.exits
-    out[#out + 1] = ""   -- a blank bottom row under the exits
-  end
-  util.pane("minimap", table.concat(out, "\n"))
+  V.set("map.word", nil)
+  V.set("map.note", mr and mr.note or "")
+  V.publish()
 end
 
 -- debug minimap: the run check, in the order things come - each state
@@ -222,7 +157,7 @@ rune.trigger.exact("<MAPSTART>", function(_, ctx)
   end
   dark, stale, block_seen = false, false, true
   build_map()
-  draw_map()
+  show_map()
   map_num = game.room.num
   if dbg.on then
     dbg.log("map block: " .. util.trim(colors.strip(parts.name[1] or "?")) .. " (state " .. tostring(game.state) .. ")")
@@ -248,7 +183,7 @@ rune.trigger.regex("^You see nothing but darkness\\.\\.\\.\\s*$", function()
     dbg.log(string.format("darkness line in %s %s (state %s)", tostring(game.room.num),
       tostring(game.room.name), tostring(game.state)))
   end
-  if game.state ~= 12 then word_layout("DARKNESS") end
+  if game.state ~= 12 then show_word("DARKNESS") end
 end, { name = "minimap_dark" })
 
 -- The header and note come from GMCP room.info, which can arrive after the
@@ -278,9 +213,9 @@ rune.gmcp.on("room.info", function()
       tostring(game.room.name), tostring(s), word or keep and "kept" or "map"))
   end
   if word then
-    word_layout(word)
+    show_word(word)
   elseif parts and not keep then
-    draw_map()
+    show_map()
     map_num = num
   end
 end, { name = "minimap_room" })
@@ -376,7 +311,7 @@ view.subscribe("fighting", function()
   local s, was = game.state, fight_prev
   fight_prev = s
   if stale and s == 8 and was ~= 8 then
-    word_layout("FIGHTING")
+    show_word("FIGHTING")
   elseif stale and was == 8 and s ~= 8 then
     if dbg.on then dbg.log("fight over (8 -> " .. tostring(s) .. ") with the pane stale: silent map") end
     minimap.refresh()

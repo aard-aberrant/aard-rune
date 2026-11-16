@@ -17,6 +17,7 @@ local decls = {
   ["acct.gold"]     = { "number", "gold on hand; nil until GMCP char.worth" },
   ["acct.bank"]     = { "number", "gold in the bank" },
   ["acct.worth"]    = { "number", "gold on hand and in the bank" },
+  ["acct.known"]    = { "boolean", "GMCP char.worth has come (true from then on)" },
   ["acct.qp"]       = { "number", "quest points" },
   ["acct.tp"]       = { "number", "trivia points" },
   ["acct.trains"]   = { "number", "trains" },
@@ -37,6 +38,7 @@ local function worth()
   local gold, bank = num(w, "gold"), num(w, "bank")
   A.set("acct.gold", gold); A.set("acct.bank", bank)
   A.set("acct.worth", gold and bank and gold + bank or nil)
+  A.set("acct.known", gold ~= nil and bank ~= nil)
   A.set("acct.qp", num(w, "qp")); A.set("acct.tp", num(w, "tp")); A.set("acct.trains", num(w, "trains"))
   A.publish()
 end
