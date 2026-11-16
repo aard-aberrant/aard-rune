@@ -14,6 +14,12 @@ function P.round(n)
   return n
 end
 
+-- A { cur, max } record (hp, mana, moves) as a percent: 87.53; nil while
+-- the maximum isn't known (or is 0)
+function P.pct(r)
+  if r and r.max and r.max ~= 0 then return r.cur * 100 / r.max end
+end
+
 -- Whole seconds left until the moment `at` (an os.time), never below 0;
 -- nil while it isn't known. Then the seconds until that changes
 function P.secs_left(at, now)

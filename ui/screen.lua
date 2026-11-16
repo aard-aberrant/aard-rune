@@ -1,17 +1,29 @@
--- The layout engine (require("ui.screen")) - PROTOTYPE.
--- A tree: the screen, its panels, their widgets.
+-- The layout engine (require("ui.screen")).
+-- A tree: the screen, its containers, their widgets.
 --
--- Panels: screen:panel { name, x, y, w, h, border, title } - a rectangle
--- in cells. x, y: from the left / top, negative from the right / bottom
--- edge. w, h: a size, negative = up to that far from the far edge, nil =
--- the rest. border: "all", "none" or sides ("right bottom"); a border takes
--- cells inside the rectangle. A side between two panels becomes Rune's
--- divider. screen:output {...} and screen:input {...} are Rune's own.
+-- Containers on the screen: screen:container { name, x, y, w, h, border,
+-- title } - a rectangle in cells, a Rune pane or bar. x, y: from the left
+-- / top, negative from the right / bottom edge. w, h: a size, negative =
+-- up to that far from the far edge, nil = the rest. border: "all", "none"
+-- or sides ("right bottom"); a border takes cells inside the rectangle. A
+-- side between two containers becomes Rune's divider. screen:output {...}
+-- and screen:input {...} are Rune's own.
 -- The rectangles become Rune's layout tree (rows and columns) at
--- screen.apply(): an arrangement straight cuts can't split, space no panel
--- covers, two panels that both take the rest - a clear error.
+-- screen.apply(): an arrangement straight cuts can't split, space no
+-- container covers, two that both take the rest - a clear error.
 --
--- Widgets in a panel:
+-- Containers in a container: c:container { source, process, every, label,
+-- w, alt } - placed in the line like a widget (on a container made on the
+-- screen or in another one); no border, title or h (a load error).
+--   source + process -> its state, compared like a widget's value: nil
+--     hides it and all inside; a change formats every widget inside again
+--     (their colors may follow it: c.state). No source: always shown
+--   label: text in front, shown while it is
+--   w: what's inside padded to w columns (the label not counted)
+--   alt = { state = text }: that text in place of what's inside
+--   every: as a widget's
+--
+-- Widgets in a container:
 --   panel:widget { text = "..." }                  fixed text
 --   panel:widget { source, process, format, every, w, x, y }
 --     source: a data name or a list of names (ui/view.lua's registry)
@@ -82,7 +94,15 @@ local function queue_panel(p)
 end
 local function mark(wd)
   wd.dirty = true
-  wd.line.dirty = true
+  local l = wd.line
+  l.dirty = true
+  local box = l.owner   -- a line inside a nested container: it and the ones it's in, dirty too
+  while box do
+    box.dirty = true
+    l = box.line
+    l.dirty = true
+    box = l.owner
+  end
   local it = wd.item
   if it then local d = it.dirtyw; d[#d + 1] = wd end
   queue_panel(wd.panel)
@@ -246,8 +266,8 @@ view._on_provide = function() provided = true; request() end
 
 -- Panels -------------------------------------------------------------------
 
-local Panel = {}
-Panel.__index = Panel
+local Container = {}
+Container.__index = Container
 local panels, order = {}, {}
 local bar_rows, host = {}, nil
 
@@ -311,15 +331,24 @@ local function place(out, base, used, s, y, prows, n)
   return used + (n or nrows(s))
 end
 
-function Panel:widget(t)
-  local line = line_for(self, t)
-  local wd = { panel = self.root or self, item = self.root and self or nil, line = line, w = t.w, slot = #line.outs + 1 }
+-- where a widget made on c goes: the panel written to Rune (the container
+-- on the screen), and the priority item it counts toward (or nil). A
+-- nested container keeps its parent's
+local function top_of(c) return c.top or c.root or c end
+local function item_of(c)
+  if c.kind == "box" then return c.itm end
+  return c.root and c or nil
+end
+
+function Container:widget(t)
+  local line = self.inner or line_for(self, t)
+  local wd = { panel = top_of(self), item = item_of(self), line = line, w = t.w, slot = #line.outs + 1 }
   line.widgets[#line.widgets + 1] = wd
   if t.text then
     line.outs[wd.slot] = t.text
     wd.fixed = true
     line.dirty = true
-    queue_panel(self.root or self)
+    queue_panel(top_of(self))
     request()
     return wd
   end
@@ -336,9 +365,37 @@ function Panel:widget(t)
   return wd
 end
 
+-- A container in a container: one entry in its parent's line (it takes
+-- the parent's place, as a widget does), its widgets on a line of its own
+-- (inner) - drawn as one piece: label .. inside padded to w. Its state is
+-- processed and compared like a widget's value (redraw_line)
+local function always() return true end
+function Container:container(t)
+  t = t or {}
+  if t.border or t.title or t.h then
+    error("[screen] a nested container has no border, title or h - those are for one on the screen", 2)
+  end
+  local line = self.inner or line_for(self, t)
+  local src = t.source
+  if type(src) == "string" then src = { src } end
+  local b = setmetatable({ kind = "box", top = top_of(self), itm = item_of(self), line = line,
+                           slot = #line.outs + 1, label = t.label or "", iw = t.w, alt = t.alt,
+                           inner = new_line(), src = src or {}, every = t.every,
+                           process = src and (t.process or ident) or always }, Container)
+  b.panel, b.item = b.top, b.itm
+  b.inner.owner = b
+  b.last, b.shown = NONE, NONE
+  line.widgets[#line.widgets + 1] = b
+  line.outs[b.slot] = ""
+  b.isnil = true
+  if not attach(b) then waiting[#waiting + 1] = b end
+  return b
+end
+
 -- list: rows keyed by key(rec); each row's processed value compared on its
 -- own; order(v) -> a number, rows ascending (ties in the data's order)
-function Panel:list(t)
+function Container:list(t)
+  if self.kind == "box" then error("[screen] a list goes on a container on the screen, not a nested one", 2) end
   local src, key = t.source, t.key
   if type(src) == "string" then src = { src } end
   if type(key) == "string" then local f = key; key = function(r) return r[f] end end
@@ -353,7 +410,8 @@ function Panel:list(t)
 end
 
 -- append: a stream's events, each kept one formatted and written in order
-function Panel:append(t)
+function Container:append(t)
+  if self.kind == "box" then error("[screen] an append goes on a container on the screen, not a nested one", 2) end
   local wd = { panel = self, kind = "append", src = { t.source }, process = t.process or ident,
                format = t.format or tostring, pending = {}, lazy = true }
   wd.line = wd
@@ -372,7 +430,8 @@ end
 -- item's name to show instead whenever it has something. shown: published
 -- with the name of the item on the panel (nil: none). An item takes the
 -- same widget calls as a panel
-function Panel:priority(t)
+function Container:priority(t)
+  if self.kind == "box" then error("[screen] a priority goes on a container on the screen, not a nested one", 2) end
   t = t or {}
   local P = { kind = "priority", panel = self, list = {}, pin = t.pin, shown = nil }
   if t.shown then
@@ -382,7 +441,7 @@ function Panel:priority(t)
   end
   function P:item(o)
     local it = setmetatable({ items = {}, root = self.panel, name = o.name or tostring(#self.list + 1),
-                              prio = o.prio, keep = o.keep, have = 0, dirtyw = {} }, Panel)
+                              prio = o.prio, keep = o.keep, have = 0, dirtyw = {} }, Container)
     self.list[#self.list + 1] = it
     return it
   end
@@ -418,24 +477,24 @@ end
 
 local function make(kind, t)
   local p = setmetatable({ kind = kind, name = t.name or kind, x = t.x or 0, y = t.y or 0, w = t.w, h = t.h,
-                           border = sides(t.border), title = t.title, items = {} }, Panel)
+                           border = sides(t.border), title = t.title, items = {} }, Container)
   if panels[p.name] then error("[screen] two panels named " .. p.name, 3) end
   panels[p.name] = p
   order[#order + 1] = p
   return p
 end
-function M.panel(_, t) return make("panel", t) end
+function M.container(_, t) return make("panel", t) end
 function M.output(_, t) t.name = "output"; return make("output", t) end
 function M.input(_, t) t.name = "input"; return make("input", t) end
 function M.get(name) return panels[name] end
--- screen.panels.status2: a panel by name - a name no panel has is an
+-- screen.containers.status2: a container by name - a name none has is an
 -- error that lists the panels there are
-M.panels = setmetatable({}, { __index = function(_, name)
+M.containers = setmetatable({}, { __index = function(_, name)
   local p = panels[name]
   if p then return p end
   local names = {}
   for _, q in ipairs(order) do names[#names + 1] = q.name end
-  error("[screen] no panel named " .. tostring(name) .. " - the panels: " .. concat(names, ", "), 2)
+  error("[screen] no container named " .. tostring(name) .. " - the containers: " .. concat(names, ", "), 2)
 end })
 
 -- screen.add_widget(name, fn): fn(panel, t) becomes panel:name(t) on every
@@ -443,8 +502,8 @@ end })
 -- file is required. A name taken already (a widget, or one of the
 -- engine's own: widget, list, append, priority) is an error
 function M.add_widget(name, fn)
-  if Panel[name] ~= nil then error("[screen] a widget named " .. name .. " exists already", 2) end
-  Panel[name] = fn
+  if Container[name] ~= nil then error("[screen] a widget named " .. name .. " exists already", 2) end
+  Container[name] = fn
   return fn
 end
 
@@ -649,7 +708,34 @@ local function redraw_line(line, now, cols, rows)
     local wn = wd.w
     local star = wn == "*"
     if star then wn = math.max((cols or 0) - col, 0) end
-    if wd.dirty or wd.stale then
+    if wd.kind == "box" then
+      if wd.dirty or wd.stale then
+        wd.dirty, wd.stale = false, false
+        local v = wd.last
+        if wd.again then
+          wd.again = false
+          v = run(wd, now)
+          setlast(wd, v)
+        end
+        local inner = wd.inner
+        if v ~= wd.shown then   -- a new state: everything inside formatted again (its colors may follow it)
+          wd.shown, wd.state = v, v
+          local cw = inner.widgets
+          for j = 1, #cw do local c = cw[j]; if not c.fixed then c.shown = NONE; c.dirty = true end end
+          inner.dirty = true
+        end
+        local s
+        if v ~= nil then
+          local alt = wd.alt and wd.alt[v]
+          if alt == nil then redraw_line(inner, now, nil, rows); alt = inner.text or "" end   -- (no width: nothing inside measured; the whole padded once below)
+          if wd.iw then alt = M.pad(alt, wd.iw) end
+          s = wd.label .. alt
+        end
+        wd.isnil = s == nil
+        outs[k] = s or ""
+        any = true
+      end
+    elseif wd.dirty or wd.stale then
       wd.dirty, wd.stale = false, false
       local v = wd.last
       if wd.again then

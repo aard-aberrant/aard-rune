@@ -19,13 +19,12 @@ require("modules.game")   -- publishes aard.char (hp, mana, tick ...)
 require("ui.layout")      -- the panels
 local view = require("ui.view")
 local screen = require("ui.screen")
-require("ui.widgets.meter")       -- panel:meter (HP MN MV)
+require("ui.widgets.tenths")      -- panel:tenths (HP MN MV)
 require("ui.widgets.countdown")   -- panel:countdown (TCK 2XP 2QP)
 require("ui.widgets.value")       -- panel:value (QST POP 3MN ALN LVL TNL, the enemy)
 require("ui.widgets.indicator")   -- panel:indicator (REC AC SCR)
-require("ui.widgets.dps")         -- panel:dps
-require("ui.widgets.pup")         -- panel:pup
-local panel = screen.panels
+require("ui.widgets.timer")       -- panel:timer (DPS's time)
+local containers = screen.containers
 local F, P = require("ui.format"), require("ui.process")
 local paint, pad, rpad, width, num, clock = screen.paint, screen.pad, screen.rpad, screen.width, F.num, F.clock
 
@@ -88,7 +87,7 @@ end
 
 
 -- Row 1 ---------------------------------------------------------------------
-local row1 = panel.status1
+local row1 = containers.status1
 
 -- TCK: seconds to the next tick, red under 10; "--" until the first tick
 row1:countdown { source = "tick", label = "TCK ", w = 2,
@@ -153,9 +152,41 @@ row1:value { source = { "moon.need", "moon.allup", "moon.setleft", "moon.ok", "m
     return b == "n" and theme.unavailable or b == "l" and theme.muted or theme.moon[MOON_COLOR[b]]
   end }
 
--- DPS and PUP (ui/widgets/dps.lua, pup.lua)
-row1:dps()
-row1:pup()
+-- DPS (modules/dps.lua): " DPS 1234  1:05" - damage a second and combat
+-- time, 11 columns after the label: bright while live, gray the last
+-- session's after a reset; "--" before any; nothing before the first
+-- fight's time. The container's state picks the colors inside it.
+-- Updated every 3 s (the user, 2026-11-16); a published change (a fight's
+-- start or end, a session's first hit) shows at once
+local DPS_EVERY = 3
+local dps = row1:container { label = " DPS ", w = 11, every = DPS_EVERY,
+  source = { "dps.shown", "dps.secs" },
+  process = function(shown, secs)
+    if shown == "none" then return "none" end
+    if not secs then return nil end
+    return shown == "live" and "live" or "last"
+  end,
+  alt = { none = paint(theme.unavailable, "--") } }
+dps:value { source = "dps.rate", every = DPS_EVERY, w = 5, styles = { live = "on", ["*"] = "muted" },
+  missing = paint(theme.unavailable, "--   ") }
+dps:widget { text = " " }
+dps:timer { source = "dps.secs", every = DPS_EVERY, w = 5, styles = { live = "value", ["*"] = "muted" } }
+
+-- PUP (modules/pup.lua): " PUP 23s / 25s (104)" - the last gap, the
+-- average (underlined), the count; 15 columns after the label; gray once
+-- the session is over; "--" before the first
+local pup = row1:container { label = " PUP ", w = 15, every = 1,
+  source = { "pup.live", "pup.last", "pup.avg", "pup.n" },
+  process = function(live, last, avg, n)
+    if not (last and avg and n) then return "none" end
+    return live and "live" or "over"
+  end,
+  alt = { none = paint(theme.unavailable, "--") } }
+local LIVE = { live = "on", ["*"] = "muted" }
+pup:value { source = "pup.last", styles = LIVE, show = function(v) return num(v) .. "s / " end }
+pup:value { source = "pup.avg", styles = { live = { "on", "emphasis" }, ["*"] = { "muted", "emphasis" } },
+  show = function(v) return num(v) .. "s" end }
+pup:value { source = "pup.n", styles = LIVE, show = function(v) return " (" .. num(v) .. ")" end }
 
 -- 2XP / 2QP: minutes of double experience / quest points left; the label
 -- dim while none
@@ -174,12 +205,20 @@ row1:indicator { x = -3, source = "log.open", every = 1, text = "REC",
   colors = { [2] = T.on, [1] = T.flash, [0] = theme.off } }
 
 -- Row 2 ---------------------------------------------------------------------
-local row2 = panel.status2
-row2:meter { source = "hp", label = "HP", w = 8 }
+local row2 = containers.status2
+-- HP MN MV: a percent to one place - red under 20, yellow under 60 (the
+-- label too), green; "HP --", dim, until the maximum is known
+local health = F.rule(F.HEALTH, F.HEALTH_COLORS)
+local function low(v) return v < F.HEALTH[2] end
+local function percent(src, lbl)
+  row2:tenths { source = src, process = P.pct, label = lbl .. " ", w = 5, color = health, whole = low,
+    missing = pad(paint(theme.unavailable, lbl .. " --"), 8) }
+end
+percent("hp", "HP")
 row2:widget { text = " " }
-row2:meter { source = "mana", label = "MN", w = 8 }
+percent("mana", "MN")
 row2:widget { text = " " }
-row2:meter { source = "moves", label = "MV", w = 8 }
+percent("moves", "MV")
 
 -- ALN: red under -875, green over 875; left out until known
 row2:value { source = "align", label = " ALN ", w = 5, missing = "",

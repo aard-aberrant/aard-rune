@@ -73,7 +73,7 @@ function F.rule(cuts, colors)
   return function(v) return get[lv(v)]() end
 end
 
--- Health: red under 20 %, yellow under 60, green (meter, the group's HP)
+-- Health: red under 20 %, yellow under 60, green (HP MN MV, the group's HP)
 F.HEALTH = { 20, 60 }
 F.HEALTH_COLORS = { "danger", "caution", "good" }
 

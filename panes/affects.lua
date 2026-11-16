@@ -6,4 +6,4 @@ require("ui.layout")
 require("modules.affects")
 require("ui.widgets.affects")   -- panel:affects
 
-screen.panels.affects:affects()
+screen.containers.affects:affects()

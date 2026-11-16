@@ -138,10 +138,11 @@ rune.trigger.regex("^-+ Player : ", function(_, ctx)
   end
 end, { name = "chats_finger", gag = true, span = { to = "^-+$", max = 40 } })
 
--- The chats panel: each line appended (ui/widgets/chat.lua)
+-- The chats container: each chat line (chat.line) appended as it comes -
+-- its time first (HH:MM, dim), then the line in the game's colors
 require("ui.layout")
-require("ui.widgets.chat")   -- panel:chat
-require("ui.screen").panels.chats:chat()
+require("ui.screen").containers.chats:append { source = "chat.line",
+  format = function(e) return theme.muted(os.date("%H:%M", e.time)) .. " " .. e.text end }
 
 -- Scrolling the chats pane. PgUp/PgDn and Ctrl+Home/Ctrl+End scroll the
 -- main output (Rune's defaults); the same keys with Alt scroll chats, and

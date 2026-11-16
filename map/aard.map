@@ -119748,7 +119748,7 @@ X	45675	45674	s
 X	45675	45679	w		
 R	45676	fury	road_eastwest			Sir Robert Avenue - East
 X	45676	45677	e		
-X	45676	45681	n		
+X	45676	45681	n		open n;n
 X	45676	45675	w		
 R	45677	fury	road			Sir Robert Avenue - East Continues
 X	45677	45678	lift manhole		

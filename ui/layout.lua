@@ -28,14 +28,14 @@ local layout = {
 local screen = require("ui.screen")
 local R, LEFT = layout.RIGHT_W, -(layout.RIGHT_W)   -- the left column ends where the right begins
 local below = layout.INFO_H + 1 + layout.MINIMAP_H  -- info and the minimap row, under the group pane
-screen:panel { name = "group",   x = 0, y = 0, w = LEFT, h = -below, border = "right bottom" }
-screen:panel { name = "info",    x = 0, y = -below, w = LEFT, h = layout.INFO_H + 1, border = "right bottom" }
-screen:panel { name = "minimap", x = 0, y = -layout.MINIMAP_H, w = layout.MINIMAP_W + 1, border = "right" }
-screen:panel { name = "affects", x = layout.MINIMAP_W + 1, y = -layout.MINIMAP_H, w = LEFT, border = "right" }
-screen:panel { name = "chats",   x = -R, y = 0, h = layout.CHATS_H + 1, border = "bottom" }
+screen:container { name = "group",   x = 0, y = 0, w = LEFT, h = -below, border = "right bottom" }
+screen:container { name = "info",    x = 0, y = -below, w = LEFT, h = layout.INFO_H + 1, border = "right bottom" }
+screen:container { name = "minimap", x = 0, y = -layout.MINIMAP_H, w = layout.MINIMAP_W + 1, border = "right" }
+screen:container { name = "affects", x = layout.MINIMAP_W + 1, y = -layout.MINIMAP_H, w = LEFT, border = "right" }
+screen:container { name = "chats",   x = -R, y = 0, h = layout.CHATS_H + 1, border = "bottom" }
 screen:output { x = -R, y = layout.CHATS_H + 1, h = -4, border = "bottom" }
-screen:panel { name = "status1", x = -R, y = -4, h = 1 }
-screen:panel { name = "status2", x = -R, y = -3, h = 2, border = "bottom" }
+screen:container { name = "status1", x = -R, y = -4, h = 1 }
+screen:container { name = "status2", x = -R, y = -3, h = 2, border = "bottom" }
 screen:input { x = -R, y = -1 }
 local apply = screen.apply
 

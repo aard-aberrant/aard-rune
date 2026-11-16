@@ -6,4 +6,4 @@ require("ui.layout")
 require("modules.minimap")
 require("ui.widgets.minimap")   -- panel:minimap
 
-screen.panels.minimap:minimap()
+screen.containers.minimap:minimap()

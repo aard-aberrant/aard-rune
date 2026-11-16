@@ -60,7 +60,7 @@ local function row(v, name)
   return mark .. who .. " " .. paint(hp_color(pct), hp)
 end
 
-local p = screen.panels.group
+local p = screen.containers.group
 p:banner { source = { "group.in", "group.title" }, style = "group.title", band = "group.title_band",
   missing = "not in a group" }
 p:list { source = "group.members", key = "name", w = 21, gap = "  ",
