@@ -25,7 +25,7 @@ require("ui.widgets.value")       -- panel:value (QST POP 3MN ALN LVL TNL, the e
 require("ui.widgets.indicator")   -- panel:indicator (REC AC SCR)
 require("ui.widgets.timer")       -- panel:timer (DPS's time)
 local containers = screen.containers
-local F, P = require("ui.format"), require("ui.process")
+local F, P = require("format.generic"), require("process.generic")
 local paint, pad, rpad, width, num, clock = screen.paint, screen.pad, screen.rpad, screen.width, F.num, F.clock
 
 local LOG = view.provides("rune.log", "Rune's /log", {

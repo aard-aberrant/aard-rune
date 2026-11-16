@@ -1,4 +1,4 @@
--- Processors (require("ui.process")): data -> the value a widget compares,
+-- Processors (require("process.generic")): data -> the value a widget compares,
 -- shared so each is written once. Take them into locals at load. A
 -- processor of a timed widget (every) may return a second value: the
 -- seconds until its value can change (math.huge: only its data changes it).
@@ -7,7 +7,7 @@ local ceil, floor, NEVER = math.ceil, math.floor, math.huge
 
 local P = {}
 
--- n cut to what ui/format.lua's short shows: 2512345 -> 2500000
+-- n cut to what format/generic.lua's short shows: 2512345 -> 2500000
 function P.round(n)
   if n >= 1000000 then return floor(n / 100000) * 100000 end
   if n >= 1000 then return floor(n / 1000) * 1000 end

@@ -12,7 +12,7 @@
 -- nil or "" shows nothing (no row).
 local screen = require("ui.screen")
 local colors = require("ui.colors")
-local F = require("ui.format")
+local F = require("format.generic")
 local floor, rep = math.floor, string.rep
 local RESET = colors.RESET
 

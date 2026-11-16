@@ -6,7 +6,7 @@
 -- Processed only when the number shown changes: each second, or at each
 -- minute's turn - at 0 not again until the moment changes.
 local screen = require("ui.screen")
-local P = require("ui.process")
+local P = require("process.generic")
 require("ui.widgets.value")
 local seconds, minutes = P.secs_left, P.mins_left
 

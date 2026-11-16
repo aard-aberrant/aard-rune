@@ -20,14 +20,14 @@ local util = require("lib.util")
 require("ui.layout")
 local screen = require("ui.screen")
 local theme = require("ui.theme")
-local F, P = require("ui.format"), require("ui.process")
-require("ui.widgets.bcc")        -- panel:bcc
+local F, P = require("format.generic"), require("process.generic")
 require("ui.widgets.block")      -- panel:block (an alert)
 require("ui.widgets.text")       -- panel:text
 require("ui.widgets.value")      -- panel:value
 require("ui.widgets.indicator")  -- panel:indicator
 local paint, num, commas, short, round = screen.paint, F.num, F.commas, F.short, P.round
 local mins_left, floor, fmt, concat = P.mins_left, math.floor, string.format, table.concat
+local rpad, max, rep = screen.rpad, math.max, string.rep
 
 theme.define("target", "Quest and campaign targets (info pane)", {
   { "area",  theme.cyan,    "the area" },
@@ -174,12 +174,50 @@ local function account(p)
     end }
 end
 
+-- Black Claw Crag's breath grid (modules/zones/blackclaw.lua's bcc.*
+-- data): the last breath and the safe side, then the lair as a grid - a
+-- square's seconds left (red, orange at 2, yellow at 1), then dots once
+-- clear, green on the safe side; @@ Axaldra's column. Its colors
+-- (theme.bcc) come with the zone script
+local hot = F.rule({ 2, 3 }, { "bcc.hot1", "bcc.hot2", "bcc.hot3" })
+local function bcc(p)
+  p:widget { source = { "bcc.dir", "bcc.safe" },
+    process = function(dir, safe) return dir and dir .. "|" .. (safe or "") end,
+    format = function(v)
+      local dir, safe = v:match("^(.-)|(.*)$")
+      local B = theme.bcc
+      return paint(B.label, "Axaldra: ") .. paint(B.value, dir) .. "  " .. paint(B.label, "safe: ") .. paint(B.safe, safe)
+    end }
+  local function cell(c)
+    p:widget { source = { "bcc.dir", "bcc." .. c, "bcc." .. c .. "_safe" }, every = 1,
+      process = function(dir, t, safe, now)
+        if not dir then return nil end
+        local left = t and max(0, t - now) or 0
+        if left > 0 then return left end
+        return safe and -1 or -2
+      end,
+      format = function(v)
+        local B = theme.bcc
+        if v > 0 then return paint(hot(v), rpad(num(v), 2)) end
+        return paint(v == -1 and B.safe or B.quiet, "..")
+      end }
+  end
+  local PAD, GAP = rep(" ", 10), "  "
+  for _, row in ipairs({ { "nw", "n", "ne" }, { "w", false, "e" }, { "sw", "s", "se" } }) do
+    p:widget { y = "next", text = PAD }
+    cell(row[1]); p:widget { text = GAP }
+    if row[2] then cell(row[2])
+    else p:widget { source = "bcc.dir", format = function(d) return d and paint(theme.bcc.value, "@@") end } end
+    p:widget { text = GAP }; cell(row[3])
+  end
+end
+
 -- The info container: the items, first wins
 local PIN = "info_pin"  -- rune.session: the pinned item's name
 local pin = rune.session.get(PIN)
 if pin == "" then pin = nil end
 local pick = screen.containers.info:priority { shown = "info.shown", pin = function() return pin end }
-pick:item { name = "bcc", prio = 10 }:bcc()
+bcc(pick:item { name = "bcc", prio = 10 })
 alert(pick:item { name = "alert_crit", prio = 20, keep = true }, "crit", "alert", "danger")
 alert(pick:item { name = "alert_warn", prio = 25, keep = true }, "warn", "alert_caution", "caution")
 infomsg(pick:item { name = "msg", prio = 40 })

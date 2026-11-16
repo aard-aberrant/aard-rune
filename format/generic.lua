@@ -1,4 +1,4 @@
--- Formatters (require("ui.format")): the pieces widgets build their text
+-- Formatters (require("format.generic")): the pieces widgets build their text
 -- from, shared so each rule is written once. Take them into locals at
 -- load (local num = F.num) - a call is then a plain local call.
 
@@ -23,7 +23,7 @@ function F.commas(v)
   return sign .. int:reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", "")
 end
 
--- 2512345 -> "2.5M", 15400 -> "15K" (ui/process.lua's round: a number cut
+-- 2512345 -> "2.5M", 15400 -> "15K" (process/generic.lua's round: a number cut
 -- to what this shows)
 function F.short(n)
   if n >= 1000000 then return fmt("%.1fM", floor(n / 100000) / 10) end

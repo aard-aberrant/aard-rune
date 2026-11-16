@@ -5,11 +5,11 @@
 -- while the heading is nil.
 --   source: the data names; process(v..., now) -> heading, body (default:
 --     the first two sources)
---   style: a theme name (ui/format.lua's color_of: "alert", "bcc.hot1");
+--   style: a theme name (format/generic.lua's color_of: "alert", "bcc.hot1");
 --     flash: a second one - the two swap each second
 local screen = require("ui.screen")
 local util = require("lib.util")
-local color_of = require("ui.format").color_of
+local color_of = require("format.generic").color_of
 local RESET = require("ui.colors").RESET
 local rep, min, max, concat, select = string.rep, math.min, math.max, table.concat, select
 

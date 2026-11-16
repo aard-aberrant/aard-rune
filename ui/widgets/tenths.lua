@@ -5,7 +5,7 @@
 --     change you'd see redraws it
 -- Shown as panel:value shows a value (label, w, color, styles, missing,
 -- zero, whole ... - ui/widgets/value.lua); color(v) gets the rounded
--- number. HP as a percent: source = "hp", process = P.pct (ui/process.lua).
+-- number. HP as a percent: source = "hp", process = P.pct (process/generic.lua).
 local screen = require("ui.screen")
 local floor, fmt = math.floor, string.format
 require("ui.widgets.value")

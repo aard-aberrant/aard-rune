@@ -12,7 +12,7 @@
 local screen = require("ui.screen")
 local colors = require("ui.colors")
 local theme = require("ui.theme")
-local F = require("ui.format")
+local F = require("format.generic")
 require("ui.layout")
 require("modules.group")
 require("ui.widgets.banner")   -- panel:banner

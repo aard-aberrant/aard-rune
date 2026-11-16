@@ -4,7 +4,7 @@
 --   process(v..., now): the value from the data (default: the first
 --     source's), rounded to what's shown; nil: not known. It may return a
 --     second value, the seconds until it can change (with every)
---   show(v): the value as text (default ui/format.lua's num: 12, 12.5)
+--   show(v): the value as text (default format/generic.lua's num: 12, 12.5)
 --   w: the value padded to w columns
 --   color: a theme color, or color(v) -> one, or nil for none (default
 --     theme.value)
@@ -18,7 +18,7 @@
 --     zero: the whole text while it's 0 (default: shown as any value)
 local screen = require("ui.screen")
 local theme = require("ui.theme")
-local F = require("ui.format")
+local F = require("format.generic")
 local paint, pad, num, color_of = screen.paint, screen.pad, F.num, F.color_of
 local concat = table.concat
 
