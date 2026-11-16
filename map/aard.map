@@ -33484,7 +33484,7 @@ X	10305	10306	s
 R	10306	rebellion	inside			The Tavern of the Chequered Owl
 X	10306	10305	n		
 X	10306	10307	s		
-R	10307	rebellion	inside			Back of the Tavern
+R	10307	rebellion	inside		nechtan	Back of the Tavern
 X	10307	10358	'nechtan		
 X	10307	10306	n		
 R	10308	rebellion	city			The End of the Pier
@@ -33640,7 +33640,7 @@ X	10355	10375	u
 X	10355	10355	w		
 R	10356	rebellion	inside	2		Torture Chamber
 X	10356	10355	u		
-R	10358	rebellion	hills	1		A Hill Untouched by the Battle
+R	10358	rebellion	hills	1	blessing	A Hill Untouched by the Battle
 X	10358	10349	s		
 X	10358	10359	u		
 R	10359	rebellion	air	1		The Battlegrounds of the Nix
@@ -48044,7 +48044,7 @@ X	14218	14208	d
 X	14218	14219	u		
 R	14219	melody	inside			Roof Terrace
 X	14219	14218	d		
-R	14220	dunoir	mountain			Base of Mount duNoir
+R	14220	dunoir	mountain		Portal to Dream Plane: Horn of Ancestors	Base of Mount duNoir
 X	14220	25240	d		
 X	14220	14221	u		
 R	14221	dunoir	mountain			Path towards doom
@@ -48247,7 +48247,9 @@ R	14292	dunoir	inside			Prison of Bhazhat
 R	14293	dunoir	air			The Dream Plane
 X	14293	14294	s		
 R	14294	dunoir	air			The Dream Plane
+R	14295	dunoir	air			The Dream Plane
 R	14297	dunoir	air			The Dream Plane
+R	14299	dunoir	air			The Dream Plane
 R	14300	dunoir	air			The Dream Plane
 X	14300	14297	n		
 R	14301	dunoir	forest			A lush Green oasis
@@ -64135,6 +64137,89 @@ X	19731	19731	n
 X	19731	19731	s		
 X	19731	19731	u		
 X	19731	19716	w		
+R	19748	terra	space1			Between planes
+R	19754	terra	space1			Transient firmament
+X	19754	19774	d		
+X	19754	19782	e		
+X	19754	19758	w		
+R	19755	terra	space1			Transient firmament
+X	19755	19775	d		
+X	19755	19760	e		
+X	19755	19759	w		
+R	19756	terra	space1			Transient firmament
+X	19756	19776	d		
+X	19756	19782	n		
+X	19756	19760	s		
+R	19757	terra	space1			Transient firmament
+X	19757	19777	d		
+X	19757	19758	n		
+X	19757	19759	s		
+R	19758	terra	space1			Transient firmament
+X	19758	19778	d		
+X	19758	19754	e		
+X	19758	19757	s		
+R	19759	terra	space1			Transient firmament
+X	19759	19779	d		
+X	19759	19755	e		
+X	19759	19757	n		
+R	19760	terra	space1			Transient firmament
+X	19760	19780	d		
+X	19760	19756	n		
+X	19760	19755	w		
+R	19763	terra	space1			Before a yawning void
+X	19763	19764	d		
+R	19764	terra	space1			The eye of a Vortex
+X	19764	19763	u		
+R	19773	terra	space1			Above a dark pit
+X	19773	19783	d		
+X	19773	19776	e		
+X	19773	19774	n		
+X	19773	19775	s		
+X	19773	19777	w		
+R	19774	terra	space1			The edge of a dark pit
+X	19774	19781	e		
+X	19774	19773	s		
+X	19774	19754	u		
+X	19774	19778	w		
+R	19775	terra	space1			The edge of a dark pit
+X	19775	19780	e		
+X	19775	19773	n		
+X	19775	19755	u		
+X	19775	19779	w		
+R	19776	terra	space1			The edge of a dark pit
+X	19776	19781	n		
+X	19776	19780	s		
+X	19776	19756	u		
+X	19776	19773	w		
+R	19777	terra	space1			The edge of a dark pit
+X	19777	19773	e		
+X	19777	19778	n		
+X	19777	19779	s		
+X	19777	19757	u		
+R	19778	terra	space1			The edge of a dark pit
+X	19778	19774	e		
+X	19778	19777	s		
+X	19778	19758	u		
+R	19779	terra	space1			The edge of a dark pit
+X	19779	19775	e		
+X	19779	19777	n		
+X	19779	19759	u		
+R	19780	terra	space1			The edge of a dark pit
+X	19780	19776	n		
+X	19780	19760	u		
+X	19780	19775	w		
+R	19781	terra	space1			The edge of a dark pit
+X	19781	19776	s		
+X	19781	19782	u		
+X	19781	19774	w		
+R	19782	terra	space1			Transient firmament
+X	19782	19781	d		
+X	19782	19756	s		
+X	19782	19754	w		
+R	19783	terra	space1			Inside the gaping pit
+X	19783	19773	u		
+R	19785	terra	inside			Travelling through the Astral planes
+R	19786	terra	space1	2		Before a great Rift
 R	19804	radiance	forest			Into the Woods
 X	19804	19805	e		
 X	19804	13657	leave woods		
@@ -86535,7 +86620,7 @@ X	29731	29732	e
 X	29731	29734	n		
 X	29731	29728	s		
 X	29731	29733	w		
-R	29732	kearvek	inside			The Blood Den
+R	29732	kearvek	inside	2		The Blood Den
 X	29732	29729	s		
 X	29732	29731	w		
 R	29733	kearvek	pillar	1		The Blood Statue
@@ -124293,7 +124378,7 @@ X	49974	49975	d
 X	49974	49973	w		
 R	49975	cove	underground			Spiders!
 X	49975	49974	u		
-R	49976	cove	bloodyroom			Beneath the web
+R	49976	cove	bloodyroom	2		Beneath the web
 R	49977	cove	forest			Nearing a longhouse
 X	49977	49956	e		
 X	49977	49985	n		

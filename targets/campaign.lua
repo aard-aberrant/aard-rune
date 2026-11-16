@@ -89,6 +89,22 @@ util.hider(function() return hiding end)
 
 local hide = util.hide
 
+-- The Partroxis maze room (1-40) of a campaign mob, or nil: data/partroxismaze.lua,
+-- read at the first Partroxis mob cn or the pane meets, kept after. Names
+-- matched with case ignored (the cp check's spelling may differ)
+local MAZE_ZONE = "partroxis"
+local maze_rooms
+local function maze_room(e)
+  if e.zone ~= MAZE_ZONE then return nil end
+  if not maze_rooms then
+    maze_rooms = {}
+    for n, mob in ipairs(util.load_data(rune.config_dir .. "/data/partroxismaze.lua") or {}) do
+      maze_rooms[mob:lower()] = n
+    end
+  end
+  return maze_rooms[e.mob:lower()]
+end
+
 local function count(name)
   local n = 0
   for _, e in ipairs(list) do if e.mob == name then n = n + 1 end end
@@ -97,7 +113,7 @@ end
 
 -- The info pane ----------------------------------------------------------
 
-local CYAN, RED = theme.value.on, theme.danger.on
+local CYAN, RED, CAUTION = theme.value.on, theme.danger.on, theme.caution.on
 local tick = util.slot()   -- the info row's minute redraw
 
 local function row()
@@ -123,8 +139,10 @@ local function row()
       area = area .. " (" .. math.max(1, all - n + (cur_dead and 0 or 1)) .. " of " .. all .. ")"
     end
   end
-  -- Listed Dead (not repopped yet) in the last cp check: (DEAD) after its name
+  -- In the Partroxis maze: (MAZE) after its name (the user, 2026-11-15).
+  -- Listed Dead (not repopped yet) in the last cp check: (DEAD)
   local mob = soh.label(cur.mob, cur.zone)
+  if maze_room(cur) then mob = mob .. " " .. CAUTION .. "(MAZE)" end
   for _, e in ipairs(list) do
     if e.mob == cur.mob and e.place == cur.place then
       if e.dead then mob = mob .. " " .. RED .. "(DEAD)" end
@@ -340,7 +358,9 @@ sync()
 -- the rest in cp check order; then mobs placed only by a room name several
 -- areas share (cn opens a picker of them); then areas holding a Dead mob
 -- (yours first), the Dead ones last in each; then mobs the map doesn't
--- know. Last of all, the ones cn next skipped
+-- know. Last of all, the ones cn next skipped. In Partroxis the mobs
+-- outside the maze come first, then the maze's by room, lowest first - the
+-- maze only runs forward (the user, 2026-11-15)
 local function pick()
   local here, dead, first = game.room.zone, {}, {}
   for i, e in ipairs(list) do
@@ -356,7 +376,8 @@ local function pick()
     elseif not dead[z] then tier = e.zone == here and 0 or 1
     else tier = e.zone == here and 3 or 4 end
     if skipped[e.mob] then tier = tier + 10 end
-    local key = { tier, first[z], e.dead and 1 or 0, i }
+    local mr = maze_room(e)
+    local key = { tier, first[z], e.dead and 1 or 0, mr and (1000 + mr) or i }
     local better = not best_key
     if not better then
       for k = 1, 4 do

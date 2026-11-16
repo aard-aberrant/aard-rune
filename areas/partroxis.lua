@@ -64,18 +64,8 @@ local ROOMS = {
   { "A Cave" }, { "A Cave", oops = 10 }, { "In the Mountains" }, { "In the Mountains" },
   { "A vast Expanse of Plains", gate = true, last = true },
 }
-local MOBS = {
-  "A Mountain of Rock", "The Rabid Tiger-man", "The man-eating wolfen", "The Buck-Toothed Lizard-Man",
-  "The Living Tree", "The Furious Flying Fish Man", "The Quicksand", "The Flesh Eating Ants",
-  "The Living Vines", "The Gigantic Bulette", "A Bird of Prey", "The Otherworld Assassin",
-  "Vision of a False Portal", "The Hungry Dragon", "A Bloodthirsty Tiger-Man", "The Cold Hearted Lizard-Man",
-  "The Insane Cheryb", "Flowing Blood", "A collapsing cave", "The Dream Eater", "Reality Check",
-  "Blood Sucking Vines", "The Golden Haired Assassin", "Mass of Flying Dismembered Body Parts",
-  "Bloodthirsty Killer Gerbils", "A Monster Bulette", "The Thing", "The Big and Deadly Dragon",
-  "Soul of the Damned", "Lesser Chitryn", "Delusions of Hope", "Swarm of Blood Sucking Bio-chemical Gnats",
-  "It", "Your Worst Nightmare", "Walking Suit of Armor", "Lesser Otherworld Dragon", "Insane Cheryb",
-  "Otherworld Dragon", "Hell Hound Behemoths", "Chitryn",
-}
+-- The mob in each room (data/partroxismaze.lua, shared with targets/campaign.lua)
+local MOBS = util.load_data(rune.config_dir .. "/data/partroxismaze.lua") or {}
 local BASE = 5763   -- room N = vnum BASE + N
 local GATE = "enter gate"
 local PROTECT = "hide\nsneak\ncast invis"
