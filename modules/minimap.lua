@@ -200,11 +200,25 @@ end, { name = "minimap_dark" })
 -- the second look in a fight blanked the map) - the same room as the map
 -- shown, so the pane is left as it is. A room with no vnum (-1) never
 -- counts as the same
+-- A run that ends where you are (10s with one room south, then a wall -
+-- seen live 2026-11-16, debug minimap): that room's room.info came at 3,
+-- no map block, state 12, the failed steps, then its room.info again at 12
+-- - and RUNNING stayed up. A moving run always reports a new room: the same
+-- room twice in a row at 12 with no block since means the run stopped
+-- here - a silent map instead of RUNNING. Cost: a compare per room.info
+local last_info   -- the previous room.info's vnum
 rune.gmcp.on("room.info", function()
   local s, num = game.state, game.room.num
   local same = num ~= nil and num ~= -1 and num == map_num
   local fresh = block_seen
   block_seen = false
+  local repeated = num ~= nil and num ~= -1 and num == last_info
+  last_info = num
+  if s == 12 and repeated and not fresh then
+    if dbg.on then dbg.log(string.format("room.info %s again at 12, no block: the run stopped here - silent map", tostring(num))) end
+    minimap.refresh()
+    return
+  end
   local fighting = s == 8 and not fresh and not same
   local word = s == 12 and "RUNNING" or dark and "DARKNESS" or fighting and "FIGHTING" or nil
   local keep = not word and same and not fresh   -- the map shown is already this room's
