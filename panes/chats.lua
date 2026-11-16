@@ -17,7 +17,7 @@ local copy = require("modules.copy")   -- /copy chat: each line the pane gets
 -- a restart starts it empty (a /reload keeps it)
 local CHAT_ONLY = "log_chat_only"
 
--- (prototype) The chat lines are a stream (aard.chat): the chats panel
+-- The chat lines are a stream (aard.chat): the chats panel
 -- shows them (an append widget, below); /copy and the log take them here
 local view = require("ui.view")
 local C = view.provides("aard.chat", "channels, tells and remote socials, as they come", {

@@ -55,7 +55,6 @@ local find, rep, concat, floor = string.find, string.rep, table.concat, math.flo
 
 local M = {}
 local store, getters = view._raw()
-local rearm = view._rearm
 
 local watch = {}       -- data name -> { widget, ... }
 local timed = {}       -- widgets with every > 0
@@ -185,8 +184,7 @@ end
 -- A data name changed (ui/view.lua's set / touch): each live widget on it
 -- processed; dirty only if the result differs. Dirty already: only noted.
 -- A list is processed row by row at the refresh (a list changes as a
--- whole). Returns false twice: touchers keep reporting (a touch may be the
--- note), and the pass is asked for here
+-- whole).
 -- The changed widgets are collected and processed once, at the module's
 -- publish (a message sets several values: a widget reading three of them
 -- is processed once, not three times) - or at the next refresh, for a
@@ -195,7 +193,7 @@ local clock = view.clock
 local pend, np = {}, 0
 view._on_change = function(name)
   local ws = watch[name]
-  if not ws then return false, false end
+  if not ws then return end
   for k = 1, #ws do
     local wd = ws[k]
     if wd.dirty then
@@ -205,7 +203,6 @@ view._on_change = function(name)
       np = np + 1; pend[np] = wd
     end
   end
-  return false, false
 end
 local function settle(now, in_pass)
   if np == 0 then return end
@@ -463,7 +460,6 @@ local function content(p)
   p.scols = x1 - x0 - (b.l and 1 or 0) - (b.r and 1 or 0)
   return p.srows, p.scols
 end
-M.content = content
 
 -- Rune's layout tree from the rectangles, resolved at two screen sizes: a
 -- size that differs between them is "the rest" (no size)
@@ -889,7 +885,6 @@ end
 local last_now, last_w, last_h
 function M.pass()
   requested = false
-  rearm()
   local st = rune._state
   if st.width ~= last_w or st.height ~= last_h then   -- the terminal resized: every panel looked at
     last_w, last_h = st.width, st.height

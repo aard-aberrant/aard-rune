@@ -55,7 +55,10 @@ else
 end
 local view = MODE == "new" and require("ui.view")
 
-local function flush() if view then view.flush() end end
+local function flush()   -- the display pass: ui/screen.lua's, or an older tree's view.flush
+  local scr = package.loaded["ui.screen"]
+  if scr then scr.pass() elseif view and view.flush then view.flush() end
+end
 local function run_timers()
   local again = true
   while again do
@@ -104,7 +107,7 @@ for _, pkg in ipairs({ "char.stats", "char.worth" }) do
     local view = require("ui.view")
     local P = info.pick
     local acc = P.items[#P.items].w
-    t(pkg .. " pass after a change", function(i) feed(pkg, mk(i)); view.flush() end)
+    t(pkg .. " pass after a change", function(i) feed(pkg, mk(i)); flush() end)
     t(pkg .. "   (the change alone)", function(i) feed(pkg, mk(i)) end)
     t(pkg .. " account fn after a change", function(i) feed(pkg, mk(i)); acc.fn() end)
   end

@@ -20,22 +20,6 @@ local layout = {
   MINIMAP_H = 22,
 }
 
--- The left column's width (the info pane's), from the terminal's
-function layout.left_w()
-  return math.max((rune._state.width or 0) - layout.RIGHT_W - 1, 20)
-end
-
--- The group pane's height: what info, the minimap row and their two
--- dividers leave
-function layout.group_h()
-  return math.max((rune._state.height or 0) - layout.INFO_H - layout.MINIMAP_H - 2, 1)
-end
-
--- The affects pane's width: the left column less the minimap and a divider
-function layout.affects_w()
-  return math.max(layout.left_w() - layout.MINIMAP_W - 1, 10)
-end
-
 -- The panels (ui/screen.lua): rectangles, in cells. Negative x / y count
 -- from the right / bottom edge; a negative w / h ends that far from it; no
 -- w / h takes the rest. A border is inside the rectangle; a side between

@@ -55,7 +55,10 @@ else
 end
 local view = MODE == "new" and require("ui.view")
 
-local function flush() if view then view.flush() end end
+local function flush()   -- the display pass: ui/screen.lua's, or an older tree's view.flush
+  local scr = package.loaded["ui.screen"]
+  if scr then scr.pass() elseif view and view.flush then view.flush() end
+end
 local function run_timers()
   local again = true
   while again do
@@ -95,6 +98,6 @@ local function run(label, f)
   local ks = {}; for k in pairs(PROF) do ks[#ks + 1] = k end; table.sort(ks)
   for _, k in ipairs(ks) do io.stdout:write(string.format("   %-14s %.2f\n", k, PROF[k] / N * 1e6)) end
 end
-run("idle pass", function() view.flush() end)
-run("stats change + pass", function(i) feed("char.stats", stats(i)); view.flush() end)
-run("worth change + pass", function(i) feed("char.worth", worth(i)); view.flush() end)
+run("idle pass", flush)
+run("stats change + pass", function(i) feed("char.stats", stats(i)); flush() end)
+run("worth change + pass", function(i) feed("char.worth", worth(i)); flush() end)

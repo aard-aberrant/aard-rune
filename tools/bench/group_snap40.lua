@@ -3,8 +3,7 @@ package.path = root .. "/?.lua;" .. package.path
 dofile((arg[0]:match("^(.*)/") or ".") .. "/harness.lua")
 local layout = require("ui.layout")
 local W = 44
-layout.group_h = function() return 8 end
-layout.left_w = function() return W end
+rune._state.width, rune._state.height = W + layout.RIGHT_W + 1, 36   -- the group pane 44 x 8
 local util = require("lib.util")
 local panes = {}
 util.pane = function(n, t) panes[n] = t end
@@ -22,7 +21,7 @@ local function grp(k, sz, leaveout)
 end
 for k = 1, 30 do
   local sz = (k < 20) and 40 or 25
-  if k == 25 then W = 30 end
+  if k == 25 then W = 30; rune._state.width = W + layout.RIGHT_W + 1 end
   H.feed("group", grp(k % 7 == 0 and k - 1 or k, sz, k % 5 == 0 and 3 or nil)); H.pass()
   out[#out + 1] = "-- " .. k .. "\n" .. tostring(panes.group)
 end

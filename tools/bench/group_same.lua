@@ -1,8 +1,8 @@
 dofile((arg[0]:match("^(.*)/") or ".") .. "/harness.lua")
 local MODE = arg[2] or "bench"
 local layout = require("ui.layout")
-layout.group_h = function() return 8 end
-layout.left_w = function() return 44 end
+rune._state.height = 36   -- the group pane 8 rows: 36 less info, the minimap row and dividers
+rune._state.width = 44 + layout.RIGHT_W + 1
 local util = require("lib.util")
 local panes = {}
 util.pane = function(n, t) if panes[n] ~= t then panes[n] = t end end
@@ -33,9 +33,9 @@ line("You start to follow Rhuli."); snap("follow other")
 line("You stop following Rhuli."); snap("stop")
 H.feed("group", grp(5, 11, "", nil)); snap("11, no title, no leader")
 H.feed("group", grp(5, 3, "A very long group title that is longer than the pane is wide", "zed")); snap("long title")
-layout.left_w = function() return 30 end
+rune._state.width = 30 + layout.RIGHT_W + 1
 H.feed("group", grp(6, 11, "narrow", "zed")); snap("narrow pane")
-layout.left_w = function() return 44 end
+rune._state.width = 44 + layout.RIGHT_W + 1
 H.feed("group", {}); snap("left the group")
 if MODE == "snap" then print(table.concat(snaps, "\n")); return end
 local N = 20000
