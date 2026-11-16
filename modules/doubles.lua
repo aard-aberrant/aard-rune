@@ -3,7 +3,7 @@
 -- "2XP 15" bright yellow / "2QP 15" bright red
 -- with minutes left (rounded up), a dim label when off, always 6 columns.
 -- A bonus going from off to on flashes the info pane yellow for FLASH s
--- (info.alert warn, titles 2XP / 2QP). The end times are kept in
+-- (alerts.alert warn, titles 2XP / 2QP). The end times are kept in
 -- rune.session, so a /reload keeps the lights and its resync doesn't flash.
 --   double    the game's command; its reply also sets both lights
 -- At login (and /reload) a hidden double resyncs both.
@@ -38,7 +38,7 @@ theme.define("double", "2XP / 2QP (status bar)", {
   { "qp",  theme.red,    "2QP, while on" },
 })
 local game = require("modules.game")      -- on_login
-local info = require("panes.info")     -- the flash
+local alerts = require("modules.alerts")   -- the flash
 
 local FLASH = 3
 local MINS = { dxp = "Double experience for %d minutes", dqp = "Double quest points for %d minutes" }
@@ -58,7 +58,7 @@ local NAME = { dxp = "double.xp", dqp = "double.qp" }
 
 local function set(k, mins)
   local now = os.time()
-  if mins > 0 and ends[k] <= now then info.alert("warn", FLASH, TITLE[k], string.format(MINS[k], mins)) end
+  if mins > 0 and ends[k] <= now then alerts.alert("warn", FLASH, TITLE[k], string.format(MINS[k], mins)) end
   ends[k] = mins > 0 and now + mins * 60 or 0
   rune.session.set(k .. "_until", tostring(ends[k]))
   D.set(NAME[k], ends[k])

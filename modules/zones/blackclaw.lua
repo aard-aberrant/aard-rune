@@ -43,8 +43,8 @@
 --    rrs - stop rr, ask GMCP for the room, and report it.
 --
 -- Cost: only in this zone - 11 starts/exact triggers (Go-side matches;
--- Lua runs on their lines only), one room.info handler, a 1 s redraw
--- timer only while a cell counts down.
+-- Lua runs on their lines only), one room.info handler. The grid counts
+-- down from the squares' end times (the info pane, each bar pass).
 local A = ...
 local util = require("lib.util")
 local colors = require("ui.colors")
@@ -65,7 +65,6 @@ local T = theme.define("bcc", "Blackclaw", {
   { "kill",   mix(theme.bold, theme.red),    "KILL KILL KILL" },
 })
 local game = require("modules.game")   -- room, state
-local info = require("panes.info")  -- the grid
 local bcc = require("modules.bcc")    -- the run count
 
 local say, err = util.say, util.err
@@ -102,42 +101,33 @@ end
 local hot = {}        -- cell -> os.time() its burning ends
 local dir, safe       -- the last breath's side and the safe one; nil: no fight
 local noauto_until = 0
-local tick = util.slot()        -- the grid's 1 s redraw
 local safe_note = util.slot()
 local move_note = util.slot()
 local function clear_hot() for _, c in ipairs(ALL) do hot[c] = 0 end end
 clear_hot()
 
-local RED, ORANGE, YELLOW = T.hot3.on, T.hot2.on, T.hot1.on
-local GREEN, DIM, GRAY, WHITE, R = T.safe.on, T.quiet.on, T.label.on, T.value.on, colors.RESET
-local PAD = string.rep(" ", 10)
-local last_key
+local GREEN, R = T.safe.on, colors.RESET
+
+-- Published (ui/view.lua) for the info pane's grid; gone with the zone
+local view = require("ui.view")
+local decls = {
+  ["bcc.dir"]  = { "text", "the side Axaldra last breathed on (north...); nil: no fight" },
+  ["bcc.safe"] = { "text", "the safe side" },
+}
+for _, c in ipairs(ALL) do
+  decls["bcc." .. c] = { "timestamp", "when the " .. c .. " square stops burning" }
+  decls["bcc." .. c .. "_safe"] = { "boolean", "the " .. c .. " square is on the safe side" }
+end
+local B = view.provides("aard.bcc", "Axaldra's breath, Black Claw Crag", decls)
 
 local function draw()
-  if not dir then last_key = nil; info.set("bcc", 10, nil); return end
-  local now = os.time()
-  local left, key, counting = {}, dir, false
+  B.set("bcc.dir", dir)
+  B.set("bcc.safe", safe)
   for _, c in ipairs(ALL) do
-    local r = math.max(0, hot[c] - now)
-    left[c] = r
-    key = key .. "|" .. r
-    if r > 0 then counting = true end
+    B.set("bcc." .. c, dir and hot[c] or nil)
+    B.set("bcc." .. c .. "_safe", dir and on_side(safe, c) or nil)
   end
-  if counting then tick.start(1, draw) end
-  if key == last_key then return end
-  last_key = key
-  local o = {}
-  for _, c in ipairs(ALL) do
-    local r = left[c]
-    if r == 0 then o[c] = (on_side(safe, c) and GREEN or DIM) .. ".."
-    else o[c] = (r >= 3 and RED or r == 2 and ORANGE or YELLOW) .. string.format("%2d", r) end
-  end
-  info.set("bcc", 10, table.concat({
-    GRAY .. "Axaldra: " .. WHITE .. dir .. R .. "  " .. GRAY .. "safe: " .. GREEN .. safe .. R,
-    PAD .. o.nw .. "  " .. o.n .. "  " .. o.ne .. R,
-    PAD .. o.w .. "  " .. WHITE .. "@@  " .. o.e .. R,
-    PAD .. o.sw .. "  " .. o.s .. "  " .. o.se .. R,
-  }, "\n"))
+  B.publish()
 end
 
 -- rr ------------------------------------------------------------------------------
@@ -309,7 +299,7 @@ local function fight_off()
   if rr.on then rr_stop(); say("[rr] stopped - the fight is over.") end
   clear_hot()
   dir, safe = nil, nil
-  tick.stop(); safe_note.stop(); move_note.stop()
+  safe_note.stop(); move_note.stop()
   draw()
 end
 
@@ -367,6 +357,7 @@ A.on_unload(function()
   rr_stop()
   rrs_wait = false
   fight_off()
+  view.unprovide("aard.bcc")
 end)
 
 A.help("rr", "rr", "Black Claw Crag: to the middle of the next side clockwise (2 to 4, 4 to 6, 6 to 8, 8 to 2; a corner to the middle after it), one retreat or move at a time, then KILL KILL KILL (or MOVE MOVE MOVE if it's her next side). Won't step from a clear room into a burning one; from a burning one backs you out counterclockwise to the safe side. Starts by itself when a breath lands on your side, unless the dragon hit you in the last 16 s. rr again while moving: one side further")

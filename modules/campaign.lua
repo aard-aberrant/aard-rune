@@ -27,9 +27,7 @@
 -- earlier fight's name, at a one-hit kill).
 
 local util = require("lib.util")
-local theme = require("ui.theme")
 local game = require("modules.game")       -- the area you're in (cn's order)
-local info = require("panes.info")       -- the campaign's rows
 local target = require("modules.target")   -- cn sets it, a kill drops it
 local travel = require("modules.travel")   -- the map's room names, the area picker
 local mapper = require("modules.mapper")   -- areas, zone_of, same_area
@@ -110,61 +108,73 @@ local function count(name)
   return n
 end
 
--- The info pane ----------------------------------------------------------
+-- The info pane's data -----------------------------------------------------
 
-local CYAN, RED, CAUTION = theme.value.on, theme.danger.on, theme.caution.on
-local tick = util.slot()   -- the info row's minute redraw
+local view = require("ui.view")
+local C = view.provides("aard.campaign", "your campaign's current target, for the info pane", {
+  ["cp.on"]      = { "boolean", "cn has picked a mob on a campaign" },
+  ["cp.count"]   = { "number", "mobs left to kill" },
+  ["cp.ends"]    = { "timestamp", "when the campaign ends" },
+  ["cp.area"]    = { "text", "the mob's area" },
+  ["cp.area_k"]  = { "number", "which of the area's campaign mobs it is (by kills there); nil: the area had one" },
+  ["cp.area_n"]  = { "number", "how many campaign mobs the area had; nil: one" },
+  ["cp.room"]    = { "text", "the mob's room (cp check's, or the target's once found)" },
+  ["cp.mob"]     = { "text", "the mob" },
+  ["cp.keyword"] = { "text", "a School of Horror mob's keyword (modules/soh.lua); nil: none" },
+  ["cp.maze"]    = { "boolean", "it's in the Partroxis maze" },
+  ["cp.dead"]    = { "boolean", "the last cp check listed it Dead (not repopped yet)" },
+  ["cp.killed"]  = { "boolean", "killed: cn for the next" },
+})
 
 local function row()
   -- Nothing until cn has picked a mob: a cp check alone (after cp request,
   -- or at load) leaves the pane to what was there
-  if not ends or not cur then info.set("campaign", 60, nil); return end
-  local left = math.max(0, math.ceil((ends - os.time()) / 60))
-  local d, h, m = math.floor(left / 1440), math.floor(left % 1440 / 60), left % 60
-  local time = d > 0 and string.format("%dd %dh", d, h) or string.format("%dh %dm", h, m)
-  local first = CYAN .. #list .. " left, " .. time
+  local on = ends ~= nil and cur ~= nil
+  C.set("cp.on", on)
+  if not on then
+    for _, k in ipairs({ "count", "ends", "area", "area_k", "area_n", "room", "mob", "keyword", "maze", "dead", "killed" }) do
+      C.set("cp." .. k, nil)
+    end
+    C.publish()
+    return
+  end
   local t = target.get()
-  local room = cur.room or (t and t.src == "campaign" and t.room) or nil
-  -- The area's line, when it had more than one campaign mob: "k of N" - N
-  -- its mobs (totals), k the one you're on, by kills there so far, in any
+  -- The area's "k of N", when it had more than one campaign mob: N its
+  -- mobs (totals), k the one you're on, by kills there so far, in any
   -- order (the user, 2026-11-15). Still to kill (the target's included,
   -- Dead ones too) is n; the current mob killed, it was the (N - n)th
-  local area = cur.area_name
-  if area and cur.zone then
+  local k, all
+  if cur.area_name and cur.zone then
     local n = 0
     for _, e in ipairs(list) do if e.zone == cur.zone then n = n + 1 end end
-    local all = math.max(totals[cur.zone] or 0, n)
-    if all > 1 then
-      area = area .. " (" .. math.max(1, all - n + (cur_dead and 0 or 1)) .. " of " .. all .. ")"
-    end
+    all = math.max(totals[cur.zone] or 0, n)
+    if all > 1 then k = math.max(1, all - n + (cur_dead and 0 or 1)) else all = nil end
   end
-  -- In the Partroxis maze: (MAZE) after its name (the user, 2026-11-15).
-  -- Listed Dead (not repopped yet) in the last cp check: (DEAD)
-  local mob = soh.label(cur.mob, cur.zone)
-  if maze_room(cur) then mob = mob .. " " .. CAUTION .. "(MAZE)" end
+  -- Listed Dead (not repopped yet) in the last cp check
+  local dead = false
   for _, e in ipairs(list) do
-    if e.mob == cur.mob and e.place == cur.place then
-      if e.dead then mob = mob .. " " .. RED .. "(DEAD)" end
-      break
-    end
+    if e.mob == cur.mob and e.place == cur.place then dead = e.dead and true or false; break end
   end
-  info.set("campaign", 60, info.target_rows(first, area, room, mob,
-    cur_dead and "killed - cn for next"))
+  C.set("cp.count", #list)
+  C.set("cp.ends", ends)
+  C.set("cp.area", cur.area_name)
+  C.set("cp.area_k", k)
+  C.set("cp.area_n", all)
+  C.set("cp.room", cur.room or (t and t.src == "campaign" and t.room) or nil)
+  C.set("cp.mob", cur.mob)
+  C.set("cp.keyword", soh.for_mob(cur.mob, cur.zone))
+  C.set("cp.maze", maze_room(cur) ~= nil)   -- in the Partroxis maze (the user, 2026-11-15)
+  C.set("cp.dead", dead)
+  C.set("cp.killed", cur_dead)
+  C.publish()
 end
 
 -- The room comes later than cn: modules/target.lua's check finds it
 target.on_change(function(t) if cur and (not t or t.src == "campaign") then row() end end)
 
-local function minutely()
-  if not ends then return end
-  row()
-  tick.start(60 - os.time() % 60, minutely)
-end
-
 local function reset()
   list, ends, cur, cur_dead, skipped, on_cp = {}, nil, nil, false, {}, false
   totals_clear()
-  tick.stop()
   target.clear("campaign")
   row()
 end
@@ -241,7 +251,7 @@ reply("^You have (\\d+) days?, (\\d+) hours? and (\\d+) minutes? left to finish 
     elseif cur and not cur_dead then
       cur.n = count(cur.mob)
     end
-    minutely()
+    row()
     if hiding then
       hiding, notes_until = false, os.time() + 2   -- the notes that follow
       sync()

@@ -58,9 +58,8 @@ Organized by module (2026-11-15), in three kinds:
   a circle. Modules publish data (`ui/view.lua`) and know no pane.
 - **Panes** (`panes/`): each pane's configuration - which widgets show which
   modules' data. Generic: for another MUD they'd be configured on that MUD's
-  modules. `status` and `group` are there; `info`, `chats`, `affects` and
-  `timer` still draw their own text, and modules still push text into `info`
-  (`info.set`) until it's converted.
+  modules. `status`, `group` and `info` are there; `chats` and `affects` still draw
+  their own text until they're converted.
 - **Zone scripts** (`modules/zones/`) may require anything, because they're
   loaded last and only while you're in their zone.
 
@@ -164,9 +163,11 @@ walk stalls.
   widget (`ui/view.lua`: `cases`, `text`, ...) on data a module publishes; `panes/status.lua`
   binds them, so the modules know nothing of the rows. Slots `row1`, `row1_end` and `row2` take
   more widgets (`status.add`).
-- **The info pane** (`panes/info.lua`) is shared by priority with `info.set(name, prio, text)`.
-  The lowest priority wins: alerts 20/25, quest 50, campaign 60, account 90.
-  `info.alert(level, secs, title, text)` flashes it.
+- **The info pane** (`panes/info.lua`) is a `pick`: the first item in its list with something
+  to show wins - Black Claw Crag's grid, alerts, infomsg, quest, campaign, account. Each
+  item is widgets on a module's data (`aard.quest`, `aard.campaign`, `aard.account` ...).
+  `alerts.alert(level, secs, title, text)` (`modules/alerts.lua`) flashes it; an alert
+  counts down only while it's shown (`info.shown`, published by the pick).
 
 **The target.** `modules/target.lua` holds the one mob you're after: area,
 keyword, name and room. Quest (`qx`) and campaign (`cn`) set it, and `k` and
@@ -218,6 +219,63 @@ fine for means over many calls, rough for one.
 that name. An alias's return value is run as a command, so a handler never
 does `return rune.send_raw(...)` (see Conventions). One-line aliases live in `modules/aliases.lua`,
 and everything else sits with its feature.
+
+## How the screen is redrawn
+
+The display engine (`ui/view.lua`) decides when each pane and status bar is
+drawn again. Module developers and pane config need nothing from this
+section: modules publish exact values, panes describe what to show, and
+the engine works out the rest. It matters only to someone changing the
+engine, chiefly adding a filter (the last part below).
+
+**Passes.** Everything is drawn in a *pass*. A module setting a value that
+differs from the stored one asks for a pass; Rune runs it once at the end
+of the event (a packet, a key, a timer), however many values changed in
+it. Rune also polls the bars every 250 ms, which runs a pass nobody asked
+for. A pass nobody asked for, in the same second as the last one, skips
+every pane drawn only from data: nothing it shows can have changed. Once a
+second the pass runs in full, for countdowns. (A pane with `calls` or slot
+functions, which read a module's state directly, is never skipped.)
+
+**What a pass redraws.** Only widgets marked *dirty*, and their parents.
+Setting a value marks the widgets that show it - but only if what they
+*show* changed, not merely the value:
+
+- Gold goes from 2,500,000 to 2,500,001. The info pane shows it as
+  `{acct.gold|short}`, "2.5M" either way, so that widget isn't marked and
+  no pass is asked for.
+- HP goes from 69,960 to 69,990 of 88,000. The bar shows
+  `{hp.pct|fixed:1}`, "79.5" either way - not marked.
+- HP crosses 60%. The text may still read "60.0", but the style rule
+  (`below = 60`) changed, so it is marked.
+
+To tell, each widget has *keys*: for each use of a value, what it makes
+of it - the text the template part's first filter makes (`short`,
+`fixed:1`, `dhm` ...), which style rule applies, or whether a `when` test
+holds. When a value is set, the widgets showing it work out their keys and
+compare them with the last; only a widget whose keys differ is marked. The
+stored value is always exact - `view.get` and subscribers see 2,500,001.
+
+A widget is *not keyed* - any change of the value marks it, as before keys -
+when keys can't save anything or can't be trusted:
+
+- it shows the value as it is (no formatting filter: `{acct.hr}`) - any
+  change shows anyway;
+- it follows the clock (a countdown) - it's drawn each second anyway;
+- it isn't a `text` or `cases` widget (lists, banners, panels, render
+  widgets);
+- a template part has a filter after its first that isn't on the
+  text-only list (below).
+
+**Adding a filter.** A filter is `f(s, v, arg)`: `s` the text so far, `v`
+the raw value. Keys skip filters that only rework the text - `pad`,
+`rpad`, `cut`, `fit`, `plain`, `after`, `ell`, `as` (`TEXT_ONLY` in
+`ui/view.lua`) - because the text before them already decides their
+output. A new filter that never reads `v` belongs on that list. Leaving it
+off is safe: widgets using it after their first filter simply aren't keyed
+(redrawn on any change, a little slower). The one thing never to do is put
+a filter that reads `v` on the list - its widgets could then miss a change
+and show a stale value until the next real one.
 
 ## Per-subclass modules
 

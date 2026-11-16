@@ -12,9 +12,10 @@ end
 --   lib/       util, debug, help, profile - game-agnostic, the framework;
 --              they require nothing of the modules
 --   ui/        colors, theme, layout, view (the display engine) - framework
---   panes/     status, group, chats, info, affects, timer - each pane's
---              configuration: widgets on the modules' data (status, group;
---              the others still draw their own text, to be moved over)
+--   panes/     status, group, chats, info, affects - each pane's
+--              configuration: widgets on the modules' data (status, group,
+--              info; chats and affects still draw their own text, to be
+--              moved over)
 --   modules/   everything that does something in the game or knows Aardwolf:
 --              game (GMCP state), tags, group, mapper, travel, quest, dps ...
 --              a module requires the libraries and the modules it uses
@@ -82,12 +83,15 @@ require("modules.aliases")      -- one-line aliases: su, sq, qs, gh ...
 require("modules.copy")         -- /copy <n>: the last n lines of the main pane to the clipboard
 require("modules.act")          -- /act, /unact: ad hoc triggers, kept in acts.txt
 require("modules.group")        -- your group, from GMCP group (the group pane shows it)
+require("modules.alerts")       -- alerts: a title and text, crit or warn (the info pane flashes them)
+require("modules.account")      -- gold, points and stats, from GMCP (the info pane shows them)
+require("modules.infomsg")      -- infomsg: your own text on the info pane
 require("panes.status")         -- the status bars (TCK, HP/MN/MV, the enemy ...) - before the
                                 -- group pane: its first bar runs the engine's pass (no extra bar)
 require("panes.group")          -- the group pane
 require("panes.chats")          -- the chats pane: channels, tells, remote socials
-require("panes.info")           -- the info pane: quest, campaign, alerts, account, infomsg
-require("panes.timer")          -- timer
+require("panes.info")           -- the info pane: bcc, alerts, infomsg, quest, campaign, account; infopane
+require("modules.timer")        -- timer
 require("panes.affects")        -- the affects pane, saf, affectsreset
 require("modules.eq")           -- eqwear, eqsave, eqcheck, eqsets
 require("modules.minimap")      -- the minimap pane, from the game's map tag

@@ -3,13 +3,12 @@
 --   timer / timer check     time left
 --   timer clear             cancel it
 -- When it runs out the message shows in the main window and the info pane
--- flashes it black on red for FLASH seconds, with a beep (info.alert crit, title
--- TIMER). Nothing
--- shows while it counts down. A running timer survives /reload (rune.store).
+-- flashes it black on red for FLASH seconds, with a beep (alerts.alert crit,
+-- title TIMER). Nothing shows while it counts down. A running timer survives /reload (rune.store).
 -- Not ported: timer repop (not wanted, 2026-11-07).
 
 local util = require("lib.util")
-local info = require("panes.info")   -- the alert
+local alerts = require("modules.alerts")   -- the alert
 
 local say, warn = util.say, util.warn
 
@@ -33,7 +32,7 @@ local function fire()
   t = nil
   store(false)
   util.err("[timer] " .. msg)
-  info.alert("crit", FLASH, "TIMER", msg)
+  alerts.alert("crit", FLASH, "TIMER", msg)
 end
 
 local function start(ends, msg)
@@ -50,7 +49,7 @@ rune.alias.exact("timer", function(args)
     return
   end
   if text == "clear" then
-    local shown = info.alert_clear("TIMER")   -- the alert, if it's up
+    local shown = alerts.clear("TIMER")   -- the alert, if it's up
     if not t and not shown then say("[timer] none running."); return end
     due.stop()
     t = nil

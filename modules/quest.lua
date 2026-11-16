@@ -7,7 +7,7 @@
 -- a reload) gives targ (the mob), room and area (the full name, "The
 -- Amazon Nation" - matched to a zone in data/areas.lua). The mob dying, or
 -- the quest ending, drops the target - only if qx set it.
--- Also the quest's view on the info pane (row, below), QST on the status
+-- Also the quest's data for the info pane (row, below), QST on the status
 -- pane, qc, and tt++'s line for each quest event (comm.quest action):
 --   start    [Quest Requested]: Target=a rogue. Room=Hall. Area=The Amazon Nation.
 --   comp     [Quest Completed] [Qp: 34] 412 secs [Bonus: 2 prac, 1 train, 1 tp]
@@ -30,7 +30,6 @@ local T = theme.define("quest", "QST and the quest lines", {
   { "text",    theme.red,                            "the same: the values" },
   { "label",   theme.white,                          "the same: labels" },
 })
-local info = require("panes.info")       -- the quest's rows
 local target = require("modules.target")   -- qx sets it, a kill or the end drops it
 local travel = require("modules.travel")   -- qx goes
 local mapper = require("modules.mapper")   -- an area's zone from its name
@@ -40,29 +39,6 @@ local warn = util.warn
 
 local q   -- { targ, room, area, ends, killed } while on a quest
 local START_KEY = "quest_start"   -- os.time() the quest began
-local tick = util.slot()   -- the info row's minute redraw
-
--- The info pane (panes/info.lua), priority 50: time left (red under 5 minutes, or
--- "killed, return to QM"), area, room, mob. Redrawn each minute
-local CYAN, RED = theme.value.on, theme.danger.on
-local function row()
-  if not q then info.set("quest", 50, nil); return end
-  local first
-  if q.killed then
-    first = RED .. "killed, return to QM"
-  else
-    local left = math.max(0, math.ceil((q.ends - os.time()) / 60))
-    first = (left < 5 and RED or CYAN) .. left .. "m left"
-  end
-  info.set("quest", 50, info.target_rows(first, q.area, q.room, soh.label(q.targ, mapper.zone_of(q.area))))
-end
-
-local function minutely()
-  if not q or q.killed then return end
-  row()
-  local wait = (q.ends - os.time()) % 60
-  tick.start(wait > 0 and wait or 60, minutely)
-end
 
 -- QST (tt++ quest.tin), status row 1: minutes until you can quest again
 -- (red under 3), RD when you can, AC on a quest (red once the game warns
@@ -82,11 +58,31 @@ local Q = view.provides("aard.quest", "your quest timer, from GMCP comm.quest", 
   ["quest.state"]    = { "text", "wait, ready or active; nil until known" },
   ["quest.ready_at"] = { "timestamp", "when you can quest again (while waiting)" },
   ["quest.warn"]     = { "boolean", "the game warned time is running out" },
+  -- the quest you're on (the info pane shows it)
+  ["quest.on"]       = { "boolean", "on a quest (its target alive or killed)" },
+  ["quest.ends"]     = { "timestamp", "when the quest times out; nil when not known" },
+  ["quest.killed"]   = { "boolean", "the target is killed: back to the questmaster" },
+  ["quest.area"]     = { "text", "the target's area, as the quest names it" },
+  ["quest.room"]     = { "text", "the target's room" },
+  ["quest.mob"]      = { "text", "the target" },
+  ["quest.keyword"]  = { "text", "a School of Horror target's keyword (modules/soh.lua); nil: none" },
 })
 local function publish()
   Q.set("quest.state", qst.state)
   Q.set("quest.ready_at", qst.state == "wait" and qst.ready_at or nil)
   Q.set("quest.warn", qst.warn)
+  Q.publish()
+end
+
+-- The quest you're on, for the info pane
+local function row()
+  Q.set("quest.on", q ~= nil)
+  Q.set("quest.ends", q and not q.killed and q.ends or nil)
+  Q.set("quest.killed", q and q.killed or nil)
+  Q.set("quest.area", q and q.area)
+  Q.set("quest.room", q and q.room)
+  Q.set("quest.mob", q and q.targ)
+  Q.set("quest.keyword", q and q.targ and soh.for_mob(q.targ, mapper.zone_of(q.area)) or nil)
   Q.publish()
 end
 
@@ -169,7 +165,7 @@ rune.gmcp.on("comm.quest", function(d)
   if a == "start" or (a == "status" and (d.targ or "") ~= "" and d.targ ~= "killed") then
     q = { targ = d.targ, room = d.room, area = d.area,
           ends = os.time() + (tonumber(d.timer) or 0) * 60 }
-    minutely()
+    row()
     return
   end
   if a == "killed" or (a == "status" and d.target == "killed") then

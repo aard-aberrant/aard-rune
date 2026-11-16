@@ -82,8 +82,8 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
       dark room keeps the map. An aborted run redraws via minimap.refresh: confirmed live 2026-11-09 (10s into a wall)
 - [ ] Our messages in /log (modules/copy.lua's rune.echo wrapper, 2026-11-09, untested): [debug ...] and [eq] ...
       lines appear in a /log, colored in /log start raw, not in /log start chat; each once
-- [ ] infopane (panes/info.lua, offline-tested 2026-11-08): ported from tt++ - list, pin a provider (e.g.
-      infopane account during a campaign break), reset; an alert still beats the pin
+- [ ] infopane (panes/info.lua, offline-tested 2026-11-08, on widgets 2026-11-15): ported from tt++ - list,
+      pin an item (e.g. infopane account during a campaign break), reset; an alert still beats the pin
 - [ ] panes/group.lua markers (offline-tested 2026-11-08): L leader (GMCP group.leader - a guess, check with
       "/debug group on"), F whom you follow (game text, ~/groupinfo), E both; no mark for a follow outside the group
 - modules/quiet.lua (confirmed live 2026-11-07): a fight's xp/gold/tax added up, one line
@@ -143,12 +143,12 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
 - [ ] Minimap: switch to the trigger `span` option instead of the on/off catch-all
 - [ ] Minimap: fixed height (22 lines, like MINIMAP_HEIGHT) once its size is settled
 - [ ] Minimap fills only after the first move - send "map" at login (tt++ does)
-- [ ] Info pane (panes/info.lua, offline-tested): quest (modules/quest.lua), alerts (info.alert - nothing
-      calls it until timer/moons/doubles are ported; no beep yet), account fallback. Not
-      ported: infopane pin (bcc's grid is modules/zones/blackclaw.lua)
-- [x] timer (panes/timer.lua) - confirmed live: flashes black (24-bit) on red with a beep. Survives
+- [ ] Info pane on widgets (panes/info.lua, 2026-11-15, offline: matches the old pane cell by cell; the
+      breath grid's east square is no longer bold): live check - quest countdown, campaign line,
+      account, an alert (timer 5s x), infomsg, the grid in Black Claw Crag
+- [x] timer (modules/timer.lua) - confirmed live: flashes black (24-bit) on red with a beep. Survives
       /reload via rune.store. Not ported: timer repop
-- [x] infomsg (panes/info.lua) - confirmed live: infomsg <text> shows it, bare infomsg clears
+- [x] infomsg (modules/infomsg.lua) - confirmed live: infomsg <text> shows it, bare infomsg clears
 - [ ] Campaign (modules/campaign.lua, offline-tested): cp check read, area/room-based, cn / cn next,
       kills in any order (hidden cp check), info pane 60. Check the "still have to kill" line's
       exact form live. Dropped: cp sum, cp room, level filter for ambiguous rooms

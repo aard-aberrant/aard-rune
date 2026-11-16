@@ -97,7 +97,7 @@ to Alt+E). F12 switches the mouse between wheel scrolling and selecting text.
 init.lua    sets Rune up and loads every feature
 lib/        the framework's shared code: util, help, debug, /profile
 ui/         the display framework: colors, theme, layout, the display engine (view)
-panes/      each pane's configuration: status, group, chats, info, affects, timer
+panes/      each pane's configuration: status, group, chats, info, affects
 modules/    everything that does something in the game: GMCP state, tags, the map
             and travel, targets, quest, campaign, fights, gear, hosting ...
 modules/zones/  one script per zone, loaded only while you're in it

@@ -13,6 +13,17 @@ package.preload["lib.util"] = function()
   return {
     pane = function(name, text) panes_written[#panes_written + 1] = { name, text } end,
     warn = function(s) warned[#warned + 1] = s end,
+    wrap = function(text, w)   -- lib/util.lua's
+      local lines, cur = {}, ""
+      for word in text:gmatch("%S+") do
+        if cur == "" then cur = word
+        elseif #cur + 1 + #word <= w then cur = cur .. " " .. word
+        else lines[#lines + 1] = cur; cur = word end
+        while #cur > w do lines[#lines + 1] = cur:sub(1, w); cur = cur:sub(w + 1) end
+      end
+      if cur ~= "" then lines[#lines + 1] = cur end
+      return lines
+    end,
   }
 end
 package.preload["ui.theme"] = function()
@@ -486,6 +497,112 @@ bars_reg.zb1()
 eq("later: data provided after - shown", bars_reg.lb().left, "L herex")
 ZL.set("zl.v", "again"); bars_reg.zb1()
 eq("later: follows its data", bars_reg.lb().left, "L againx")
+
+-- textlines, separated, pick, panel, fit / short / dhm, lt, a pane's later
+local PK = view.provides("t.pick", "pick test", {
+  ["pk.a"] = { "text", "" }, ["pk.b"] = { "text", "" }, ["pk.t"] = { "text", "" }, ["pk.x"] = { "text", "" },
+  ["pk.n"] = { "number", "" }, ["pk.m"] = { "number", "" }, ["pk.ts"] = { "timestamp", "" },
+})
+local pin
+local seen = {}
+view.subscribe("pk.shown", function(_, v) seen[#seen + 1] = tostring(v) end)
+local pick = w.pick({
+  { name = "alert", w.panel("pk.t", "pk.x", { style = "ls.t" }), keep = true },
+  { name = "a", w.textlines(w.text("{pk.a}"), w.text("{pk.b|fit}")) },
+  { name = "b", w.separated(" | ", w.text("{pk.n|short}"), w.text("{pk.ts.left.min|dhm}"),
+                            w.cases("", { { when = h.lt("pk.n", "pk.m"), "low" } })) },
+}, { pin = function() return pin end, shown = "pk.shown" })
+local psize = { 3, 12 }
+view.pane("pp", { size = function() return psize[1], psize[2] end, pick })
+local function pp()
+  bars_reg.zb1()
+  for k = #panes_written, 1, -1 do if panes_written[k][1] == "pp" then return panes_written[k][2] end end
+  return ""
+end
+eq("pick: nothing - empty", pp(), "")
+PK.set("pk.n", 1234567); PK.set("pk.ts", view.clock() + 3 * 86400 + 7200 + 1)
+eq("pick: separated, short, dhm", pp(), "1.2M | 3d 2h")
+PK.set("pk.m", 2000000)
+eq("pick: lt from data", pp(), "1.2M | 3d 2h | low")
+PK.set("pk.ts", view.clock() + 125 * 60)
+eq("dhm: hours and minutes", pp(), "1.2M | 2h 5m | low")
+PK.set("pk.a", "first"); PK.set("pk.b", "a line much too long")
+eq("pick: the first with text; textlines; fit", pp(), "first\na line much ")
+PK.set("pk.a", "")
+eq("textlines: an empty line kept", pp(), "\na line much ")
+pin = "b"; view.request()
+eq("pick: a pin wins", pp(), "1.2M | 2h 5m | low")
+eq("pick: shown published", seen[#seen], "b")
+PK.set("pk.t", "TITLE"); PK.set("pk.x", "one two three four five")
+local al = plain(pp())
+eq("panel: beats the pin; title, text wrapped, padded", al, "TITLE       \none two     \nthree four  ")
+psize[1] = 4
+eq("panel: no blank line when the text fills the room", plain(pp()), "TITLE       \none two     \nthree four  \nfive        ")
+PK.set("pk.x", "one two three four")
+eq("panel: a blank line when there's room", plain(pp()), "TITLE       \n            \none two     \nthree four  ")
+check("panel: styled, reset each line", select(2, pp():gsub("\27%[0m", "")) == 4, pp())
+PK.set("pk.t", nil); pin = nil; view.request()
+eq("pick: back to the first with text", plain(pp()), "\na line much ")
+eq("pick: shown follows", seen[#seen], "a")
+PK.set("pk.a", nil); PK.set("pk.b", nil); PK.set("pk.n", nil); PK.set("pk.ts", nil)
+eq("pick: none - empty", pp(), "")
+eq("pick: shown nil", seen[#seen], "nil")
+local plate = w.later(function() return w.text("Z {zp.v}") end)
+view.pane("pl", { plate })
+local function pl()
+  bars_reg.zb1()
+  for k = #panes_written, 1, -1 do if panes_written[k][1] == "pl" then return panes_written[k][2] end end
+  return ""
+end
+eq("pane later: no data - nothing", pl(), "")
+local ZP = view.provides("t.plater", "pane later test", { ["zp.v"] = { "text", "" } })
+ZP.set("zp.v", "on")
+eq("pane later: data provided after - shown", pl(), "Z on")
+
+-- keys: a widget marked only when what it shows of a value changes
+local KY = view.provides("t.keys", "keys test", {
+  ["ky.g"] = { "number", "" }, ["ky.lim"] = { "number", "" }, ["ky.p"] = { "number", "" },
+})
+view.add_styles({ ["ky.s"] = { { below = 60, "red" }, "green" } })
+local kg = w.text("G {ky.g|short}")
+local kt = w.cases("", { { when = h.lt("ky.g", "ky.lim"), "low" }, { "ok" } })
+local kp = w.text("P {ky.p|fixed:1}", { style = "ky.s", by = "ky.p" })
+view.bar("kb", { left = { kg, " ", kt, " ", kp } })
+local function kb() bars_reg.zb1(); return bars_reg.kb().left end
+KY.set("ky.g", 2500000); KY.set("ky.lim", 1000); KY.set("ky.p", 60.02)
+eq("keys: first draw", plain(kb()), "G 2.5M ok P 60.0")
+KY.set("ky.g", 2500002); kb()   -- the first change after a draw: marked, keys worked out
+local r0 = kg.rebuilt or 0
+refreshes = 0
+KY.set("ky.g", 2500001)
+eq("keys: same text - no pass asked for", refreshes, 0)
+eq("keys: same text - not rebuilt", (kb()) and (kg.rebuilt or 0), r0)
+KY.set("ky.g", 2600000)
+eq("keys: new text - shown", plain(kb()), "G 2.6M ok P 60.0")
+KY.set("ky.lim", 3000000)
+eq("keys: a test on two names (the other one)", plain(kb()), "G 2.6M low P 60.0")
+KY.set("ky.lim", 3000001)
+KY.set("ky.g", 2600001)
+eq("keys: a test unchanged on both", plain(kb()), "G 2.6M low P 60.0")
+KY.set("ky.g", 3500000)
+eq("keys: the test flips on the first name", plain(kb()), "G 3.5M ok P 60.0")
+local g0 = kb()
+KY.set("ky.p", 59.98)
+local g1 = kb()
+eq("keys: style rule crossed, same text", plain(g1), "G 3.5M ok P 60.0")
+check("keys: ... the style changed", g1 ~= g0, g1)
+view.get("ky.g")
+eq("keys: the value itself is exact", view.get("ky.g"), 3500000)
+-- a filter after the first that isn't known to rework the text alone
+-- (num reads the raw value): that widget isn't keyed - redrawn on any change
+local kn = w.text("N {ky.g|short|num:0}")
+view.bar("kn", { left = { kn } })
+bars_reg.zb1(); KY.set("ky.g", 3500001); bars_reg.zb1()
+refreshes = 0
+KY.set("ky.g", 3500002)
+check("keys: an unlisted filter - a pass asked for", refreshes > 0, refreshes)
+bars_reg.zb1()
+eq("keys: an unlisted filter - redrawn", bars_reg.kn().left, "N 3500002")
 
 print(string.format("%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

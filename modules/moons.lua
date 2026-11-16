@@ -42,7 +42,7 @@ theme.define("moon", "3MN, the moons (status bar)", {
 })
 local game = require("modules.game")       -- state, room, tick, at login
 local tags = require("modules.tags")       -- no reading while walking
-local info = require("panes.info")      -- the all-up alert
+local alerts = require("modules.alerts")   -- the all-up alert
 local travel = require("modules.travel")    -- home_vnum
 
 -- First: weather messages on at every login (config noweather off) - rises,
@@ -178,7 +178,7 @@ local function recalc(quiet)
   setleft = (allex and allup) and left(ex.white, ex.grey, ex.black) or -1
   span = find_span()
   if allup and not was and not quiet then
-    info.alert("warn", 3, "MOONS", setleft >= 0 and ("All three moons are up, for " .. both(setleft + 1))
+    alerts.alert("warn", 3, "MOONS", setleft >= 0 and ("All three moons are up, for " .. both(setleft + 1))
       or "All three moons are up")
   end
   publish()
