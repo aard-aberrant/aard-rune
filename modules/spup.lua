@@ -37,6 +37,7 @@ local colors = require("ui.colors")
 local game = require("modules.game")      -- name, mana, room
 local tags = require("modules.tags")      -- spn's look: the room's people
 local travel = require("modules.travel")   -- the walk there
+local aliases = require("modules.aliases")   -- su
 
 local say, warn, trim = util.say, util.warn, util.trim
 
@@ -296,8 +297,7 @@ end
 
 local function arrived()
   S.phase = "gossip"
-  rune.send("su")
-  rune.send_raw("vis")
+  aliases.su(nil, "vis")   -- vis after the spellups
   gossip_set("on", function(second)
     S.gos_changed = not second
     open()
@@ -329,8 +329,7 @@ function drain()
   if not S.on or not (S.phase == "run" or S.phase == "last") then return end
   if S.paused or S.quaffing or cur or #queue == 0 then return end
   if mana_pct() < LOW then quaff(); return end
-  rune.send("su")
-  rune.send_raw("vis")
+  aliases.su(nil, "vis")   -- vis after the spellups
   spn()
 end
 

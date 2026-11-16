@@ -10,7 +10,7 @@ local MEDKIT = "medkit"
 
 local A = {
   gh     = "home",
-  su     = "autoassist off;spellup luck %0;spellup int %0;spellup %0;autoassist on",
+  su     = "spellup luck %0;spellup int %0;spellup %0",   -- autoassist kept as it was: aliases.su below
   sq     = "spellup;get lotus " .. MEDKIT .. ";quaff lotus",
   dd     = "c 'dispel magic' %0",
   hh     = "c 'party heal'",
@@ -42,10 +42,11 @@ local function class_body(name)
   return C and type(C[name]) == "string" and C[name] or nil
 end
 
--- Run alias name with what was typed after it. Returns true if name is one
-function aliases.run(name, args)
+-- Alias name's commands with what was typed after it, one per line; nil if
+-- name isn't one
+local function expand(name, args)
   local body = A[name] and (class_body(name) or A[name])
-  if not body then return false end
+  if not body then return nil end
   args = (args or ""):match("^%s*(.-)%s*$")
   local w = {}
   for word in args:gmatch("%S+") do w[#w + 1] = word end
@@ -55,8 +56,50 @@ function aliases.run(name, args)
                     :gsub("%%(%d)", function(n) return w[tonumber(n)] or "" end)
     cmds[#cmds + 1] = cmd:match("^%s*(.-)%s*$")
   end
-  rune.send_raw(table.concat(cmds, "\n"))
+  return table.concat(cmds, "\n")
+end
+
+-- Run alias name with what was typed after it. Returns true if name is one
+function aliases.run(name, args)
+  local cmds = expand(name, args)
+  if not cmds then return false end
+  rune.send_raw(cmds)
   return true
+end
+
+-- su: the spellups with autoassist left as it was. Autoassist is toggled
+-- first and its reply tells what it was: "Autoassist removed." - it was on:
+-- the spellups, then on again; "You will now assist when needed." - it was
+-- off: off again at once, then the spellups. No reply in 5 s: nothing more
+-- sent, a warning (it may have been toggled). tail: commands sent after
+-- the spellups (spup's vis). Cost: two exact triggers, on only while
+-- waiting for that reply
+local SU_WAIT = 5
+local su_wait = util.group()
+local su_pending, su_timer
+local function su_reply(was_on)
+  su_wait.set(false)
+  if su_timer then su_timer:cancel(); su_timer = nil end
+  local p = su_pending
+  su_pending = nil
+  if not p then return end
+  if was_on then rune.send_raw(p.cmds .. "\nautoassist on" .. p.tail)
+  else rune.send_raw("autoassist off\n" .. p.cmds .. p.tail) end
+end
+su_wait.add("exact", "Autoassist removed.", function() su_reply(true) end, { name = "su_assist_was_on" })
+su_wait.add("exact", "You will now assist when needed.", function() su_reply(false) end, { name = "su_assist_was_off" })
+function aliases.su(args, tail)
+  if su_pending then util.warn("[su] still waiting for autoassist's reply."); return end
+  su_pending = { cmds = expand("su", args), tail = tail and ("\n" .. tail) or "" }
+  su_wait.set(true)
+  rune.send_raw("autoassist")
+  su_timer = rune.timer.after(SU_WAIT, function()
+    su_timer = nil
+    if not su_pending then return end
+    su_pending = nil
+    su_wait.set(false)
+    util.warn("[su] no reply to autoassist in " .. SU_WAIT .. " s - it may have been toggled; no spellups sent.")
+  end)
 end
 
 -- #N {a;b}: the group, N times (a;b;a;b ...), as tt++ did. Rune's own #N
@@ -87,10 +130,12 @@ end, { name = "alias_repeat_group", priority = 60 })
 -- keep: a new one here gets its help too
 local help = require("lib.help")
 for name, body in pairs(A) do
-  rune.alias.exact(name, function(args) aliases.run(name, args) end)
+  local su = name == "su"
+  rune.alias.exact(name, su and function(args) aliases.su(args) end or function(args) aliases.run(name, args) end)
   local usage = name .. (body:find("%%[0-9]") and " [args]" or "")
   help.add(name, usage, "sends: " .. body:gsub("%%0", "<args>"):gsub("%%(%d)", "<arg%1>"):gsub(";", "; ")
-    .. " (unless data/classes/<subclass>.lua has its own " .. name .. ")")
+    .. " (unless data/classes/<subclass>.lua has its own " .. name .. ")"
+    .. (su and "; autoassist is toggled first and left as it was" or ""))
 end
 
 return aliases
