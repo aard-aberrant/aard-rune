@@ -28,30 +28,39 @@ local T = theme.define("rec", "REC (status bar)", {
   { "on",     mix(theme.black_tc, bg(theme.red)), "REC while a log is open, flashing with rec.flash" },
   { "flash",  theme.red,                          "REC's other flash" },
 })
-local game = require("core.game")
+require("core.game")   -- publishes aard.char (hp, mana, tick ...) to the engine
+local view = require("core.view")
+local w, h, ref = view.widgets, view.helpers, view.ref
 
 local status = { row1 = {}, row1_end = {}, row2 = {} }
 
-local state_names = {
-  [1] = "login", [2] = "motd", [3] = "standing", [4] = "afk", [5] = "note",
-  [6] = "building", [7] = "paging", [8] = "fighting", [9] = "sleeping",
-  [11] = "resting", [12] = "running",
-}
+-- The rows are built from the engine's widgets on aard.char's data (the
+-- modular display plan, phase 2): each piece is rebuilt only when what it
+-- shows changed. The segments other modules add (row1, row1_end, row2) are
+-- still functions, called on every pass as before, until they publish data
+-- too. The styles below are the layout's - by role, so data/theme.lua
+-- still applies - and move to the user's layout file in phase 5.
+view.add_styles({
+  value = "value", unavailable = "unavailable", muted = "muted",
+  -- HP MN MV: under 60 label and number together yellow, red under 20;
+  -- 60 and up a plain label and a green number (tt++ util.tin's ||pct_color)
+  meter_label = { { below = 20, "danger" }, { below = 60, "caution" } },
+  meter_value = { { below = 60, "plain" }, "good" },   -- the number: under 60 meter_label colors it
+  tck = { { below = 10, "danger" }, "value" },
+  aln = { { below = -875, "danger" }, { above = 875, "good" }, "value" },
+  tnl = { { below = 300, "danger" }, "value" },
+  enemy = { { below = 20, "good" }, "danger" },   -- nearly dead: green
+})
 
 -- "HP 88.2" - the percentage with one decimal, padded after the number to 5
--- so the labels never move (the tt++ status row, modules/statusbar.tin).
--- 60 and up: plain label, green value. Under 60 the label and value are
--- coloured together - yellow, red under 20 (util.tin's ||pct_color)
-local function meter(label, cur, max)
-  if not cur or not max or max == 0 then
-    return theme.unavailable(label .. " --") .. "   "
-  end
-  local pct = cur * 100 / max
-  local num = string.format("%.1f", pct)
-  local pad = string.rep(" ", 5 - #num)
-  if pct < 20 then return theme.danger(label .. " " .. num) .. pad end
-  if pct < 60 then return theme.caution(label .. " " .. num) .. pad end
-  return label .. " " .. theme.good(num) .. pad
+-- so the labels never move (the tt++ status row, modules/statusbar.tin);
+-- under 60 label and number in one color span; "HP --" faint until max is
+-- known
+local function meter(label, name)
+  return w.first(
+    w.pad(w.text(label .. " {" .. name .. ".pct|fixed:1|style:meter_value}",
+      { style = "meter_label", by = name .. ".pct" }), #label + 6),
+    w.join(w.lit(label .. " --", "unavailable"), "   "))
 end
 
 -- Status row 1 (tt++ ticking.tin): timers and running measures - clocks
@@ -75,29 +84,22 @@ function status.field(label, value, width, style)
 end
 local field = status.field
 
-local function status_row1()
-  local t = game.tick()
-  local f = { t and field("TCK", t, 2, t < 10 and theme.danger or nil) or field("TCK", "--", 2) }
-  for _, seg in ipairs(status.row1) do f[#f + 1] = seg() end
-  for _, seg in ipairs(status.row1_end) do f[#f + 1] = seg() end
-  return table.concat(f, " ")
-end
+-- Row 1: TCK (seconds to the next tick, from the clock on every pass; red
+-- under 10; "--" until the first tick), then the row1 and row1_end slots
+local row1_left = w.spaced(
+  w.first(w.text("TCK {tick.left|pad:2|style:tck}"), w.join("TCK ", w.lit("--", "unavailable"))),
+  w.calls(status.row1), w.calls(status.row1_end))
 
 -- Row 2's last field (tt++ statusbar.tin): the enemy while fighting - its
--- health, padded to 3 so the name never moves, then its name (GMCP sends it
--- with the game's @-colour codes, taken out) cut to ENEMY_W; green under 20
--- (nearly dead), red otherwise. Out of a fight your state ("standing")
-local ENEMY_W = 25
-local function enemy_segment()
-  if game.state ~= 8 then return state_names[game.state or 0] or "?" end
-  local pct = game.enemypct or 0
-  local style = pct < 20 and theme.good or theme.danger
-  local name = colors.uncolor(game.enemy or "")
-  if #name > ENEMY_W then name = name:sub(1, ENEMY_W - 1) .. "…" end
-  return style(string.format("%3s ", pct) .. name)
-end
+-- health, padded to 3 so the name never moves, then its name cut to 25
+-- with a "…"; green under 20 (nearly dead), red otherwise. Out of a fight
+-- your state ("standing")
+local enemy = w.first(
+  w.text("{ehp|rpad:3} {en|ell:25}", { style = "enemy", by = "enemy_hp", vars = {
+    ehp = h.when(ref("enemy_hp"), ref("fighting")), en = h.when(ref("enemy"), ref("fighting")) } }),
+  w.text("{state}"), "?")
 
--- Row 2: you. HP MN MV (meter, above), then from char.status
+-- Row 2: you. HP MN MV (meter, above), then
 --   ALN  alignment, red under -875, green over 875
 --   LVL  your level, left out at 201 and up
 --   (ALN padded after to 5, room for the minus sign: "ALN 2500  TNL",
@@ -105,21 +107,13 @@ end
 --   TNL  experience to the next level, red under 300
 -- then " | ", the row2 slots (AC) and the enemy, a space between each.
 -- Not yet: ALN's lock colour
-local function status_row2()
-  local f = { meter("HP", game.hp, game.maxhp), meter("MN", game.mana, game.maxmana),
-              meter("MV", game.moves, game.maxmoves) }
-  if game.align then
-    local a = game.align
-    f[#f + 1] = field("ALN", a, 5, a < -875 and theme.danger or a > 875 and theme.good or nil)
-  end
-  if game.level and game.level < 201 then f[#f + 1] = field("LVL", game.level, 1) end
-  local tnl = game.tnl
-  f[#f + 1] = tnl and field("TNL", tnl, 4, tnl < 300 and theme.danger or nil) or field("TNL", "--", 4)
-  local right = {}
-  for _, seg in ipairs(status.row2) do right[#right + 1] = seg() end
-  right[#right + 1] = enemy_segment()
-  return table.concat(f, " ") .. theme.muted(" | ") .. table.concat(right, " ")
-end
+local row2_left = w.join(
+  w.spaced(meter("HP", "hp"), meter("MN", "mana"), meter("MV", "moves"),
+    w.text("ALN {align|pad:5|style:aln}"),
+    w.text("LVL {lvl|style:value}", { vars = { lvl = h.below(ref("level"), 201) } }),
+    w.first(w.text("TNL {tnl|pad:4|style:tnl}"), w.join("TNL ", w.lit("--  ", "unavailable")))),
+  w.lit(" | ", "muted"),
+  w.spaced(w.calls(status.row2), enemy))
 
 local SCROLLED = "SCR"   -- right-aligned under row 1's REC
 
@@ -184,24 +178,14 @@ function rune.log.stop()
 end
 
 -- Row 1: the fields on the left, REC at the right end
-rune.ui.bar("status1", function()
-  return { left = status_row1(), right = rec() }
-end)
+view.bar("status1", { left = { row1_left }, right = { w.calls({ rec }) } })
 
--- Row 2. SCR is looked at on each render (rune._state.scroll_mode:
--- "live" or "scrolled" - nothing tells when it changes)
-rune.ui.bar("status2", function()
-  local left = status_row2()
-  -- Right: SCR, when the main pane is scrolled back (new output is
-  -- below what you see)
-  local right = rune._state.scroll_mode == "scrolled" and theme.scrolled(SCROLLED) or ""
-  return { left = left, right = right }
-end)
-
--- Shown at once on whatever changes a field (core/game.lua has already
--- stored it), not at the next 250 ms
-for _, pkg in ipairs({ "char.vitals", "char.maxstats", "char.status", "comm.tick" }) do
-  rune.gmcp.on(pkg, function() rune.ui.refresh_bars() end, { name = "status_" .. pkg })
-end
+-- Row 2. Right: SCR, when the main pane is scrolled back (new output is
+-- below what you see) - looked at on each pass (rune._state.scroll_mode:
+-- "live" or "scrolled" - nothing tells when it changes). No refresh hooks
+-- here any more: aard.char's set asks for the pass itself
+view.bar("status2", { left = { row2_left }, right = { w.calls({ function()
+  return rune._state.scroll_mode == "scrolled" and theme.scrolled(SCROLLED) or nil
+end }) } })
 
 return status

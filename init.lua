@@ -75,6 +75,7 @@ end, { name = "jump_on_input" })
 -- doesn't matter
 require("core.help")         -- /help: every command, registered by its module
 require("core.debug")        -- debug [topic] [on|off]: the modules' debug output
+require("core.view")         -- the display engine: modules publish data, widgets show it
 require("core.login")        -- answers the login prompts from .env
 require("core.history")      -- command history kept in history.txt across restarts
 require("core.tags")         -- the game's tag lines, hidden or cut out
