@@ -46,11 +46,17 @@ local STATE_NAMES = {
   [11] = "resting", [12] = "running",
 }
 game.state_names = STATE_NAMES
-local function ratio(cur, max) if cur and max then return { cur = cur, max = max } end end
+-- A new { cur, max } only when one of them changed (most vitals messages
+-- change one of the three)
+local function ratio(name, cur, max)
+  local o = V.get(name)
+  if o and cur and o.cur == cur and o.max == max then return end
+  V.set(name, (cur and max) and { cur = cur, max = max } or nil)
+end
 local function vitals()
-  V.set("hp", ratio(game.hp, game.maxhp))
-  V.set("mana", ratio(game.mana, game.maxmana))
-  V.set("moves", ratio(game.moves, game.maxmoves))
+  ratio("hp", game.hp, game.maxhp)
+  ratio("mana", game.mana, game.maxmana)
+  ratio("moves", game.moves, game.maxmoves)
   V.publish()
 end
 

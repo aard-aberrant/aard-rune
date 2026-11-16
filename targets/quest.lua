@@ -76,19 +76,33 @@ end
 -- shows): when the answer drops (3 to 2), a minute has just turned, and the
 -- countdown is reset from it - good to a tick. The game's "ready" wins
 local qst = { state = nil, ready_at = 0, warn = false, last = nil }   -- state: nil, "wait", "ready", "active"
-local QST_RD = T.ready("RD")
-local QST_AC = T.active("AC")
 
-table.insert(status.row1, function()
-  if qst.state == "wait" then
-    local mins = math.ceil((qst.ready_at - os.time()) / 60)
-    if mins <= 0 then qst.state = "ready"
-    else return status.field("QST", mins, 2, mins < 3 and theme.danger or nil) end
-  end
-  if qst.state == "ready" then return "QST " .. QST_RD end
-  if qst.state == "active" then return "QST " .. (qst.warn and theme.danger("AC") or QST_AC) end
-  return status.field("QST", "--", 2)
-end)
+-- Published (core/view.lua) for QST and any other display of it
+local view = require("core.view")
+local Q = view.provides("aard.quest", "your quest timer, from GMCP comm.quest", {
+  ["quest.state"]    = { "text", "wait, ready or active; nil until known" },
+  ["quest.ready_at"] = { "timestamp", "when you can quest again (while waiting)" },
+  ["quest.warn"]     = { "boolean", "the game warned time is running out" },
+})
+local function publish()
+  Q.set("quest.state", qst.state)
+  Q.set("quest.ready_at", qst.state == "wait" and qst.ready_at or nil)
+  Q.set("quest.warn", qst.warn)
+  Q.publish()
+end
+
+-- QST: the minutes (red under 3) - RD once the wait has run out, before the
+-- game says so - RD, AC (red after the warning), or "--". Rebuilt when the
+-- minute or the state changes
+status.add("row1", view.widgets.custom("qst", { inputs = { "quest.state", "quest.ready_at.left.min", "quest.warn" } },
+  function(st, state, mins, warn)
+    if state == "wait" and mins and mins > 0 then
+      return "QST " .. st(mins < 3 and "low" or "value", string.format("%-2s", mins), mins)
+    end
+    if state == "wait" or state == "ready" then return "QST " .. st("ready", "RD") end
+    if state == "active" then return "QST " .. st(warn and "warn" or "active", "AC") end
+    return "QST " .. st("none", "--")
+  end))
 
 local function qst_update(d)
   local function wait(m, polled)
@@ -120,10 +134,12 @@ local function qst_update(d)
       wait(d.wait, true)
     end
   end
-  rune.ui.refresh_bars()
+  publish()
 end
 
 rune.gmcp.on("comm.tick", function()
+  -- the wait run out: ready (QST shows RD from that second on)
+  if qst.state == "wait" and os.time() >= qst.ready_at then qst.state = "ready"; publish() end
   if not qst.state or qst.state == "wait" then rune.gmcp.send("request quest") end
 end, { name = "quest_tick" })
 

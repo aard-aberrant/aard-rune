@@ -11,7 +11,11 @@
 --   S.set("hp", { cur = 2310, max = 4200 })   -- the only way to change data
 --   S.publish()                                -- once per update: subscribers run
 --   view.get("hp")   view.subscribe("hp", fn)  -- other modules read
--- Widgets (developers): view.widget(type, def) - see the bottom.
+-- Widgets (developers): view.widget(type, def) - see the bottom; a
+-- module's own segment: view.widgets.custom(type, { inputs = { "quest.state",
+-- "quest.ready_at.left.min" }, clock = bool }, function(st, state, mins) ...
+-- end) - st(slot, text, value) styles with the user's "<type>.<slot>".
+-- Slots other modules fill: w.slot(list), view.slot_add(list, item, pos).
 -- Layout (users, later a restricted config file; for now Lua):
 --   local w = view.widgets
 --   local health = w.rag(20, 60)        -- red < 20, amber < 60, else green
@@ -118,11 +122,18 @@ view.shape("ratio", { desc = "a value and its maximum: { cur, max }",
     frac = { "text", "cur/max", function(r) return r.cur .. "/" .. r.max end },
   }})
 view.shape("list", { desc = "a list of records", check = function(v) return type(v) == "table" end })
+view.shape("record", { desc = "named values (a table) - set a new one at each change",
+  check = function(v) return type(v) == "table" end })
 view.shape("block", { desc = "text the game colored, several lines", check = function(v) return type(v) == "string" end })
 
 -- Data --------------------------------------------------------------------
 
 local decl = {}       -- data name -> { shape, desc, time, standard, module, fields }
+-- Data with a getter (provides' get = fn): never stored - a read of it
+-- (view.get, a widget) calls the getter; S.touch(name) says it changed.
+-- For data that changes often between draws (DPS at each hit): no table
+-- built per change, the value read once per redraw
+local getters = {}
 local store = {}      -- data name -> value
 local ver = {}        -- data name -> version, +1 at each set
 local subs = {}       -- data name -> { fn, ... }
@@ -135,6 +146,8 @@ local function request()
   requested = true
   if rune and rune.ui and rune.ui.refresh_bars then rune.ui.refresh_bars() end
 end
+
+local armed = {}   -- touchers used since the last pass: reset at the next
 
 local depth = 0
 local function notify(names)
@@ -164,6 +177,7 @@ function view.provides(module, desc, decls)
     end
     decl[name] = { shape = shape, desc = d[2] or "", time = d.time, standard = d.standard,
                    fields = d.fields, module = module }
+    if d.get then getters[name] = d.get end
     ver[name] = 0
     names[#names + 1] = name
   end
@@ -173,6 +187,7 @@ function view.provides(module, desc, decls)
   function S.set(name, v)
     local d = decl[name]
     if not d or d.module ~= module then fail(module .. " doesn't provide " .. tostring(name), 2) end
+    if getters[name] then fail(name .. " has a getter - touch it, not set", 2) end
     if view.dev and v ~= nil then
       local sh = shapes[d.shape]
       local s = d.shape
@@ -193,9 +208,47 @@ function view.provides(module, desc, decls)
     if not pending[name] then pending[name] = true; pending[#pending + 1] = name end
     request()
   end
-  function S.get(name) return store[name] end
+  function S.get(name) return view.get(name) end
+  -- S.toucher(name): a function that touches name - checked once, then
+  -- only what a touch must do (for a module's hot path: each hit line).
+  -- After one touch the rest until the next pass do nothing: the widgets
+  -- are dirty already and the pass asked for
+  function S.toucher(name)
+    local d = decl[name]
+    if not d or d.module ~= module or not getters[name] then fail(module .. " has no getter data " .. tostring(name), 2) end
+    local on = false
+    local function reset() on = false end
+    return function()
+      if on then return end
+      on = true
+      armed[#armed + 1] = reset
+      ver[name] = ver[name] + 1
+      local ws = watchers[name]
+      if ws then for i in pairs(ws) do i.dirty = true end end
+      if (subs[name] or (dbg and dbg.on)) and not pending[name] then pending[name] = true; pending[#pending + 1] = name end
+      if not requested then request() end
+    end
+  end
+  -- a getter's data changed: redrawn at the next pass
+  function S.touch(name)
+    local d = decl[name]
+    if not d or d.module ~= module or not getters[name] then fail(module .. " has no getter data " .. tostring(name), 2) end
+    ver[name] = ver[name] + 1
+    local ws = watchers[name]
+    if ws then for i in pairs(ws) do i.dirty = true end end
+    if not pending[name] then pending[name] = true; pending[#pending + 1] = name end
+    request()
+  end
+  -- (no subscriber of any pending name and debug off: only the list cleared)
   function S.publish()
-    if #pending == 0 then return end
+    local np = #pending
+    if np == 0 then return end
+    local any = dbg and dbg.on
+    if not any then for k = 1, np do if subs[pending[k]] then any = true; break end end end
+    if not any then
+      for k = 1, np do pending[pending[k]] = nil; pending[k] = nil end
+      return
+    end
     local names = {}
     for i, n in ipairs(pending) do names[i] = n; pending[n] = nil; pending[i] = nil end
     deps()
@@ -209,12 +262,16 @@ end
 function view.unprovide(module)
   local m = modules[module]
   if not m then return end
-  for _, n in ipairs(m.names) do decl[n], store[n], subs[n] = nil, nil, nil; ver[n] = nil end
+  for _, n in ipairs(m.names) do decl[n], store[n], subs[n], getters[n] = nil, nil, nil, nil; ver[n] = nil end
   modules[module] = nil
   request()
 end
 
-function view.get(name) return store[name] end
+function view.get(name)
+  local g = getters[name]
+  if g then return g() end
+  return store[name]
+end
 function view.subscribe(name, fn)
   subs[name] = subs[name] or {}
   table.insert(subs[name], fn)
@@ -296,7 +353,11 @@ end
 local function value(r)
   local t = R[r]
   local k = t.kind
-  if k == "data" then return store[t.name] end
+  if k == "data" then
+    local g = getters[t.name]
+    if g then return g() end
+    return store[t.name]
+  end
   if k == "const" then return t.value end
   if k == "field" then
     local p = value(t.parent)
@@ -375,6 +436,14 @@ local function bound(name, test)
   end
 end
 bound("below", function(x, n) return x < n end)
+-- less(a, n): true while a is under n, false otherwise (nil while a is) - a
+-- clock value turned into one that changes only when it crosses n
+function helpers.less(a, n)
+  a = asref(a)
+  need(a, "number", "less", 1)
+  if type(n) ~= "number" then fail("less: the limit must be a number", 2) end
+  return derived("less(" .. R[a].label .. ", " .. n .. ")", "boolean", { a }, function(x) return x < n end)
+end
 bound("above", function(x, n) return x > n end)
 function helpers.round(a, places)
   a = asref(a)
@@ -389,24 +458,30 @@ view.helpers = helpers
 -- The user's: name -> a palette name ("red"), a list of them mixed
 -- ({ "bold", "red" }), or rules on a value
 -- ({ { below = 20, "red" }, { below = 60, "yellow" }, "green" }).
--- Palette names are core/theme.lua's (data/theme.lua's changes apply); "plain" is no color.
+-- Palette names are core/theme.lua's (data/theme.lua's changes apply) - a
+-- module's group member as "quest.ready"; "plain" is no color.
 
 local styles = {}
-local compiled = {}   -- name -> fn(text, value) or false (unstyled)
+local compiled = {}   -- name -> fn(text, value) (unstyled: returns the text)
 local style_gen = 0   -- +1 at each view.styles: every widget redraws in the new colors
 view.palette = function(name)
   deps()
+  local g, m = name:match("^(.-)%.(.+)$")
+  if g then return theme[g] and theme[g][m] or nil end   -- a module's group: "quest.ready"
   return theme[name]
 end
+-- (compiled is cleared in place: generated code holds the table)
+local function clear(t) for k in pairs(t) do t[k] = nil end end
 function view.styles(t)
-  styles, compiled = t or {}, {}
+  styles = t or {}
+  clear(compiled)
   style_gen = style_gen + 1
   request()
 end
 -- Styles added to the current ones (while panes move over one by one)
 function view.add_styles(t)
   for k, v in pairs(t) do styles[k] = v end
-  compiled = {}
+  clear(compiled)
   style_gen = style_gen + 1
   request()
 end
@@ -452,11 +527,14 @@ local function compile(name)
   end
 end
 -- Text in style `name`, judged on `v` for rules; unstyled if there's no such style
+local function plain(s) return s end
+local function style_fn(name)
+  local f = compile(name) or plain
+  compiled[name] = f
+  return f
+end
 function view.style(name, s, v)
-  local f = compiled[name]
-  if f == nil then f = compile(name); compiled[name] = f end
-  if not f then return s end
-  return f(s, v)
+  return (compiled[name] or style_fn(name))(s, v)
 end
 
 -- Widgets -----------------------------------------------------------------
@@ -512,7 +590,12 @@ function view.widget(wtype, def)
 end
 function view.widget_defs() return wdefs end
 
-local function width(s) deps(); return colors.width(s) end
+-- plain ASCII (digits, most labels): its length - no gsubs
+local find = string.find
+local function width(s)
+  if not find(s, "[\27\128-\255]") then return #s end
+  deps(); return colors.width(s)
+end
 
 -- ctx for render: ctx.style(slot, text, value) - the widget's own slots
 local function ctx_for(def)
@@ -521,8 +604,8 @@ end
 
 -- An instance's text now: rebuilt only when an input changed
 -- At an instance's first draw: dyn (it or a child is redrawn on every
--- pass), timed (follows the clock), and the data names it shows - it's
--- marked dirty when one of them changes
+-- pass), timed (follows the clock), and the data names it shows (its
+-- children's too) - it's marked dirty when one of them changes
 local function names_of(r, into)
   local t = R[r]
   if t.kind == "data" then into[t.name] = true
@@ -530,11 +613,22 @@ local function names_of(r, into)
   elseif t.kind == "derived" then for _, x in ipairs(t.inputs) do names_of(x, into) end end
 end
 local function flags(i)
-  local dyn, timed, names = i.always and true or false, false, {}
+  local dyn, timed, names = i.always and true or false, i.clock and true or false, {}
+  if i.list then   -- a slot: its instances are its children, a function makes it dyn
+    local kids = {}
+    for _, x in ipairs(i.list) do
+      if isinst(x) then kids[#kids + 1] = x else dyn = true end
+    end
+    i.children, i.n = kids, #i.list
+  end
+  local tin
   for _, r in ipairs(i.inputs or {}) do
-    if R[r].time then timed = true end
+    if R[r].time then timed = true; tin = tin or {}; tin[#tin + 1] = r end
     names_of(r, names)
   end
+  -- a leaf following the clock only through its inputs: compared by value
+  -- each new second, rebuilt only when one changed (QST's minutes)
+  i.tin = (tin and not i.clock and not (i.children and i.children[1])) and tin or nil
   for _, c in ipairs(i.children or {}) do
     if c.dyn == nil then flags(c) end
     dyn = dyn or c.dyn; timed = timed or c.timed
@@ -553,7 +647,8 @@ local function draw(i)
   end
   i.dirty = false
   if i.timed then i.tnow = view.clock() end
-  local changed = not i.drawn or i.gen ~= style_gen or i.always
+  local changed = not i.drawn or i.gen ~= style_gen or i.always or i.clock
+  if i.list and i.n ~= #i.list then flags(i); changed = true end
   i.gen = style_gen
   i.last = i.last or {}
   for n, r in ipairs(i.inputs) do
@@ -826,6 +921,63 @@ do
 end
 local function q(x) return string.format("%q", x) end
 
+-- the code for a ref's value that may be nil: lines that set a local,
+-- nothing returned early (custom widgets' inputs, a line's by, clock keys)
+local function opt_code(r, ctx, lines)
+  ctx.omemo = ctx.omemo or {}
+  if ctx.omemo[r] then return ctx.omemo[r] end
+  local t = R[r]
+  ctx.n = ctx.n + 1
+  local v = "o" .. ctx.n
+  if t.kind == "data" and getters[t.name] then
+    ctx.f[#ctx.f + 1] = getters[t.name]
+    lines[#lines + 1] = "local " .. v .. " = F[" .. #ctx.f .. "]()"
+  elseif t.kind == "data" then
+    lines[#lines + 1] = "local " .. v .. " = S[" .. string.format("%q", t.name) .. "]"
+  elseif t.kind == "const" then
+    ctx.k[#ctx.k + 1] = t.value
+    lines[#lines + 1] = "local " .. v .. " = K[" .. #ctx.k .. "]"
+  else
+    local args, test = {}, {}
+    if t.kind == "field" then args[1] = opt_code(t.parent, ctx, lines)
+    else for i, x in ipairs(t.inputs) do args[i] = opt_code(x, ctx, lines) end end
+    for i, a in ipairs(args) do test[i] = a .. " ~= nil" end
+    ctx.f[#ctx.f + 1] = t.fn
+    lines[#lines + 1] = "local " .. v .. "; if " .. table.concat(test, " and ") .. " then " .. v
+      .. " = F[" .. #ctx.f .. "](" .. table.concat(args, ", ") .. ") end"
+  end
+  ctx.omemo[r] = v
+  return v
+end
+
+-- A group's children, then its text - saved, and handed back as it was
+-- when no child's text changed (a group the clock reaches each second)
+local function group_code(calls, test, sep, ctx, lines)
+  ctx.k[#ctx.k + 1] = {}
+  local P = "K[" .. #ctx.k .. "]"
+  local xs, same, keep = {}, {}, {}
+  for k, call in ipairs(calls) do
+    ctx.n = ctx.n + 1
+    xs[k] = "x" .. ctx.n
+    lines[#lines + 1] = "local " .. xs[k] .. " = " .. call
+    same[k] = xs[k] .. " == P[" .. k .. "]"
+    keep[k] = "P[" .. k .. "] = " .. xs[k]
+  end
+  lines[#lines + 1] = "local P = " .. P
+  if #xs > 0 then
+    lines[#lines + 1] = "if P.d and " .. table.concat(same, " and ") .. " then return P.out end"
+    lines[#lines + 1] = table.concat(keep, "; ")
+  end
+  lines[#lines + 1] = "P.d = true"
+  lines[#lines + 1] = "local o, n = {}, 0"
+  for _, x in ipairs(xs) do
+    lines[#lines + 1] = "if " .. test(x) .. " then n = n + 1; o[n] = " .. x .. " end"
+  end
+  lines[#lines + 1] = "local r = n > 0 and concat(o, " .. string.format("%q", sep) .. ") or nil"
+  lines[#lines + 1] = "P.out = r"
+  return "r"
+end
+
 -- the code for a ref's value: lines that set local `name`, and return nil if it's nil
 local function ref_code(r, ctx, lines)
   ctx.memo = ctx.memo or {}
@@ -833,7 +985,10 @@ local function ref_code(r, ctx, lines)
   local t = R[r]
   ctx.n = ctx.n + 1
   local v = "v" .. ctx.n
-  if t.kind == "data" then
+  if t.kind == "data" and getters[t.name] then
+    ctx.f[#ctx.f + 1] = getters[t.name]
+    lines[#lines + 1] = "local " .. v .. " = F[" .. #ctx.f .. "]()"
+  elseif t.kind == "data" then
     lines[#lines + 1] = "local " .. v .. " = S[" .. q(t.name) .. "]"
   elseif t.kind == "const" then
     ctx.k[#ctx.k + 1] = t.value
@@ -863,21 +1018,31 @@ local function body_text(i, ctx, lines)
       local v = ref_code(i.inputs[part.input], ctx, lines)
       ctx.n = ctx.n + 1
       local sv = "s" .. ctx.n
-      lines[#lines + 1] = "local " .. sv .. " = type(" .. v .. ") == \"number\" and FMT(" .. v .. ") or tostring(" .. v .. ")"
-      for _, f in ipairs(part.filters) do
+      -- the default text, unless the first filter makes its own from the value
+      local first = part.filters[1] and part.filters[1][1]
+      if first == FILTERS.fixed then
+        lines[#lines + 1] = "local " .. sv .. " = type(" .. v .. ") == \"number\" and format(" .. q("%." .. (tonumber(part.filters[1][2]) or 0) .. "f") .. ", " .. v .. ") or tostring(" .. v .. ")"
+      elseif first == FILTERS.as then
+        lines[#lines + 1] = "local " .. sv .. " = " .. q(part.filters[1][2] or "")
+      else
+        lines[#lines + 1] = "local " .. sv .. " = type(" .. v .. ") == \"number\" and FMT(" .. v .. ") or tostring(" .. v .. ")"
+      end
+      for fi, f in ipairs(part.filters) do
+       if not (fi == 1 and (first == FILTERS.fixed or first == FILTERS.as)) then
         local fn, arg = f[1], f[2]
         if fn == FILTERS.fixed then
           lines[#lines + 1] = "if type(" .. v .. ") == \"number\" then " .. sv .. " = format(" .. q("%." .. (tonumber(arg) or 0) .. "f") .. ", " .. v .. ") end"
         elseif fn == FILTERS.pad then
           lines[#lines + 1] = "do local w = WIDTH(" .. sv .. ") if w < " .. (tonumber(arg) or 0) .. " then " .. sv .. " = " .. sv .. " .. rep(\" \", " .. (tonumber(arg) or 0) .. " - w) end end"
         elseif fn == FILTERS.style then
-          lines[#lines + 1] = sv .. " = STYLE(" .. q(arg) .. ", " .. sv .. ", " .. v .. ")"
+          lines[#lines + 1] = sv .. " = (CS[" .. q(arg) .. "] or SF(" .. q(arg) .. "))(" .. sv .. ", " .. v .. ")"
         elseif fn == FILTERS.as then
           lines[#lines + 1] = sv .. " = " .. q(arg or "")
         else
           ctx.f[#ctx.f + 1] = fn
           lines[#lines + 1] = sv .. " = F[" .. #ctx.f .. "](" .. sv .. ", " .. v .. ", " .. (arg and q(arg) or "nil") .. ")"
         end
+       end
       end
       parts[#parts + 1] = sv
     end
@@ -888,10 +1053,9 @@ local function body_text(i, ctx, lines)
     -- text at a nil - unless the template already needed it
     local by = "nil"
     if st.by then
-      if ctx.memo and ctx.memo[st.by] then by = ctx.memo[st.by]
-      else ctx.k[#ctx.k + 1] = st.by; by = "VAL(K[" .. #ctx.k .. "])" end
+      by = (ctx.memo and ctx.memo[st.by]) or opt_code(st.by, ctx, lines)
     end
-    return "STYLE(" .. q(st.style) .. ", " .. line .. ", " .. by .. ")"
+    return "(CS[" .. q(st.style) .. "] or SF(" .. q(st.style) .. "))(" .. line .. ", " .. by .. ")"
   end
   return line
 end
@@ -902,8 +1066,28 @@ local function body(i, ctx, lines)
   if ty == "literal" then return q(i.s) end
   if ty == "lit" then return i.style and ("STYLE(" .. q(i.style) .. ", " .. q(i.s) .. ")") or q(i.s) end
   local kids = i.children or {}
+  -- Fusion: a fixed child, or the only one that changes (its parent is
+  -- dirty whenever it is), runs as part of its parent - its own code, no
+  -- cache of its own to check. Not a clock widget (it may say it's idle)
+  local fuse
+  if ty == "pad" or ty == "cut" or ty == "first" or ty == "join" or ty == "spaced" then
+    local var
+    for _, c in ipairs(kids) do
+      if not (c.def.type == "literal" or c.def.type == "lit") then
+        if var then var = false; break end
+        var = c
+      end
+    end
+    if var and not var.dyn and not var.clock then fuse = var end
+  end
   local function kid(c)
-    ctx.c[#ctx.c + 1] = gen(c)
+    gen(c)
+    if c == fuse or c.def.type == "literal" or c.def.type == "lit" then
+      ctx.c[#ctx.c + 1] = c.raw
+      if c == fuse then i.fused = c end
+    else
+      ctx.c[#ctx.c + 1] = c.fn
+    end
     return "C[" .. #ctx.c .. "]()"
   end
   if ty == "pad" or ty == "cut" then
@@ -924,14 +1108,11 @@ local function body(i, ctx, lines)
     return "nil"
   end
   if ty == "join" or ty == "spaced" then
-    local sep = ty == "spaced" and " " or ""
-    lines[#lines + 1] = "local o, n = {}, 0"
-    for _, c in ipairs(kids) do
-      local test = ty == "join" and "x ~= nil" or "x ~= nil and x ~= \"\""
-      lines[#lines + 1] = "do local x = " .. kid(c) .. " if " .. test .. " then n = n + 1; o[n] = x end end"
-    end
-    lines[#lines + 1] = "if n == 0 then return nil end"
-    return "concat(o, " .. q(sep) .. ")"
+    local calls = {}
+    for k, c in ipairs(kids) do calls[k] = kid(c) end
+    local test = ty == "join" and function(x) return x .. " ~= nil" end
+      or function(x) return x .. " ~= nil and " .. x .. " ~= \"\"" end
+    return group_code(calls, test, ty == "spaced" and " " or "", ctx, lines)
   end
   if ty == "calls" then
     ctx.k[#ctx.k + 1] = i.list
@@ -939,6 +1120,20 @@ local function body(i, ctx, lines)
     lines[#lines + 1] = "for k = 1, #L do local x = L[k]() if x ~= nil and x ~= \"\" then n = n + 1; o[n] = x end end"
     lines[#lines + 1] = "if n == 0 then return nil end"
     return "concat(o, " .. q(i.sep) .. ")"
+  end
+  if ty == "custom" or i.render then
+    local args = {}
+    for k, r in ipairs(i.inputs) do args[k] = opt_code(r, ctx, lines) end
+    ctx.k[#ctx.k + 1] = i
+    lines[#lines + 1] = "local I = K[" .. #ctx.k .. "]"
+    return "I.render(I.st" .. (args[1] and (", " .. table.concat(args, ", ")) or "") .. ")"
+  end
+  if ty == "slot" then
+    local calls = {}
+    for k, x in ipairs(i.list) do
+      if isinst(x) then calls[k] = kid(x) else ctx.f[#ctx.f + 1] = x; calls[k] = "F[" .. #ctx.f .. "]()" end
+    end
+    return group_code(calls, function(x) return x .. " ~= nil and " .. x .. " ~= \"\"" end, i.sep, ctx, lines)
   end
   -- a render widget (rag, meter ...): its own render on its input's value
   local v = ref_code(i.input, ctx, lines)
@@ -954,22 +1149,49 @@ gen = function(i)
   local ctx = { n = 0, f = {}, k = {}, c = {} }
   local lines = {}
   local ret = body(i, ctx, lines)
-  local src = "local S, F, K, C, STYLE, FMT, WIDTH, CTX, format, rep, concat, VAL = ...\nreturn function()\n"
+  local src = "local S, F, K, C, STYLE, FMT, WIDTH, CTX, format, rep, concat, VAL, CS, SF = ...\nreturn function()\n"
     .. table.concat(lines, "\n") .. "\nreturn " .. ret .. "\nend"
   local chunk, err = loadstr(src, "=view:" .. i.def.type)
   if not chunk then error("generated code for " .. i.def.type .. " didn't load: " .. tostring(err)) end
   local raw = chunk(store, ctx.f, ctx.k, ctx.c, view.style, fmtnum, width, ctx_for,
-    string.format, string.rep, table.concat, value)
-  i.src = src
+    string.format, string.rep, table.concat, value, compiled, style_fn)
+  i.src, i.raw = src, raw
+  -- a fused child's clock inputs are its parent's to compare
+  if i.fused and i.fused.tin and not i.tin then i.tin = i.fused.tin end
+  -- the clock inputs' values, compared with the last and kept: true if all the same
+  local keyf
+  if i.tin then
+    local kctx, kl = { n = 0, f = {}, k = {}, c = {} }, {}
+    kl[#kl + 1] = "local same = true"
+    for k, r in ipairs(i.tin) do
+      local v = opt_code(r, kctx, kl)
+      kl[#kl + 1] = "if " .. v .. " ~= keys[" .. k .. "] then same = false; keys[" .. k .. "] = " .. v .. " end"
+    end
+    local ksrc = "local S, F, K = ...\nreturn function(keys)\n" .. table.concat(kl, "\n") .. "\nreturn same\nend"
+    local kchunk, kerr = loadstr(ksrc, "=view:keys")
+    if not kchunk then error("generated keys for " .. i.def.type .. " didn't load: " .. tostring(kerr)) end
+    keyf = kchunk(store, kctx.f, kctx.k)
+  end
   if i.dyn then
     i.fn = raw
   else
+    local tin, keys = i.tin, {}
     i.fn = function()
-      if i.drawn and not i.dirty and i.gen == style_gen and (not i.timed or i.tnow == view.clock()) then return i.out end
+      if i.drawn and not i.dirty and i.gen == style_gen then
+        if not i.timed or i.idle then return i.out end
+        local now = view.clock()
+        if i.tnow == now then return i.out end
+        i.tnow = now
+        if keyf and keyf(keys) then return i.out end
+      end
       i.dirty = false
       i.gen = style_gen
       if i.timed then i.tnow = view.clock() end
-      local out = raw()
+      local out, live = raw()
+      -- a clock widget that said the clock doesn't matter now (false):
+      -- not rebuilt on new seconds until its data changes
+      i.idle = i.clock and live == false
+      if keyf then keyf(keys) end
       i.out, i.drawn = out, true
       i.rebuilt = (i.rebuilt or 0) + 1
       return out
@@ -978,6 +1200,48 @@ gen = function(i)
   return i.fn
 end
 view.gen = gen
+
+-- custom(type, { inputs = { names or refs }, clock = bool }, render):
+-- a developer's widget for one module's segment - render(st, value, ...)
+-- returns the text; st(slot, text, value) styles it with the user's style
+-- "<type>.<slot>". Rebuilt when an input changes (a clock input when its
+-- value does), or each new second with clock = true - unless render
+-- returned false after the text (nothing moving: REC with no log open),
+-- then not until an input changes. Inputs may be nil
+function view.widgets.custom(wtype, spec, render)
+  local refs = {}
+  for k, x in ipairs(spec.inputs or {}) do refs[k] = type(x) == "string" and view.ref(x) or asref(x) end
+  local i = inst({ def = { type = wtype, compose = function(i)
+    local v = {}
+    for k, r in ipairs(i.inputs) do v[k] = value(r) end
+    return i.render(i.st, unpack(v, 1, #i.inputs))
+  end }, inputs = refs, render = render, clock = spec.clock })
+  i.st = function(slot, text, v) return view.style(wtype .. "." .. slot, text, v) end
+  return i
+end
+
+-- slot(list[, sep]): a list other modules add to (view.slot_add) - widgets,
+-- or functions called on every pass (segments not moved to data yet); those
+-- with text, sep (" ") between
+local restructure = false
+function view.widgets.slot(list, sep)
+  return inst({ def = { type = "slot", compose = function(i)
+    local out = {}
+    for _, x in ipairs(i.list) do
+      local t
+      if isinst(x) then t = draw(x) else t = x() end
+      if t ~= nil and t ~= "" then out[#out + 1] = t end
+    end
+    if #out == 0 then return nil end
+    return table.concat(out, i.sep)
+  end }, inputs = {}, list = list, sep = sep or " " })
+end
+-- Add to a slot's list (pos as table.insert's): its bars are built again
+function view.slot_add(list, item, pos)
+  if pos then table.insert(list, pos, item) else list[#list + 1] = item end
+  restructure = true
+  request()
+end
 
 -- Panes and bars ----------------------------------------------------------
 -- view.pane(name, { refresh = "change" | "every", every = n, pick = "stack" |
@@ -1021,8 +1285,9 @@ local function flush_safe()
   if not ok then deps(); util.warn("[view] redraw failed: " .. tostring(err)) end
 end
 function view.pane(name, spec)
+  -- shown "": an empty pane isn't written until it has something
   local p = { name = name, items = items_of(spec), refresh = spec.refresh or "change",
-              every = spec.every, pick = spec.pick or "stack", due = 0 }
+              every = spec.every, pick = spec.pick or "stack", due = 0, shown = "" }
   if p.refresh == "every" and not (tonumber(p.every) and p.every > 0) then
     fail("pane " .. name .. ": refresh \"every\" needs every = seconds", 2)
   end
@@ -1034,7 +1299,7 @@ function view.pane(name, spec)
   if not host then
     host = "view_flush"
     if rune and rune.ui and rune.ui.bar then
-      rune.ui.bar("view_flush", function() flush_safe(); return nil end)
+      rune.ui.bar("view_flush", function() if host == "view_flush" then flush_safe() end; return nil end)
     end
   end
   request()
@@ -1044,7 +1309,9 @@ local bar_rows = {}
 function view.bar(name, spec)
   local b = { name = name, left = items_of(spec.left or {}), right = items_of(spec.right or {}) }
   bars[name] = b
-  if not host then host = name end
+  -- the first view bar runs the pass - taking it over from the hidden bar
+  -- if a pane came first (that one then returns nothing, doing nothing)
+  if not host or host == "view_flush" then host = name end
   if rune and rune.ui and rune.ui.bar then
     rune.ui.bar(name, function()
       if host == name then flush_safe() end
@@ -1056,8 +1323,24 @@ end
 
 -- The pass: every pane and bar due, each widget rebuilt only if changed
 local passes = 0
+-- After a slot_add: every bar's generated code goes, built again from the
+-- (now longer) lists at this pass
+local function forget(i)
+  i.fn, i.dyn, i.drawn = nil, nil, nil
+  for _, c in ipairs(i.children or {}) do forget(c) end
+  for _, x in ipairs(i.list or {}) do if isinst(x) then forget(x) end end
+end
 function view.flush()
   requested = false
+  for k = #armed, 1, -1 do armed[k](); armed[k] = nil end
+  if restructure then
+    restructure = false
+    for _, b in pairs(bars) do
+      b.lf, b.rf, b.nogen = nil, nil, nil
+      for _, it in ipairs(b.left) do forget(it) end
+      for _, it in ipairs(b.right) do forget(it) end
+    end
+  end
   passes = passes + 1
   deps()
   local now = view.clock()
@@ -1101,6 +1384,7 @@ end
 -- For tests and debug
 function view._reset()
   decl, store, ver, subs, modules, dataref, watchers = {}, {}, {}, {}, {}, {}, {}
+  getters = {}
   panes, bars, order, bar_rows, styles, compiled = {}, {}, {}, {}, {}, {}
   requested, passes, host = false, 0, nil
 end

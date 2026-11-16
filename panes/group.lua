@@ -24,7 +24,9 @@ local layout = require("core.layout")   -- the pane's height, for the columns
 -- Every line is 21 wide, so they line up. Above them, the group's title on
 -- one row, in its own colors on a dim grey band, cut to the pane's width
 -- (the user, 2026-11-09) - it takes a row from the members.
--- Redrawn whole (util.pane - only when it changed), so no flicker.
+-- The pane is one widget on the published group data (core/view.lua):
+-- written whole, only when its text changed, so no flicker; a group
+-- message that repeats the last one costs a compare.
 --
 -- The marker (new - the user's design, 2026-11-08), green, one column:
 --   L   the group's leader: GMCP group's "leader" field (a guess from
@@ -43,37 +45,58 @@ local layout = require("core.layout")   -- the pane's height, for the columns
 local FOLLOW = "group_follow"   -- rune.session: the name you follow
 local following = rune.session.get(FOLLOW)
 if following == "" then following = nil end
-local leader                    -- this group's leader, lowercased
-local last                      -- the last GMCP group, to redraw on a follow change
 
-local function marker(name)
-  name = (name or ""):lower()
+-- Published (core/view.lua) - the group as GMCP sent it, no display:
+local view = require("core.view")
+local G = view.provides("aard.group", "your group, from GMCP group", {
+  ["group.in"]        = { "boolean", "in a group; nil until the first GMCP group" },
+  ["group.members"]   = { "list", "{ name, lvl, hp, mhp, here } each, in the game's order; nil: not in a group" },
+  ["group.title"]     = { "text", "the group's name, with the game's @-color codes; \"\" when none" },
+  ["group.leader"]    = { "text", "the leader's name, lowercased; nil when not known" },
+  ["group.following"] = { "text", "whom you follow (game text: You follow X.); nil when no one" },
+})
+G.set("group.following", following)
+
+-- The pane: a widget on that data -------------------------------------------
+-- Each member's line is kept and built again only when what it shows
+-- changed (hp, level, here, marker, you); the title only when it changed.
+-- The sort and the columns are redone at each change (a few members)
+local function marker(name, leader, follow)
   local l = leader and leader == name
-  local f = following and following:lower() == name
+  local f = follow and follow == name
   if l and f then return T.marker("E") end   -- L and F on top of each other
   if l then return T.marker("L") end
   if f then return T.marker("F") end
   return " "
 end
 
-local function group_line(m)
-  local info = m.info or {}
-  local hp, mhp = tonumber(info.hp) or 0, tonumber(info.mhp) or 0
+local kept = {}   -- name -> { hp, mhp, lvl, here, mark, me, key, text }: this group's
+local function group_line(m, leader, follow, now)
+  local lname = (m.name or ""):lower()
+  local mark = marker(lname, leader, follow)
+  local me = lname == game.name
+  local k = kept[m.name or "?"]
+  if k and k.hp == m.hp and k.mhp == m.mhp and k.lvl == m.lvl and k.here == m.here and k.mark == mark and k.me == me then
+    now[m.name or "?"] = k
+    return k.key, k.text
+  end
+  local hp, mhp = tonumber(m.hp) or 0, tonumber(m.mhp) or 0
   local pct = mhp > 0 and math.floor(hp * 100 / mhp) or 0
-  local here = tonumber(info.here) == 1 or info.here == true
   local name = string.sub(m.name or "?", 1, 12)
-  local lvl_name = string.format("%3s %-12s", tostring(info.lvl or "?"), name)
+  local lvl_name = string.format("%3s %-12s", tostring(m.lvl or "?"), name)
   local hp_text = string.format("%3d", pct)
-  if not here then
-    return pct + 1000, marker(m.name) .. theme.unavailable(lvl_name .. " " .. hp_text)
+  local key, text
+  if not m.here then
+    key, text = pct + 1000, mark .. theme.unavailable(lvl_name .. " " .. hp_text)
+  else
+    if me then lvl_name = theme.self(lvl_name) end
+    if pct < 20 then hp_text = theme.danger(hp_text)
+    elseif pct < 60 then hp_text = theme.caution(hp_text)
+    else hp_text = theme.good(hp_text) end
+    key, text = pct, mark .. lvl_name .. " " .. hp_text
   end
-  if (m.name or ""):lower() == game.name then
-    lvl_name = theme.self(lvl_name)
-  end
-  if pct < 20 then hp_text = theme.danger(hp_text)
-  elseif pct < 60 then hp_text = theme.caution(hp_text)
-  else hp_text = theme.good(hp_text) end
-  return pct, marker(m.name) .. lvl_name .. " " .. hp_text
+  now[m.name or "?"] = { hp = m.hp, mhp = m.mhp, lvl = m.lvl, here = m.here, mark = mark, me = me, key = key, text = text }
+  return key, text
 end
 
 -- debug group: each group message's fields but the member list, and the
@@ -96,18 +119,17 @@ local function dump(d)
   end
 end
 
-local function draw(d)
-  if type(d) ~= "table" or type(d.members) ~= "table" then
-    leader = nil
-    util.pane("group", theme.muted("not in a group"))
-    return
-  end
-  leader = type(d.leader) == "string" and d.leader:lower() or nil
-  local rows = {}
-  for i, m in ipairs(d.members) do
-    local key, text = group_line(m)
+local title_in, title_w, title_out   -- the title row, kept
+local function draw(is_in, members, title, leader, follow)
+  if is_in == nil then return nil end   -- no GMCP group yet: the pane stays empty
+  if not is_in or not members then return theme.muted("not in a group") end
+  follow = follow and follow:lower()
+  local rows, now = {}, {}
+  for i, m in ipairs(members) do
+    local key, text = group_line(m, leader, follow, now)
     rows[#rows + 1] = { key = key, i = i, text = text }
   end
+  kept = now   -- members who left are dropped
   table.sort(rows, function(a, b)
     if a.key ~= b.key then return a.key < b.key end
     return a.i < b.i
@@ -119,13 +141,17 @@ local function draw(d)
   -- in it - an odd column over goes on the right - on theme.group.title_band
   -- across the row (the game's codes set only the text color, so it holds
   -- under them); none, no row
-  local title = type(d.groupname) == "string" and util.trim(d.groupname) or ""
+  title = title or ""
   if title ~= "" then
-    local BG = T.title_band.on
-    local t = colors.crop(T.title.on .. colors.aard_ansi(title), w)
-    local pad = w - colors.width(t)
-    local left = math.floor(pad / 2)
-    out[1] = BG .. string.rep(" ", left) .. t .. BG .. string.rep(" ", pad - left) .. colors.RESET
+    if title ~= title_in or w ~= title_w then
+      local BG = T.title_band.on
+      local t = colors.crop(T.title.on .. colors.aard_ansi(title), w)
+      local pad = w - colors.width(t)
+      local left = math.floor(pad / 2)
+      title_in, title_w = title, w
+      title_out = BG .. string.rep(" ", left) .. t .. BG .. string.rep(" ", pad - left) .. colors.RESET
+    end
+    out[1] = title_out
     h = math.max(h - 1, 1)
   end
   if w < 2 * 21 + 2 then h = #rows end   -- two don't fit: one column
@@ -133,20 +159,49 @@ local function draw(d)
     local second = rows[k + h]
     out[#out + 1] = rows[k].text .. (second and ("  " .. second.text) or "")
   end
-  util.pane("group", table.concat(out, "\n"))
+  return table.concat(out, "\n")
 end
+view.pane("group", { view.widgets.custom("group",
+  { inputs = { "group.in", "group.members", "group.title", "group.leader", "group.following" } },
+  function(_, is_in, members, title, leader, follow) return draw(is_in, members, title, leader, follow) end) })
 
+-- GMCP group: published as plain fields (numbers as the game sent them:
+-- tonumber where they're used)
 rune.gmcp.on("group", function(d)
   if dbg.on and type(d) == "table" then dump(d) end
-  last = d
-  draw(d)
+  if type(d) ~= "table" or type(d.members) ~= "table" then
+    G.set("group.in", false); G.set("group.members", nil); G.set("group.leader", nil); G.set("group.title", nil)
+    G.publish()
+    return
+  end
+  -- the same members as last time, field for field: no new list (nothing
+  -- to redraw - most group messages repeat it)
+  local old = G.get("group.members")
+  local same = old and #old == #d.members
+  local list = {}
+  for i, m in ipairs(d.members) do
+    local inf = type(m.info) == "table" and m.info or {}
+    local e = { name = m.name, lvl = inf.lvl, hp = inf.hp, mhp = inf.mhp,
+                here = tonumber(inf.here) == 1 or inf.here == true }
+    list[i] = e
+    local o = same and old[i]
+    if same and not (o.name == e.name and o.lvl == e.lvl and o.hp == e.hp and o.mhp == e.mhp and o.here == e.here) then
+      same = false
+    end
+  end
+  G.set("group.in", true)
+  if not same then G.set("group.members", list) end
+  G.set("group.leader", type(d.leader) == "string" and d.leader:lower() or nil)
+  G.set("group.title", type(d.groupname) == "string" and util.trim(d.groupname) or "")
+  G.publish()
 end, { name = "aard_group" })
 
 local function follow(name)
   if name == following then return end
   following = name
   rune.session.set(FOLLOW, name or "")
-  draw(last)
+  G.set("group.following", name)
+  G.publish()
 end
 
 -- "You start to follow Nalani." / "You follow Nalani." / "You stop following Rhuli."

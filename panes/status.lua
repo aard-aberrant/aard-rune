@@ -10,12 +10,13 @@
 --          REC (Rune's /log) at the right end
 --   row 2, you: HP MN MV ALN LVL TNL | [row2 slots: AC (fight/autocast.lua)]
 --          and the enemy (name and health) - your state out of a fight
--- A slot's segment is its text alone; the row puts the spaces between
--- Reads core/game.lua's `game`. Features add their own segments: a slot holds
--- functions returning text, called at each draw, and a feature whose text
--- changed calls rune.ui.refresh_bars() to show it at once rather than at the
--- next 250 ms. So this file knows no feature - they
--- require it, never the other way round.
+-- A slot's segment is its text alone; the row puts the spaces between.
+-- Features add their own segments with status.add(slot, widget[, pos]) - a
+-- widget on the data the feature publishes (core/view.lua), rebuilt only
+-- when that data changes. A plain function still works (called on every
+-- pass). So this file knows no feature - they require it, never the other
+-- way round; the segments' styles are set below, by name.
+--   status.add("row1" | "row1_end" | "row2", widget, pos)
 --   status.field(label, value, width, style)   a "LBL value" segment
 
 local util = require("core.util")
@@ -33,6 +34,13 @@ local view = require("core.view")
 local w, h, ref = view.widgets, view.helpers, view.ref
 
 local status = { row1 = {}, row1_end = {}, row2 = {} }
+function status.add(slot, item, pos) view.slot_add(status[slot], item, pos) end
+
+-- Rune's /log open (REC): set by the wrappers of rune.log.start/stop below
+local LOG = view.provides("rune.log", "Rune's /log", {
+  ["log.open"] = { "boolean", "a /log file is open" },
+})
+LOG.set("log.open", rune.log.status() ~= nil)
 
 -- The rows are built from the engine's widgets on aard.char's data (the
 -- modular display plan, phase 2): each piece is rebuilt only when what it
@@ -50,6 +58,18 @@ view.add_styles({
   aln = { { below = -875, "danger" }, { above = 875, "good" }, "value" },
   tnl = { { below = 300, "danger" }, "value" },
   enemy = { { below = 20, "good" }, "danger" },   -- nearly dead: green
+  -- The segments other modules add: "<widget>.<slot>" (each module's
+  -- widget names its slots); their own color groups as "quest.ready"
+  ["rec.off"] = "off", ["rec.on"] = "rec.on", ["rec.flash"] = "rec.flash",
+  ["qst.value"] = "value", ["qst.low"] = "danger", ["qst.ready"] = "quest.ready",
+  ["qst.active"] = "quest.active", ["qst.warn"] = "danger", ["qst.none"] = "unavailable",
+  ["pop.value"] = "value", ["pop.low"] = "danger", ["pop.guess"] = "muted", ["pop.none"] = "unavailable",
+  ["moon.unknown"] = "moon.unknown", ["moon.up"] = "moon.up", ["moon.none"] = "unavailable",
+  ["moon.soon"] = "moon.soon", ["moon.later"] = "muted",
+  ["dps.rate"] = "on", ["dps.time"] = "value", ["dps.last"] = "muted", ["dps.none"] = "unavailable",
+  ["pup.on"] = "on", ["pup.over"] = "muted", ["pup.none"] = "unavailable",
+  ["dxp.on"] = "double.xp", ["dxp.off"] = "unavailable", ["dqp.on"] = "double.qp", ["dqp.off"] = "unavailable",
+  ["ac.on"] = "on", ["ac.off"] = "off",
 })
 
 -- "HP 88.2" - the percentage with one decimal, padded after the number to 5
@@ -88,7 +108,7 @@ local field = status.field
 -- under 10; "--" until the first tick), then the row1 and row1_end slots
 local row1_left = w.spaced(
   w.first(w.text("TCK {tick.left|pad:2|style:tck}"), w.join("TCK ", w.lit("--", "unavailable"))),
-  w.calls(status.row1), w.calls(status.row1_end))
+  w.slot(status.row1), w.slot(status.row1_end))
 
 -- Row 2's last field (tt++ statusbar.tin): the enemy while fighting - its
 -- health, padded to 3 so the name never moves, then its name cut to 25
@@ -113,19 +133,20 @@ local row2_left = w.join(
     w.text("LVL {lvl|style:value}", { vars = { lvl = h.below(ref("level"), 201) } }),
     w.first(w.text("TNL {tnl|pad:4|style:tnl}"), w.join("TNL ", w.lit("--  ", "unavailable")))),
   w.lit(" | ", "muted"),
-  w.spaced(w.calls(status.row2), enemy))
+  w.spaced(w.slot(status.row2), enemy))
 
 local SCROLLED = "SCR"   -- right-aligned under row 1's REC
 
 -- REC at row 1's right end (tt++ ticking.tin): Rune's /log open - it flashes
 -- each second, black on red, then bright red (the terminal's blink didn't
--- show in tt++); dim when not logging. rune.log.status() is the open log's
--- path or nil
-local function rec()
-  if not rune.log.status() then return theme.off("REC") end
-  if os.time() % 2 == 0 then return T.on("REC") end
-  return T.flash("REC")
-end
+-- show in tt++); dim when not logging. log.open is set at load from
+-- rune.log.status() (the open log's path or nil) and by the start/stop
+-- wrappers below - /log goes through them. Rebuilt each second
+local rec = w.custom("rec", { inputs = { "log.open" }, clock = true }, function(st, open)
+  if not open then return st("off", "REC"), false end   -- no log: nothing flashes
+  if os.time() % 2 == 0 then return st("on", "REC") end
+  return st("flash", "REC")
+end)
 
 -- /log's files (Rune's /log start [raw] [file]): in util.state_dir's
 -- userlogs/ (~/.local/state/rune/userlogs), not Rune's config_dir/logs.
@@ -159,6 +180,7 @@ function rune.log.start(path, opts)
   local fh = io.open(path, "r")
   if fh then fh:close() end
   local ok, err = log_start(path, opts)
+  if ok then LOG.set("log.open", true) end
   if ok then util.say("[log] " .. (fh and "appending to the existing " or "new file ") .. "userlogs/" .. rel .. ".") end
   return ok, err
 end
@@ -170,6 +192,7 @@ local log_stop = rune.log.stop
 function rune.log.stop()
   local path = rune.log.status()
   local ok = log_stop()
+  if ok then LOG.set("log.open", rune.log.status() ~= nil) end
   if ok and path then
     rune.clipboard.set(path)
     util.say("[log] path copied to the clipboard.")
@@ -178,7 +201,7 @@ function rune.log.stop()
 end
 
 -- Row 1: the fields on the left, REC at the right end
-view.bar("status1", { left = { row1_left }, right = { w.calls({ rec }) } })
+view.bar("status1", { left = { row1_left }, right = { rec } })
 
 -- Row 2. Right: SCR, when the main pane is scrolled back (new output is
 -- below what you see) - looked at on each pass (rune._state.scroll_mode:

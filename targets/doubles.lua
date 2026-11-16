@@ -33,7 +33,7 @@ local colors = require("core.colors")
 local theme = require("core.theme")
 -- This module's colors: theme.double.* - /theme lists them, data/theme.lua
 -- changes them (core/theme.lua)
-local T = theme.define("double", "2XP / 2QP (status bar)", {
+theme.define("double", "2XP / 2QP (status bar)", {
   { "xp",  theme.yellow, "2XP, while on" },
   { "qp",  theme.red,    "2QP, while on" },
 })
@@ -48,26 +48,36 @@ local TITLE = { dxp = "2XP", dqp = "2QP" }
 local function load(k) return tonumber(rune.session.get(k) or "") or 0 end
 local ends = { dxp = load("dxp_until"), dqp = load("dqp_until") }
 
+-- Published (core/view.lua): when each bonus ends (0: not running)
+local view = require("core.view")
+local D = view.provides("aard.doubles", "double experience / quest points", {
+  ["double.xp"] = { "timestamp", "when double experience ends" },
+  ["double.qp"] = { "timestamp", "when double quest points end" },
+})
+D.set("double.xp", ends.dxp); D.set("double.qp", ends.dqp)
+local NAME = { dxp = "double.xp", dqp = "double.qp" }
+
 local function set(k, mins)
   local now = os.time()
   if mins > 0 and ends[k] <= now then info.alert("warn", FLASH, TITLE[k], string.format(MINS[k], mins)) end
   ends[k] = mins > 0 and now + mins * 60 or 0
   rune.session.set(k .. "_until", tostring(ends[k]))
-  rune.ui.refresh_bars()
+  D.set(NAME[k], ends[k])
+  D.publish()
 end
 
 -- The lights ---------------------------------------------------------------
 
-local function light(k, label, style)
-  return function()
-    local left = ends[k] - os.time()
-    if left <= 0 then return theme.unavailable(label) .. "   " end
-    return style(string.format("%s %-2d", label, math.ceil(left / 60)))
-  end
+-- Minutes left, rounded up; rebuilt when that changes
+local function light(k, label)
+  return view.widgets.custom(k, { inputs = { NAME[k] .. ".left.min" } }, function(st, mins)
+    if not mins or mins <= 0 then return st("off", label) .. "   " end
+    return st("on", string.format("%s %-2d", label, mins))
+  end)
 end
--- 24-bit, as tt++'s <FFFFF00> / <FFF0000>
-table.insert(status.row1_end, light("dxp", "2XP", T.xp))
-table.insert(status.row1_end, light("dqp", "2QP", T.qp))
+-- 24-bit, as tt++'s <FFFFF00> / <FFF0000> (theme.double.xp / .qp)
+status.add("row1_end", light("dxp", "2XP"))
+status.add("row1_end", light("dqp", "2QP"))
 
 -- The game's lines -------------------------------------------------------------
 

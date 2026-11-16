@@ -186,20 +186,27 @@ check("every pane drew at first", after_first == before + 1)
 errs("every without seconds", function() view.pane("bad", { refresh = "every" }) end, "needs every = seconds")
 
 view.bar("b1", { left = { "HP ", w.text("{hp.cur}") }, right = { w.text("{name}") } })
-bars_reg.view_flush()
+bars_reg.b1()
 local row = bars_reg.b1()
 eq("bar left", row and row.left, "HP 10")
 eq("bar right", row and row.right, "Aberrant")
 local same = bars_reg.b1()
-bars_reg.view_flush()
 check("bar row kept when unchanged", bars_reg.b1() == same)
+do
+  local n0 = #panes_written
+  O2.set("maybe", "again")
+  bars_reg.view_flush()
+  eq("after a bar: the hidden bar runs no pass", #panes_written, n0)
+  bars_reg.b1()
+  check("the bar runs it (the panes too)", #panes_written > n0)
+end
 
 -- One refresh request per burst
-bars_reg.view_flush()
+bars_reg.b1()
 refreshes = 0
 V.set("hp", { cur = 11, max = 200 }); V.set("mana", { cur = 2, max = 100 }); V.set("name", "X")
 eq("one refresh_bars per burst", refreshes, 1)
-bars_reg.view_flush()
+bars_reg.b1()
 V.set("name", "Y")
 eq("a new burst asks again", refreshes, 2)
 
@@ -235,7 +242,7 @@ local p0 = parent.rebuilt
 V.set("name", "Mu")
 eq("parent of a dirty child redraws", plain(view.draw(parent)), "77 Mu")
 eq("once", parent.rebuilt, p0 + 1)
-bars_reg.view_flush(); refreshes = 0
+bars_reg.b1(); refreshes = 0
 V.set("name", "Mu")
 eq("same value: no refresh asked", refreshes, 0)
 
@@ -290,6 +297,54 @@ gf(); gf()
 eq("generated: clean, no rebuild", gi.rebuilt, r0)
 G.set("g", { cur = 6, max = 10 })
 eq("generated: dirty, rebuilt", gf(), "6")
+
+-- Custom widgets, slots, clock inputs compared by value --------------------------
+local Q = view.provides("t.q", "", { qs = { "text" }, qat = { "timestamp" }, qrec = { "record" } })
+Q.set("qs", "wait"); Q.set("qat", now + 150)
+view.add_styles({ ["qw.value"] = "red" })
+local calls_n = 0
+local qw = w.custom("qw", { inputs = { "qs", "qat.left.min" } }, function(st, state, mins)
+  calls_n = calls_n + 1
+  if state ~= "wait" then return "QST " .. tostring(state) end
+  return "QST " .. st("value", tostring(mins))
+end)
+local qf = view.gen(qw)
+eq("custom: renders", qf(), "QST " .. colors.red("3"))
+local c0 = calls_n
+now = now + 1; qf(); now = now + 1; qf()
+eq("custom: clock input same minute, not rebuilt", calls_n, c0)
+now = now + 30
+eq("custom: next minute, rebuilt", qf(), "QST " .. colors.red("2"))
+eq("custom: once", calls_n, c0 + 1)
+Q.set("qs", "ready")
+eq("custom: data change", qf(), "QST ready")
+eq("custom draw = gen", view.draw(qw), "QST ready")
+local ticks = 0
+local clk = w.custom("clk", { clock = true }, function() ticks = ticks + 1; return "t" .. now end)
+local cf = view.gen(clk)
+cf(); cf()
+eq("clock widget: once a second", ticks, 1)
+now = now + 1; cf()
+eq("clock widget: next second", ticks, 2)
+errs("custom: unknown data", function() w.custom("bad", { inputs = { "nothing.here" } }, function() end) end, "no data named")
+
+local L = {}
+view._reset(); bars_reg = {}
+local Z = view.provides("t.z", "", { za = { "text" }, zb = { "text" } })
+Z.set("za", "A"); Z.set("zb", "B")
+view.bar("zb1", { left = { w.slot(L) } })
+view.slot_add(L, w.text("{za}"))
+eq("slot: one", bars_reg.zb1().left, "A")
+view.slot_add(L, w.text("{zb}"), 1)
+eq("slot: added later, at the front", bars_reg.zb1().left, "B A")
+view.slot_add(L, function() return "F" end)
+eq("slot: a function too", bars_reg.zb1().left, "B A F")
+Z.set("za", "AA")
+eq("slot: data change", bars_reg.zb1().left, "B AA F")
+eq("slot draw = gen", view.draw(w.slot(L)), "B AA F")
+check("palette: a group member", view.palette("red") ~= nil)
+eq("less", view.value(h.less(view.const(3), 5)), true)
+eq("less false", view.value(h.less(view.const(7), 5)), false)
 
 print(string.format("%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

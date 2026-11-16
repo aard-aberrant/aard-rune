@@ -54,6 +54,21 @@ end
 
 local LOG = "dps.log"
 
+-- Published (core/view.lua): the session so far, read when drawn (a
+-- getter - nothing built at each hit), touched at each hit, fight start or
+-- end, and reset. secs leaves out the fight under way (since: when it
+-- began); last: the session before a reset, or nil
+local view = require("core.view")
+local P = view.provides("aard.dps", "your damage per second, this area's session", {
+  ["dps.session"] = { "record", "{ damage, hits, secs, since, last = { damage, secs } } - read only",
+                      get = function() return d end },
+})
+local touch = P.toucher("dps.session")
+local function publish()
+  d.last = last
+  touch()
+end
+
 local function zero()
   if d.damage > 0 then
     last = session()
@@ -62,6 +77,7 @@ local function zero()
   end
   d.damage, d.hits, d.secs, d.solo, d.start = 0, 0, 0, 0, nil
   if d.since then d.since = os.time() end   -- a fight under way counts on from now
+  publish()
 end
 
 rune.trigger.regex("^\\*?(?:\\[\\d+\\] )?Your (.*) \\[(\\d+)\\]$", function(m)
@@ -76,6 +92,7 @@ rune.trigger.regex("^\\*?(?:\\[\\d+\\] )?Your (.*) \\[(\\d+)\\]$", function(m)
   if d.damage == 0 then d.start = now end
   d.damage = d.damage + (tonumber(m[2]) or 0)
   d.hits = d.hits + 1
+  publish()
 end, { name = "dps_hit" })
 
 -- The fight's clock: on at state 8, off when it ends. A hit's second
@@ -89,7 +106,10 @@ rune.gmcp.on("char.status", function()
   elseif game.state ~= 8 and d.since then
     if dbg.on then dbg.log("fight off after " .. (now - d.since) .. " s") end
     d.secs, d.since = d.secs + (now - d.since), nil
+  else
+    return
   end
+  publish()
 end, { name = "dps_fight" })
 
 rune.gmcp.on("room.info", function(r)
@@ -107,20 +127,22 @@ rune.hooks.on("disconnected", zero, { name = "dps_log_disconnect" })
 
 -- Always shown, the same 11 columns: a gray "--" before any damage (no
 -- clock - nothing is running), as PUP's. After a reset the last session's
--- numbers stay, dimmed, until the next damage (the status pane redraws
--- each 250 ms, so it keeps up without being told)
-function dps.segment()
-  local s, vs, cs = session(), theme.on, theme.value
-  if d.damage == 0 then
-    if not last then return "DPS " .. theme.unavailable("--") .. string.rep(" ", 9) end
-    s, vs, cs = last, theme.muted, theme.muted
+-- numbers stay, dimmed, until the next damage. Rebuilt on each change and
+-- each second (the fight's clock)
+dps.widget = view.widgets.custom("dps", { inputs = { "dps.session" }, clock = true }, function(st, p)
+  if not p then return nil end
+  local secs, damage, rs, cs = p.secs + (p.since and (os.time() - p.since) or 0), p.damage, "rate", "time"
+  if damage == 0 then
+    if not p.last then return "DPS " .. st("none", "--") .. string.rep(" ", 9), false end
+    secs, damage, rs, cs = p.last.secs, p.last.damage, "last", "last"
   end
-  local v, c = value(s.damage, s.secs), s.secs < 6000 and clock(s.secs) or ">100m"   -- 5 columns at most
-  if v == "--" then vs = theme.unavailable end   -- under 5 s: no rate yet
-  return "DPS " .. vs(string.format("%-5s", v)) .. " " .. cs(string.format("%-5s", c))
-end
-
-table.insert(status.row1_end, dps.segment)
+  local v, c = value(damage, secs), secs < 6000 and clock(secs) or ">100m"   -- 5 columns at most
+  if v == "--" then rs = "none" end   -- under 5 s: no rate yet
+  -- the clock matters only while a fight is under way (and its numbers show)
+  return "DPS " .. st(rs, string.format("%-5s", v)) .. " " .. st(cs, string.format("%-5s", c)), (p.since ~= nil and damage == p.damage)
+end)
+status.add("row1_end", dps.widget)
+publish()
 
 rune.alias.exact("dps", function(args)
   if (args or ""):match("^%s*reset%s*$") then

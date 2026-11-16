@@ -64312,10 +64312,12 @@ X	19827	19828	s
 X	19827	19825	w		
 R	19828	radiance	waternoswim			A Creek Surrounded by Stones
 X	19828	19835	e		
+X	19828	19829	leap		
 X	19828	19827	n		
 X	19828	19830	s		
 X	19828	19824	w		
 R	19829	radiance	underwater			Below the Creek
+X	19829	19828	resurface		
 R	19830	radiance	forest			A Trail Through the Woods
 X	19830	19834	e		
 X	19830	19831	explore cave		

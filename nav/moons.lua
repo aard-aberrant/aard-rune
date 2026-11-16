@@ -35,7 +35,7 @@ local colors = require("core.colors")
 local mix, bg = colors.mix, colors.bg
 -- This module's colors: theme.moon.* - /theme lists them, data/theme.lua
 -- changes them (core/theme.lua)
-local T = theme.define("moon", "3MN, the moons (status bar)", {
+theme.define("moon", "3MN, the moons (status bar)", {
   { "soon",     theme.cyan,                    "a three-moon window soon" },
   { "up",       mix(theme.bold, theme.yellow), "all three up now" },
   { "unknown",  theme.yellow,                  "??: not known yet" },
@@ -124,6 +124,17 @@ local function need()
   return false
 end
 
+-- Published (core/view.lua): what the 3MN light shows - after each recalc
+-- and when a reading falls owed
+local view = require("core.view")
+local L = view.provides("aard.moons", "the three moons", {
+  ["moon.light"] = { "record", "{ need, allup, setleft, ok, lo, len } - the 3MN light's facts" },
+})
+local function publish()
+  L.set("moon.light", { need = need(), allup = allup, setleft = setleft, ok = span.ok, lo = span.lo, len = span.len })
+  L.publish()
+end
+
 -- "Nm" under an hour, else "HhMM"; something n ticks away (counting the
 -- one under way) as "1h20 (161t)"
 local function dur(secs)
@@ -165,6 +176,7 @@ local function recalc(quiet)
     info.alert("warn", 3, "MOONS", setleft >= 0 and ("All three moons are up, for " .. both(setleft + 1))
       or "All three moons are up")
   end
+  publish()
 end
 
 -- The state across a /reload ----------------------------------------------
@@ -304,6 +316,7 @@ end
 -- Login: a reading owed, one asked for at once
 game.on_login(function()
   owed = true
+  publish()
   ask_at = 0
   ask()
 end)
@@ -356,17 +369,18 @@ rune.trigger.regex("^A .+ blows from the (?:north|south|east|west|northeast|nort
 -- Second in row1_end, after POP: this loads last (a Shaman's module,
 -- init.lua), so appending would put it after 2XP 2QP
 
-table.insert(status.row1_end, math.min(2, #status.row1_end + 1), function()
-  if need() then return status.field("3MN", "??", 7, T.unknown) end
-  if allup then
-    return status.field("3MN", setleft >= 0 and ((setleft + 1) .. "t") or "--", 7,
-      T.up)
+local function lf(st, slot, v) return "3MN " .. st(slot, string.format("%-7s", v)) end
+status.add("row1_end", view.widgets.custom("moon", { inputs = { "moon.light" } }, function(st, l)
+  if not l then return nil end
+  if l.need then return lf(st, "unknown", "??") end
+  if l.allup then
+    if l.setleft < 0 then return lf(st, "none", "--") end   -- "--" is always the faint one
+    return lf(st, "up", (l.setleft + 1) .. "t")
   end
-  if not span.ok then return status.field("3MN", "--", 7, theme.unavailable) end
-  local soon = span.lo <= 4
-  local v = (span.lo > 0 and (math.min(span.lo, 999) .. "t") or "now") .. "/" .. span.len .. "t"
-  return status.field("3MN", v, 7, soon and T.soon or theme.muted)
-end)
+  if not l.ok then return lf(st, "none", "--") end
+  local v = (l.lo > 0 and (math.min(l.lo, 999) .. "t") or "now") .. "/" .. l.len .. "t"
+  return lf(st, l.lo <= 4 and "soon" or "later", v)
+end), math.min(2, #status.row1_end + 1))
 
 -- The command -------------------------------------------------------------
 

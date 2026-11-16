@@ -49,6 +49,21 @@ end
 
 local stats = {}   -- the last 5 checked exact countdowns, as lines
 
+-- Published (core/view.lua): the countdown for the area you're in
+local view = require("core.view")
+local P = view.provides("aard.repop", "the next repop of the area you're in", {
+  ["pop.next"] = { "timestamp", "when this area repops next; nil when not known" },
+  ["pop.sure"] = { "boolean", "exact (a repop seen), not sense life's estimate" },
+})
+local function publish()
+  local a = game.room.zone ~= "" and area(game.room.zone)
+  P.set("pop.next", a and a.next or nil)
+  P.set("pop.sure", a and a.sure or false)
+  P.publish()
+end
+-- game.lua's handler runs first (priority 1): game.room is the new room
+rune.gmcp.on("room.info", publish, { name = "repop_room" })
+
 rune.gmcp.on("comm.repop", function(d)
   local zone = type(d) == "table" and d.zone
   if not zone then return end
@@ -60,7 +75,7 @@ rune.gmcp.on("comm.repop", function(d)
   end
   a.seen, a.next, a.sure, a.pred = now, nil, false, nil
   save(zone, a)
-  rune.ui.refresh_bars()
+  publish()
 end, { name = "repop_seen" })
 
 -- A sense life reading: `mins` whole minutes (nil: no range - always an
@@ -82,7 +97,7 @@ local function reading(mins, secs)
   if not sure and not contra and a.next and a.next > now and (a.sure or a.next < new) then return end
   a.next, a.sure, a.pred = new, sure, sure and new or nil
   save(zone, a)
-  rune.ui.refresh_bars()
+  publish()
 end
 
 local SENSE = "You sense that life will return to this area "
@@ -102,17 +117,15 @@ rune.trigger.starts(SENSE, function(_, ctx)
   end
 end, { name = "repop_sense" })
 
--- POP: MM:SS, 5 columns so the row doesn't shift
-table.insert(status.row1_end, 1, function()
-  local a = game.room.zone ~= "" and area(game.room.zone)
-  local left = a and a.next and a.next - os.time()
-  if not left or left < 0 then
-    if a and a.next then a.next, a.sure = nil, false end
-    return status.field("POP", "--", 5)
-  end
-  local v = left > 5999 and "99:99" or string.format("%02d:%02d", math.floor(left / 60), left % 60)
-  return status.field("POP", v, 5, left <= 10 and theme.danger or not a.sure and theme.muted or nil)
-end)
+-- POP: MM:SS, 5 columns so the row doesn't shift; red for the last 10 s,
+-- gray when an estimate; "--" once past or not known. Rebuilt each second
+status.add("row1_end", view.widgets.custom("pop", { inputs = { "pop.next", "pop.sure" }, clock = true },
+  function(st, nxt, sure)
+    local left = nxt and nxt - os.time()
+    if not left or left < 0 then return "POP " .. st("none", "--   "), false end   -- nothing counting
+    local v = left > 5999 and "99:99" or string.format("%02d:%02d", math.floor(left / 60), left % 60)
+    return "POP " .. st(left <= 10 and "low" or not sure and "guess" or "value", v)
+  end), 1)
 
 rune.alias.exact("pop", function()
   if #stats == 0 then say("[pop] no exact countdown checked against a repop yet."); return end

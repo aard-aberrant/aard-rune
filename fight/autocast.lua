@@ -88,9 +88,15 @@ combat.k_hook = function(mob)
   return false
 end
 
-table.insert(status.row2, function()
-  return on and theme.on("AC") or theme.off("AC")
-end)
+-- Published (core/view.lua): ac on or off - the AC light
+local view = require("core.view")
+local A = view.provides("aard.autocast", "autocast (ac)", {
+  ["ac.on"] = { "boolean", "ac is on" },
+})
+A.set("ac.on", on)
+status.add("row2", view.widgets.custom("ac", { inputs = { "ac.on" } }, function(st, is_on)
+  return st(is_on and "on" or "off", "AC")
+end))
 
 local function show()
   local c, w = attack()
@@ -105,7 +111,8 @@ rune.alias.exact("ac", function(args)
     on = not on
     clear()
     show()
-    rune.ui.refresh_bars()
+    A.set("ac.on", on)
+    A.publish()
   elseif args == "cast reset" then
     cmd, hit = nil, nil
     show()

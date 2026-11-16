@@ -32,6 +32,14 @@ local sess            -- the latest session: { start, last, n, ends, logged }
 local LOG = "pup.log"
 local over = util.slot()   -- fires GAP + 1 s after a counted pup: the session is over
 
+-- Published (core/view.lua): the latest session (a new record at each pup)
+-- and the last pup's time
+local view = require("core.view")
+local P = view.provides("aard.pup", "your powerup pace", {
+  ["pup.session"] = { "record", "the latest session: { start, last, n, ends }" },
+  ["pup.prev"]    = { "timestamp", "the last pup" },
+})
+
 local function avg(s) return math.floor((s.ends - s.start) / s.n + 0.5) end
 local function live() return prev and os.time() - prev <= GAP end
 
@@ -52,7 +60,8 @@ rune.trigger.contains("You have increased your powerups to ", function(_, ctx)
   local now = os.time()
   local gap = prev and now - prev
   prev = now
-  if not gap or gap > GAP then return end   -- the baseline
+  P.set("pup.prev", prev)
+  if not gap or gap > GAP then P.publish(); return end   -- the baseline (a new one dims the row)
   if not sess or sess.ends ~= now - gap then   -- the first gap of a new session
     log_it()
     sess = { start = now - gap, n = 0 }
@@ -60,19 +69,26 @@ rune.trigger.contains("You have increased your powerups to ", function(_, ctx)
   sess.n, sess.last, sess.ends = sess.n + 1, gap, now
   over.start(GAP + 1, log_it)
   if dbg.on then dbg.log("gap " .. gap .. "s, " .. sess.n .. " in this session") end
-  rune.ui.refresh_bars()
+  P.set("pup.session", { start = sess.start, last = sess.last, n = sess.n, ends = sess.ends })
+  P.publish()
 end, { name = "pup_line" })
 
 -- "PUP 23s / 25s (104)": "PUP --" before the first session. PUP as DPS's
 -- label, the numbers green as its value (gray once the session is over). The average's
 -- underline is SGR 4 (24 ends it); an overline (53) didn't show live, 2026-11-08
-table.insert(status.row1_end, function()
-  if not sess then return "PUP " .. theme.unavailable("--") .. string.rep(" ", W - 2) end
-  local plain = string.format("%ds / %ds (%d)", sess.last, avg(sess), sess.n)
-  local text = string.format("%ds / %s%ds%s (%d)", sess.last, theme.emphasis.on, avg(sess), theme.emphasis.off, sess.n)
-  local on = live() and sess.ends == prev
-  return "PUP " .. (on and theme.on(text) or theme.muted(text)) .. string.rep(" ", W - #plain)
-end)
+-- Rebuilt at each pup and once the session is over (live: the last pup
+-- under GAP + 1 s ago - a value that changes only then). The underline
+-- stays theme.emphasis's codes inside the line's own color, not a style
+-- slot (a slot's text ends with a reset)
+status.add("row1_end", view.widgets.custom("pup",
+  { inputs = { "pup.session", "pup.prev", view.helpers.less(view.ref("pup.prev.ago"), GAP + 1) } },
+  function(st, s, p, live)
+    if not s then return "PUP " .. st("none", "--") .. string.rep(" ", W - 2) end
+    local plain = string.format("%ds / %ds (%d)", s.last, avg(s), s.n)
+    local text = string.format("%ds / %s%ds%s (%d)", s.last, theme.emphasis.on, avg(s), theme.emphasis.off, s.n)
+    local on = live and s.ends == p
+    return "PUP " .. st(on and "on" or "over", text) .. string.rep(" ", W - #plain)
+  end))
 
 local clock = util.clock
 
