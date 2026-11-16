@@ -1,10 +1,10 @@
 -- The chats pane: channels and tells (GMCP comm.channel), remote socials,
 -- and its scroll keys.
-local util = require("core.util")
-local colors = require("core.colors")
-local theme = require("core.theme")
-local game = require("core.game")   -- at login
-local copy = require("core.copy")   -- /copy chat: each line the pane gets
+local util = require("lib.util")
+local colors = require("ui.colors")
+local theme = require("ui.theme")
+local game = require("modules.game")   -- at login
+local copy = require("modules.copy")   -- /copy chat: each line the pane gets
 
 -- The log: no file of its own. While a /log is open, each line the pane
 -- gets goes into it too (Rune's log has the game's text lines only, and
@@ -104,7 +104,7 @@ end, { name = "aard_channel" })
 -- debug chats: each line that starts with a *, raw (\e for escape), and
 -- what was done with it
 local CYAN_STAR = colors.game.social
-local dbg = require("core.debug").topic("chats", "lines starting with *: raw, and moved to chats or left")
+local dbg = require("lib.debug").topic("chats", "lines starting with *: raw, and moved to chats or left")
 rune.trigger.starts("*", function(_, ctx)
   local raw = ctx.line:raw()
   local lead = raw:match("^(.-)%*") or ""

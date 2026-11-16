@@ -1,4 +1,4 @@
--- Plain-Lua tests for core/view.lua (the display engine), Rune stubbed.
+-- Plain-Lua tests for ui/view.lua (the display engine), Rune stubbed.
 -- Run from the config folder:  lua tools/view_test.lua
 package.path = "./?.lua;" .. package.path
 
@@ -9,22 +9,22 @@ rune = {
     bar = function(name, fn) bars_reg[name] = fn end,
   },
 }
-package.preload["core.util"] = function()
+package.preload["lib.util"] = function()
   return {
     pane = function(name, text) panes_written[#panes_written + 1] = { name, text } end,
     warn = function(s) warned[#warned + 1] = s end,
   }
 end
-package.preload["core.theme"] = function()
-  local c = require("core.colors")
+package.preload["ui.theme"] = function()
+  local c = require("ui.colors")
   return { red = c.red, yellow = c.yellow, green = c.green, bold = c.bold, cyan = c.cyan }
 end
-package.preload["core.debug"] = function()
+package.preload["lib.debug"] = function()
   return { topic = function() return { on = false, log = function() end } end }
 end
 
-local view = require("core.view")
-local colors = require("core.colors")
+local view = require("ui.view")
+local colors = require("ui.colors")
 local w, h = view.widgets, view.helpers
 
 local passed, failed = 0, 0

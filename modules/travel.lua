@@ -1,0 +1,1188 @@
+-- Travel: routes over the map (modules/mapper.lua), the walk, and the commands
+--   g            the home routine
+--   g <area>     an area only (picker if several; runto if the map has no route).
+--                From inside it: home, then back to its entrance
+--   ga <text>    this area: a label starting with it, else a room name. Nearest,
+--                walked - never home or a portal
+--   find [text]  anywhere: labels, areas, room names, a vnum. One match goes
+--                there; several open a picker. No text: labels and areas.
+--   mf [text]    as find, but shows the route instead of walking it, and
+--                copies it to the clipboard as one line
+--   gnom         the gnome airship (not on the map)
+--   13s, 3e2n ...              speedwalk (sent as one game "run 3e2n")
+-- A walk's plain moves go as the game's run ("run 2n3e"): the game shows
+-- only the room a run ends in, and stops it after three failed moves
+-- ("Too many run errors.") or at a fight - the rest isn't sent from the
+-- wrong room. Doors, portals, home and custom exits are sent as they are.
+-- Inside the destination's area the steps go one by one instead, paced by
+-- GMCP's room reports (run_cmds, send_paced): the minimap follows you, and
+-- a fight stops the walk.
+-- For other modules: go_vnum, go_nearest, go_area, go_room, where, probe
+-- and zones_with_rooms (target, quest, campaign use them). Areas and labels
+-- are modules/mapper.lua's (M.areas, M.labels, same_area, zone_of, area_label).
+-- Data: data/portals.lua (made from tt++ by tools/convert_ttdata.py; Rune's
+-- copy is the master now).
+--
+-- Every route is the cheapest one: a room costs 1, home 1, a portal
+-- portal_cost (data/portals.lua). Besides the map's exits, the search can
+-- take, from any room the map doesn't mark against it:
+--   a portal (one step to its vnum) - not from no-portal rooms (data 1 or 3),
+--     only portals your tier level allows, only ones with a vnum. The held
+--     default portal costs 1 (it's only "enter")
+--   "home" (one step to home_vnum) - not from no-recall rooms (data 2 or 3)
+-- Exits flagged avoid (2) are never used.
+
+local util = require("lib.util")
+local colors = require("ui.colors")
+local theme = require("ui.theme")
+local game = require("modules.game")         -- tier and level (portals)
+local tags = require("modules.tags")         -- hiding the rooms a walk passes
+local eq = require("modules.eq")             -- g's hidden eqdata (the end of its chores)
+local M = require("modules.mapper")          -- the map
+local aliases = require("modules.aliases")   -- speedwalk lets an alias go first
+
+local T = {}
+
+local say, warn, trim = util.say, util.warn, util.trim
+
+-- A route step's commands - a list (portals) or a ";"-joined string - as
+-- a list, and as one line
+local function step_cmds(s) return type(s.cmds) == "table" and s.cmds or util.split(s.cmds) end
+local function step_text(s) return type(s.cmds) == "table" and table.concat(s.cmds, ";") or s.cmds end
+-- A plain move ("n"), or nil
+local function step_dir(s) return type(s.cmds) == "string" and s.cmds:match("^[nsewud]$") end
+
+-- Data -------------------------------------------------------------------
+
+T.dir = rune.config_dir .. "/data"
+
+local function load_data(name) return util.load_data(T.dir .. "/" .. name .. ".lua") or {} end
+
+T.cfg = load_data("portals")
+T.cfg.portals = T.cfg.portals or {}
+T.cfg.home_cmds = T.cfg.home_cmds or { "home" }
+
+-- Areas and labels are the map's (modules/mapper.lua)
+local area_zones, area_label = M.area_zones, M.area_label
+
+-- Which portals you can use: tier level = tier * 10 + level (modules/game.lua)
+local function tier_level() return (game.tier or 0) * 10 + (game.level or 0) end
+
+-- The search -------------------------------------------------------------
+
+local function portal_cmds(obj)
+  if obj == T.cfg.default_portal then return { "enter" } end
+  local bag = T.cfg.bag or "portalbag"
+  return { "get " .. obj .. " " .. bag, "hold " .. obj, "enter", "rem " .. obj,
+           "put " .. obj .. " " .. bag, "hold " .. T.cfg.default_portal }
+end
+
+-- Portal steps usable now: { { to, name, cmds } }, one per object
+local function portal_steps()
+  local steps, seen, tl = {}, {}, tier_level()
+  local names = {}
+  for name in pairs(T.cfg.portals) do names[#names + 1] = name end
+  table.sort(names)
+  for _, name in ipairs(names) do
+    local p = T.cfg.portals[name]
+    if p.vnum and not seen[p.obj] and tl >= (p.lvl or 0) then
+      seen[p.obj] = true
+      local cost = p.obj == T.cfg.default_portal and 1 or (T.cfg.portal_cost or 6)
+      steps[#steps + 1] = { to = p.vnum, name = "portal " .. name, cmds = portal_cmds(p.obj), cost = cost }
+    end
+  end
+  return steps
+end
+
+local function blocks(r, a, b)
+  local d = r and r.data or ""
+  return d == a or d == b
+end
+
+-- Cheapest route from `from` (Dial's algorithm - Dijkstra with whole-number
+-- costs kept in buckets). A room costs 1; a portal portal_cost (1 for the
+-- held default portal, which is only "enter"); home 1. With
+-- `goal(vnum)`, stops at the cheapest room where it's true and returns that
+-- vnum; without one, explores everything. `walk_only`: exits only - no
+-- home, no portals (ga; gm and the like inside the area you're in, first).
+-- Returns found, prev (vnum -> vnum), how (vnum -> { name, cmds }),
+-- dist (vnum -> cost), hops (vnum -> steps).
+function T.search(from, goal, walk_only)
+  local rooms = M.rooms
+  local prev, how, dist, hops = { [from] = false }, {}, { [from] = 0 }, { [from] = 0 }
+  local portals = walk_only and {} or portal_steps()
+  local portals_done, home_done = walk_only, walk_only
+  local home = T.cfg.home_vnum
+  local done = {}
+  local buckets, c, top = { [0] = { from } }, 0, 0
+  local v   -- the room being expanded
+  -- One step from v (made once, not per room - the search visits tens of
+  -- thousands)
+  local function step(to, name, cmds, cost)
+    local nd = c + cost
+    if rooms[to] and not done[to] and (not dist[to] or nd < dist[to]) then
+      prev[to], how[to], dist[to], hops[to] = v, { name = name, cmds = cmds }, nd, hops[v] + 1
+      local b = buckets[nd]
+      if b then b[#b + 1] = to else buckets[nd] = { to } end
+      if nd > top then top = nd end
+    end
+  end
+  while c <= top do
+    local b = buckets[c]
+    local i = 1
+    while b and i <= #b do
+      v = b[i]
+      i = i + 1
+      if not done[v] and dist[v] == c then
+        done[v] = true
+        if goal and goal(v) then return v, prev, how, dist, hops end
+        local r = rooms[v]
+        if r then
+          for name, e in pairs(r.exits) do
+            if e.flags ~= "2" then step(e.to, name, e.cmds ~= "" and e.cmds or name, 1) end
+          end
+          -- Rooms come out cheapest first, so the first room a portal or
+          -- home can be used from is the best one to use it from
+          if not portals_done and not blocks(r, "1", "3") then
+            portals_done = true
+            for _, p in ipairs(portals) do step(p.to, p.name, p.cmds, p.cost) end
+          end
+          if not home_done and home and not blocks(r, "2", "3") then
+            home_done = true
+            step(home, "home", "home", 1)
+          end
+        end
+      end
+    end
+    buckets[c] = nil
+    c = c + 1
+  end
+  return nil, prev, how, dist, hops
+end
+
+-- The steps ({ name, cmds }) from the search's start to `to`, and the
+-- room each step reaches
+function T.path(prev, how, to)
+  local chain, rooms = {}, {}
+  while prev[to] do
+    table.insert(chain, 1, how[to])
+    table.insert(rooms, 1, to)
+    to = prev[to]
+  end
+  return chain, rooms
+end
+
+-- Plain moves run together, for a game run or a speedwalk line: add(dir)
+-- each move; take() the moves so far ("3n2e", or "") and start again
+local function mover()
+  local run, last, count = "", nil, 0
+  local m = {}
+  local function close()
+    if last then run = run .. (count > 1 and count or "") .. last end
+    last, count = nil, 0
+  end
+  function m.add(dir)
+    if dir ~= last then close(); last = dir end
+    count = count + 1
+  end
+  function m.take()
+    close()
+    local r = run
+    run = ""
+    return r
+  end
+  return m
+end
+
+-- The walk ---------------------------------------------------------------
+
+local function here()
+  if not M.here then
+    warn("[travel] the game hasn't reported your room yet - asking for it; try again in a moment.")
+    rune.gmcp.send("request room")
+  end
+  return M.here
+end
+
+local function describe(chain)
+  local used = {}
+  for _, s in ipairs(chain) do
+    if s.name == "home" or s.name:find("^portal ") then used[#used + 1] = s.name end
+  end
+  return #used > 0 and (" via " .. table.concat(used, ", ")) or ""
+end
+
+-- The walk under way: where it started, its steps and the rooms they should
+-- reach, and the rooms GMCP room.info has reported since (one per move) -
+-- so a failed step can be named
+local plan
+local alas = false   -- an "Alas, you cannot go that way." during this walk's run
+
+-- The commands for a route, plain moves run together: each stretch of
+-- them is one game "run" ("run 2n3e"), a door, portal, home or custom
+-- exit is sent as it is. Also how many of them show a room: a run shows
+-- only the room it ends in (the game's, seen live 2026-11-07 - GMCP still
+-- sends room.info for every room on the way), any other step its room.
+-- From the first step into the destination's area on, the steps aren't in
+-- the commands: they come back as `paced` ({ k, cmds } each), to be sent
+-- one at a time as the walk reaches each one's room (the user, 2026-11-08):
+-- each shows its room, so the minimap follows you there (the rooms stay
+-- hidden all the same - modules/tags.lua), and a fight stops the walk where
+-- it is. The long way to an area runs, the last stretch inside it you see
+local function run_cmds(chain, rooms)
+  local out, shows = {}, 0
+  local last_room = rooms and M.rooms[rooms[#rooms]]
+  local dest = last_room and last_room.area
+  local paced, moves = {}, mover()
+  local function close_run()
+    local run = moves.take()
+    if run ~= "" then
+      out[#out + 1] = run:match("^[nsewud]$") and run or ("run " .. run)
+      shows = shows + 1
+    end
+  end
+  for k, s in ipairs(chain) do
+    local r = rooms and M.rooms[rooms[k]]
+    if #paced > 0 or (dest and r and r.area == dest) then
+      close_run()
+      paced[#paced + 1] = { k = k, cmds = step_cmds(s) }
+      shows = shows + 1
+    elseif step_dir(s) then
+      moves.add(s.cmds)
+    else
+      close_run()
+      for _, x in ipairs(step_cmds(s)) do out[#out + 1] = x end
+      shows = shows + 1
+    end
+  end
+  close_run()
+  return out, shows, paced
+end
+T.run_cmds = run_cmds   -- for the offline tests
+
+-- Send a walk: the steps, the rooms they reach
+local function send_walk(chain, rooms, what)
+  local n = #chain
+  say(string.format("[travel] %s: %d step%s%s", what, n, n == 1 and "" or "s", describe(chain)))
+  plan = { from = M.here, chain = chain, rooms = rooms, seen = {} }
+  alas = false
+  local cmds, shows, paced = run_cmds(chain, rooms)
+  tags.hide_rooms(shows)   -- show only the room you arrive in; also marks the walk (modules/tags.lua)
+  if #cmds > 0 then rune.send_raw(table.concat(cmds, "\n")) end
+  if #paced > 0 then
+    plan.paced = paced
+    T.send_paced()   -- the first, if it starts where you are
+  end
+end
+
+-- Walk to `to` using a finished search from the current room
+local function walk(prev, how, to, what)
+  local chain, rooms = T.path(prev, how, to)
+  if #chain == 0 then say("[travel] already at " .. what .. "."); return end
+  send_walk(chain, rooms, what)
+end
+
+-- g <the area you're in>: home, then the way from home to the area - to
+-- its entrance, the room of it nearest home, as from anywhere else
+local function walk_from_home(zone, what)
+  local r = M.here and M.rooms[M.here]
+  if blocks(r, "2", "3") then
+    warn("[travel] g: this room doesn't allow home - walk out of it first.")
+    return
+  end
+  local home = T.cfg.home_vnum
+  if not (home and M.rooms[home]) then warn("[travel] g: home_vnum isn't on the map (data/portals.lua)."); return end
+  local found, prev, how = T.search(home, function(x) return M.rooms[x].area == zone end)
+  if not found then warn("[travel] g: no route from home to " .. what .. " on the map."); return end
+  local chain, rooms = T.path(prev, how, found)
+  table.insert(chain, 1, { name = "home", cmds = "home" })
+  table.insert(rooms, 1, home)
+  send_walk(chain, rooms, what .. " (" .. found .. ")")
+end
+
+-- mf: the route to `to`, printed - not walked. Each step with the room it
+-- reaches, then the commands as one line (to type or paste)
+-- A route as one line, plain moves run together ("3n2e;open north;north")
+local function speedwalk(chain)
+  local out, moves = {}, mover()
+  local function close_run()
+    local run = moves.take()
+    if run ~= "" then out[#out + 1] = run end
+  end
+  for _, s in ipairs(chain) do
+    if step_dir(s) then
+      moves.add(s.cmds)
+    else
+      close_run()
+      for _, x in ipairs(step_cmds(s)) do out[#out + 1] = x end
+    end
+  end
+  close_run()
+  return table.concat(out, ";")
+end
+
+-- mf: the route, step by step, and copied to the clipboard as one line
+-- (rune.clipboard.set, as inst does - the user, 2026-11-08)
+local function show(prev, how, to, what)
+  local chain, rooms = T.path(prev, how, to)
+  local n = #chain
+  if n == 0 then say("[travel] mf: already at " .. what .. "."); return end
+  say(string.format("[travel] mf %s: %d step%s%s", what, n, n == 1 and "" or "s", describe(chain)))
+  local all = {}
+  for k, step in ipairs(chain) do
+    all[k] = step_text(step)
+    local r = M.rooms[rooms[k]]
+    rune.echo(string.format("  %2d %-8s %d %s", k, all[k], rooms[k],
+      r and theme.muted(colors.strip(r.name) .. ", " .. r.area) or ""))
+  end
+  rune.echo("  " .. table.concat(all, ";"))
+  local line = speedwalk(chain)
+  rune.clipboard.set(line)
+  rune.echo(theme.muted("  copied: " .. line))
+end
+
+local room_desc   -- below
+
+-- A paced walk (run_cmds) stopped: say where, and forget it
+local function stop_paced(why)
+  local p = plan
+  plan = nil
+  local left = p.paced[1] and (#p.rooms - p.paced[1].k + 1) or 0
+  say(string.format("[travel] %s - the walk stopped, %d step%s short.", why, left, left == 1 and "" or "s"))
+end
+
+-- Where `v` is on the route: 0 for the start, k for the room step k
+-- reaches, nil if it isn't on it - the first match at or after `from`
+local function route_pos(p, v, from)
+  for k = from, #p.rooms do
+    if (k == 0 and p.from or p.rooms[k]) == v then return k end
+  end
+  return nil
+end
+
+-- Paced by where you are, not by counting rooms (the user's walks,
+-- 2026-11-08: one "n" took them two rooms on, and a count that never came
+-- stalled a walk). At each room: on the route before the paced stretch
+-- (still on the run) - wait; at or past its start - send on from here,
+-- dropping steps that were skipped; behind (an old report) - nothing; not
+-- on the route - off course, stopped. Nothing is sent while you're
+-- fighting (GMCP char.status).
+-- AHEAD steps may be on their way at once: each waits for the server to
+-- report a room (~80 ms), so one at a time was slow (the user, 2026-11-08).
+-- A fight can find up to AHEAD steps already sent - with 2, one more than
+-- one at a time; each later step waits.
+-- A room GMCP doesn't report (Sanctum's Clash of the Elements, 15323, seen
+-- live 2026-11-08 - the room shows, but modules/mapper.lua's room stays the one
+-- before): no report 2 s after a step, and nothing ended the walk (a wrong
+-- way - GMCP room.wrongdir - or a fight would have), so the first step on
+-- its way is taken to have got where the map says, and the walk goes on.
+local AHEAD = 2
+local paced_wait = util.slot()
+
+function T.send_paced(assumed)
+  local p = plan
+  if not (p and p.paced and p.paced[1]) then return end
+  local pos = assumed or route_pos(p, M.here, p.pos or 0)
+  if not pos and route_pos(p, M.here, 0) then return end   -- behind: an old report
+  if not pos then
+    plan = nil
+    warn("[travel] the walk went off course: you're in " .. room_desc(M.here)
+      .. ", not on the route - stopped.")
+    return
+  end
+  p.pos = pos
+  if pos >= #p.rooms then plan = nil; return end   -- there
+  -- steps not sent yet whose room you're already past: skipped
+  while p.paced[1] and p.paced[1].k <= pos do table.remove(p.paced, 1) end
+  local nxt = p.paced[1]
+  while nxt and nxt.k - 1 - pos < AHEAD do
+    if game.state == 8 then stop_paced("you're fighting"); return end
+    table.remove(p.paced, 1)
+    rune.send_raw(table.concat(nxt.cmds, "\n"))
+    p.sent = nxt.k
+    nxt = p.paced[1]
+  end
+  -- no report in 2 s: the first step on its way got there
+  if (p.sent or 0) > pos then
+    paced_wait.start(2, function()
+      if plan == p and (p.pos or 0) == pos then T.send_paced(pos + 1) end
+    end)
+  end
+end
+
+-- (after modules/mapper.lua's handler, which this file's require ran first)
+rune.gmcp.on("room.info", function()
+  if not plan then return end
+  local v = M.here
+  local seen = plan.seen
+  if v and v ~= seen[#seen] and v ~= (#seen == 0 and plan.from or nil) then seen[#seen + 1] = v end
+  -- arrived: the last room, or as many moves as planned
+  if v == plan.rooms[#plan.rooms] or #seen >= #plan.rooms then plan = nil; return end
+  if plan.paced then T.send_paced() end
+end, { name = "travel_walk_rooms" })
+
+-- A fight on a paced walk: nothing more is sent
+rune.gmcp.on("char.status", function()
+  if plan and plan.paced and plan.paced[1] and game.state == 8 then stop_paced("you're fighting") end
+end, { name = "travel_walk_fight" })
+
+function room_desc(v)
+  local r = v and M.rooms[v]
+  return tostring(v) .. (r and r.name ~= "" and (" (" .. colors.strip(r.name) .. ")") or "")
+end
+
+-- The first step that didn't go where the map said, as a sentence, or nil
+local function bad_step()
+  local p = plan
+  if not p then return nil end
+  for k, want in ipairs(p.rooms) do
+    local got = p.seen[k]
+    if got ~= want then
+      local at = k == 1 and p.from or p.rooms[k - 1]
+      local step = p.chain[k]
+      local cmd = step_text(step)
+      if not got then
+        return string.format("step %d of %d, \"%s\" from %s, didn't move you - the map says it leads to %s",
+          k, #p.rooms, cmd, room_desc(at), room_desc(want))
+      end
+      return string.format("step %d of %d, \"%s\" from %s, took you to %s - the map says %s",
+        k, #p.rooms, cmd, room_desc(at), room_desc(got), room_desc(want))
+    end
+  end
+end
+
+function T.go_vnum(v, what)
+  local from = here()
+  if not from then return end
+  local found, prev, how = T.search(from, function(x) return x == v end)
+  if not found then
+    warn("[travel] no route to " .. (what or tostring(v)) .. ".")
+    return
+  end
+  walk(prev, how, found, what or ("room " .. v))
+end
+
+-- Nearest room in the set (vnum -> true). `mode`: "only" - exits only (see
+-- T.search); "first" - exits only if the map has such a route, else any
+function T.go_nearest(set, what, mode)
+  local from = here()
+  if not from then return end
+  local goal = function(x) return set[x] end
+  local found, prev, how = T.search(from, goal, mode ~= nil)
+  if not found and mode == "first" then found, prev, how = T.search(from, goal) end
+  if not found then
+    warn("[travel] no route to " .. what .. ".")
+    return
+  end
+  local r = M.rooms[found]
+  walk(prev, how, found, what .. " (" .. found .. (r and r.name ~= "" and (" " .. r.name) or "") .. ")")
+end
+
+-- A move the room doesn't have, during a walk - while modules/tags.lua still expects
+-- rooms of it (a failed step always leaves some). The whole route was sent
+-- at once, so the rest can't be called back. If the map has that exit here, the
+-- map is wrong; if not, an earlier step failed (a mob, a closed door) and the
+-- later moves ran from the wrong room.
+rune.gmcp.on("room.wrongdir", function(d)
+  if not tags.walking() or tags.walk_owner() then return end   -- not ours: its owner reports it
+  tags.walk_stopped()   -- print the room the walk stopped in, if it was hidden
+  local bad = bad_step()
+  plan = nil
+  local dir = type(d) == "table" and (d.dir or d[1]) or d
+  dir = tostring(dir or "?")
+  local r = M.here and M.rooms[M.here]
+  if bad then
+    warn("[travel] the walk went wrong: " .. bad .. ".")
+    -- The map's exit the game refused: the way to drop it, with the room -
+    -- the rest of a run goes on from there, so you're seldom still in it
+    -- (seen live 2026-11-09: a test exit, and the run's 3s took you away)
+    if r and r.exits[dir] then
+      warn(string.format("[travel] the map has a %s exit from room %d (%s) that the game refused - if it's wrong, stand there and: map unlink %s",
+        dir, M.here, colors.strip(r.name), dir))
+    end
+    return
+  end
+  if r and r.exits[dir] then
+    warn(string.format("[travel] the map has a %s exit from room %d (%s) that the game doesn't. Remove it with: map unlink %s",
+      dir, M.here, r.name, dir))
+  else
+    warn(string.format("[travel] the walk went off course: an earlier step didn't happen, so %s was tried from room %s. The map is fine - clear the way and go again.",
+      dir, tostring(M.here)))
+  end
+end, { name = "travel_wrongdir" })
+
+-- A run stopped: after three failed moves - a wall ("Alas, you cannot go
+-- that way."), a room that refuses you ("Only a primary class paladin can
+-- enter that room.") - the game gives up on it (seen live 2026-11-07). A
+-- fight stops a run too (modules/tags.lua shows the room at once). If GMCP's
+-- room.wrongdir came first, that reported it and the plan is gone
+rune.trigger.exact("Alas, you cannot go that way.", function()
+  if plan then alas = true end
+end, { name = "travel_run_alas" })
+rune.trigger.exact("Too many run errors. Aborting speedwalk.", function()
+  local was_alas = alas
+  alas = false
+  if not plan or tags.walk_owner() then return end
+  tags.walk_stopped()
+  local bad = bad_step()
+  local k = #plan.seen + 1
+  local step = plan.chain[k]
+  plan = nil
+  if not bad then return end
+  warn("[travel] the walk stopped: " .. bad .. ".")
+  local r = M.here and M.rooms[M.here]
+  local dir = step and step_dir(step)
+  if was_alas and r and dir and r.exits[dir] then
+    warn(string.format("[travel] the game says there's no %s exit here - if so, remove the map's: map unlink %s", dir, dir))
+  end
+end, { name = "travel_run_abort" })
+
+-- Speedwalk, as tt++'s #CONFIG SPEEDWALK ON: a line of only n s e w u d,
+-- each with an optional count before it ("13s", "3e2n", "nnw"), is walked.
+-- Like tt++, a word of only those letters ("news") is walked too
+-- An alias wins, as in tt++: su, dd (modules/aliases.lua) are not walks
+rune.alias.regex("^((?:[0-9]*[nsewud])+)$", function(m)
+  if aliases.run(m[1]) then return end
+  local cmds = {}
+  for count, dir in tostring(m[1] or ""):gmatch("(%d*)([nsewud])") do
+    for _ = 1, math.min(tonumber(count) or 1, 100) do cmds[#cmds + 1] = dir end
+  end
+  if #cmds == 0 then return end
+  -- One game run: it shows only the room it ends in, and stops at a wall
+  -- or a fight with its own message. One step (a plain "s") is just a move
+  plan = nil   -- not a planned route: no step to name
+  rune.send_raw(#cmds == 1 and cmds[1] or ("run " .. m[1]))
+end, { name = "travel_speedwalk" })
+
+-- The game refused a recall or home: mark the room no-recall (2, or 3 with
+-- no-portal), so routes from it walk out instead. Both wordings seen: the
+-- first in tt++ (modules/paths.tin, for recall and home), the second for
+-- home in nynewoods 23576 (2026-11-06)
+local home_refused   -- below: a g waiting to be home stops
+rune.trigger.regex("^You cannot (recall|return home) from this room\\.$", function()
+  home_refused()
+  local r = M.here and M.rooms[M.here]
+  if not r then return end
+  if r.data == "" or r.data == "0" then r.data = "2"
+  elseif r.data == "1" then r.data = "3"
+  else return end
+  M.dirty = true
+  say("[travel] room " .. M.here .. " marked no-recall on the map - routes from it now walk out first.")
+end, { name = "travel_norecall" })
+
+-- Matching ---------------------------------------------------------------
+
+local function contains(hay, needle)
+  return (hay or ""):lower():find(needle, 1, true) ~= nil
+end
+
+-- Labels starting with `text`: { label = { vnum, ... } }
+local function labels_matching(text, zone)
+  local out, n = {}, 0
+  for name, vnums in pairs(M.labels) do
+    if name:sub(1, #text) == text then
+      for _, v in ipairs(vnums) do
+        local r = M.rooms[v]
+        if not zone or (r and r.area == zone) then
+          out[name] = out[name] or {}
+          table.insert(out[name], v)
+        end
+      end
+      if out[name] then n = n + 1 end
+    end
+  end
+  return out, n
+end
+
+-- A room's name without colour codes (a few have them). The find first,
+-- since this runs for every room on the map
+-- A room's name for matching: colors out, and trailing whitespace - the
+-- game sends 30 names with a trailing space ("The Aylorian Temple of Ivar "),
+-- which cn's and where's room names lack. The map keeps them as sent (the
+-- user, 2026-11-11). Cost: one byte compare a room; a strip only for those
+local function plain_name(r)
+  local n = colors.has(r.name) and colors.strip(r.name) or r.name
+  local b = n:byte(-1)
+  if b == 32 or b == 9 then n = n:match("^(.-)%s+$") end
+  return n
+end
+
+-- Rooms whose name contains `text` (all rooms if text == ""), in `zone` or
+-- anywhere: name -> { [vnum] = true }
+local function rooms_matching(text, zone)
+  local out = {}
+  for v, r in pairs(M.rooms) do
+    local name = plain_name(r)
+    if name ~= "" and (not zone or r.area == zone) and (text == "" or contains(name, text)) then
+      local key = zone and name or (name .. "\t" .. r.area)
+      out[key] = out[key] or {}
+      out[key][v] = true
+    end
+  end
+  return out
+end
+
+local function set_of(list)
+  local s = {}
+  for _, v in ipairs(list) do s[v] = true end
+  return s
+end
+
+-- Areas matching `text`: exact zone or keyword first, else part of the
+-- zone, keyword or name. Returns a list of zones, and true for an exact match
+local function areas_matching(text)
+  for zone, a in pairs(M.areas) do
+    if zone == text or a.kw == text then return { zone }, true end
+  end
+  local out = {}
+  for zone, a in pairs(M.areas) do
+    if contains(zone, text) or contains(a.kw, text) or contains(a.name, text) then
+      out[#out + 1] = zone
+    end
+  end
+  table.sort(out)
+  return out
+end
+
+-- An area as a choice for choose()
+local function zone_choice(zone)
+  return { text = area_label(zone), desc = "area " .. zone, zone = zone, what = "area " .. zone }
+end
+
+-- No route on the map: home, and the game's runto
+local function runto(what, rt)
+  warn("[travel] no route to " .. what .. " on the map - going home and using runto.")
+  rune.send_raw("home\ndown\nrt " .. rt)
+end
+
+-- Choices: { text, desc, what, and set (vnum -> true) or zone }. Measured
+-- with one search from here that stops once every choice is reached (the
+-- whole map only when one can't be); unreachable ones are dropped. One
+-- goes straight there; several open the picker, nearest first.
+-- `act` is walk (the default) or show (mf)
+local NONE = {}
+local function choose(title, choices, on_none, act)
+  act = act or walk
+  local from = here()
+  if not from then return end
+  -- Which choices each zone and room belongs to
+  local by_zone, by_room = {}, {}
+  for i, c in ipairs(choices) do
+    if c.zone then
+      by_zone[c.zone] = by_zone[c.zone] or {}
+      table.insert(by_zone[c.zone], i)
+    else
+      for v in pairs(c.set) do
+        by_room[v] = by_room[v] or {}
+        table.insert(by_room[v], i)
+      end
+    end
+  end
+  -- The search hands rooms to the goal cheapest first, each at its final
+  -- cost, so the first room of a choice it sees is that choice's nearest
+  local best, left = {}, #choices
+  local function reach(list, v)
+    for _, i in ipairs(list) do
+      if not best[i] then best[i] = v; left = left - 1 end
+    end
+  end
+  local function goal(v)
+    local r = M.rooms[v]
+    if r then reach(by_zone[r.area] or NONE, v) end
+    reach(by_room[v] or NONE, v)
+    return left == 0
+  end
+  -- (after an early stop, dist also holds rooms not finished - only best's are final)
+  local _, prev, how, dist, hops = T.search(from, goal)
+  local items, lost = {}, {}
+  for i, c in ipairs(choices) do
+    local v = best[i]
+    if v then
+      -- The room you're in is no choice
+      if dist[v] > 0 then items[#items + 1] = { c = c, v = v, d = dist[v] } end
+    else
+      lost[#lost + 1] = c.text
+    end
+  end
+  if #items == 0 and #lost == 0 then
+    say("[travel] " .. title .. ": you're already there.")
+    return
+  end
+  if #items == 0 then
+    if on_none then on_none(); return end
+    table.sort(lost)
+    warn("[travel] " .. title .. ": no route from here to " .. table.concat(lost, ", ", 1, math.min(#lost, 5))
+      .. (#lost > 5 and ", ..." or "") .. " - not linked to this part of the map. g <area> falls back to the game's runto.")
+    return
+  end
+  -- by the steps the picker shows (the user, 2026-11-08: sorting by cost -
+  -- a portal can cost more than a step - put 17 steps above 16), then cost
+  table.sort(items, function(a, b)
+    local ha, hb = hops[a.v], hops[b.v]
+    if ha ~= hb then return ha < hb end
+    if a.d ~= b.d then return a.d < b.d end
+    return a.c.text < b.c.text
+  end)
+  local function go(it)
+    act(prev, how, it.v, it.c.what .. " (" .. it.v .. ")")
+  end
+  if #items == 1 then go(items[1]); return end
+  local list = {}
+  for i, it in ipairs(items) do
+    list[i] = { text = it.c.text, desc = it.c.desc .. " - " .. hops[it.v] .. " steps", value = i }
+  end
+  rune.ui.picker.show({
+    title = title,
+    items = list,
+    match_description = true,
+    on_select = function(i)
+      -- The picker can sit open while you move; search again from wherever you are
+      local it = items[tonumber(i)]
+      if not it then return end
+      if M.here == from or act ~= walk then go(it) else T.go_vnum(it.v, it.c.what) end
+    end,
+  })
+end
+
+-- Commands ---------------------------------------------------------------
+
+-- ga <text>: a room in this area - a label starting with it, else a room
+-- whose name contains it. Nearest
+rune.alias.exact("ga", function(args)
+  local text = trim(args):lower()
+  if text == "" then warn("[travel] ga <text> - a label or room name in this area."); return end
+  local from = here()
+  if not from then return end
+  local r = M.rooms[from]
+  local zone = r and r.area ~= "" and r.area or nil
+  if not zone then warn("[travel] ga: this room's area isn't known."); return end
+  local labs, n = labels_matching(text, zone)
+  if n > 0 then
+    local set, names = {}, {}
+    for name, vnums in pairs(labs) do
+      names[#names + 1] = name
+      for _, v in ipairs(vnums) do set[v] = true end
+    end
+    table.sort(names)
+    T.go_nearest(set, "label " .. table.concat(names, "/"), "only")
+    return
+  end
+  local set = {}
+  for _, vs in pairs(rooms_matching(text, zone)) do
+    for v in pairs(vs) do set[v] = true end
+  end
+  if next(set) == nil then
+    warn("[travel] ga: no label or room here matches \"" .. text .. "\" - find " .. text .. " searches everywhere.")
+    return
+  end
+  T.go_nearest(set, "\"" .. text .. "\"", "only")
+end)
+
+-- find [text] walks there; mf [text] shows the route (tt++ mf)
+local function find(args, title, act)
+  local text = trim(args):lower()
+  local v = tonumber(text)
+  if v then
+    if not M.rooms[v] then warn("[travel] room " .. v .. " isn't on the map."); return end
+    local from = here()
+    if not from then return end
+    local found, prev, how = T.search(from, function(x) return x == v end)
+    if not found then warn("[travel] " .. title .. ": no route to room " .. v .. "."); return end
+    act(prev, how, found, "room " .. v)
+    return
+  end
+  local choices = {}
+  for name, vnums in pairs(labels_matching(text)) do
+    local r = M.rooms[vnums[1]]
+    choices[#choices + 1] = { text = name, desc = "label, " .. area_label(r and r.area),
+                              set = set_of(vnums), what = "label " .. name }
+  end
+  local zones = text == "" and {} or areas_matching(text)
+  if text == "" then for zone in pairs(M.areas) do zones[#zones + 1] = zone end end
+  for _, zone in ipairs(zones) do choices[#choices + 1] = zone_choice(zone) end
+  if text ~= "" then
+    for key, set in pairs(rooms_matching(text)) do
+      local name, area = key:match("^(.*)\t(.*)$")
+      choices[#choices + 1] = { text = name, desc = "room, " .. area_label(area), set = set, what = name }
+    end
+  end
+  if #choices == 0 then warn("[travel] " .. title .. ": nothing matches \"" .. text .. "\"."); return end
+  choose(title, choices, nil, act)
+end
+
+rune.alias.exact("find", function(args) find(args, "find", walk) end)
+rune.alias.exact("mf", function(args) find(args, "mf", show) end)
+
+-- A limited-use portal (data/portals.lua: zone set, no vnum, so routes never
+-- spend it) is tried first by g <its area>, from outside that area: "get" it
+-- from the bag, and only on the game's "You get ..." hold and enter it. No
+-- such reply within 2 s (none left in the bag): `fallback`, the usual way
+local function try_limited(zone, fallback)
+  local p
+  for _, q in pairs(T.cfg.portals) do
+    if q.zone == zone and not q.vnum then p = q end
+  end
+  local r = M.here and M.rooms[M.here]
+  if not p or not r or r.area == zone or blocks(r, "1", "3") or tier_level() < (p.lvl or 0) then
+    fallback()
+    return
+  end
+  local cmds, done = portal_cmds(p.obj), false
+  local got = rune.trigger.regex("^You get .* from ", function()
+    if done then return end
+    done = true
+    say("[travel] portal " .. p.obj)
+    rune.send_raw(table.concat(cmds, "\n", 2))
+  end, { name = "travel_limited", once = true })
+  rune.timer.after(2, function()
+    if done then return end
+    done = true
+    got:remove()
+    fallback()
+  end)
+  rune.send_raw(cmds[1])
+end
+
+-- The home routine: home's room shows; its chores (gulp, the bank -
+-- everything after the first home command) are hidden, then modules/eq.lua's
+-- hidden eqdata refreshes what's worn. The game answers in order, so the
+-- chores' output is everything between the {/roomchars} tag that ends
+-- home's room and the {/eqdata} tag that ends eqdata's reply - found by
+-- the tags, not the replies' wording. Already home: no room, but "You are
+-- already in your home!" (seen live 2026-11-07), shown, then the same.
+-- Home in the dark (heighten senses off): no room tags, but "You see
+-- nothing but darkness..." (seen live 2026-11-09), shown, then the same. No
+-- room otherwise (home refused): nothing is hidden but eqdata. It ends at {/eqdata}; 10 s if that never comes
+-- Only home is sent at first; the chores and eqdata wait until you're
+-- confirmed home: GMCP room.info with home_vnum, or "You are already in
+-- your home!". Refused, or the first room.info after it isn't home (from
+-- some areas home lands elsewhere first - Aylor, seen live 2026-11-13):
+-- the routine ends at once, nothing more sent (the user, 2026-11-13 - a
+-- refused home sent gulp and the bank anyway). No timeout before that (the
+-- user: a 10 s one held the next g); instead nothing is hidden and nothing
+-- else waits until it's confirmed, and a new g replaces it. The darkness
+-- line doesn't confirm: there, room.info must
+local quiet_line = util.group(true)   -- one catch-all, only while it's needed
+local quiet = { hiding = false, timer = util.slot(), unconfirmed = false }
+local function quiet_off()
+  quiet.unconfirmed = false
+  quiet_line.set(false)
+  T.home_done()
+end
+-- Not home: the routine stops, nothing more sent
+local function not_home(why)
+  if not quiet.unconfirmed then return end
+  quiet_off()
+  warn("[travel] g: " .. why .. " - not home, the chores weren't sent.")
+end
+function home_refused() not_home("home refused") end
+-- Home confirmed: the chores, then eqdata (whose reply ends the hiding)
+-- The bank at home: one transaction to leave home_gold on hand - from the
+-- gold GMCP char.worth last said you carry (modules/game.lua). Not known yet:
+-- deposit all, then withdraw it (two, as before)
+local function bank_cmd()
+  local want = tonumber(T.cfg.home_gold)
+  if not want then return nil end
+  local gold = type(game.worth) == "table" and tonumber(game.worth.gold)
+  if not gold then return "deposit all\nwithdraw " .. want end
+  if gold > want then return "deposit " .. (gold - want) end
+  if gold < want then return "withdraw " .. (want - gold) end
+end
+local function at_home()
+  if not quiet.unconfirmed then return end
+  quiet.unconfirmed = false
+  local rest = {}
+  for i = 2, #T.cfg.home_cmds do rest[#rest + 1] = T.cfg.home_cmds[i] end
+  rest[#rest + 1] = bank_cmd()
+  if rest[1] then rune.send_raw(table.concat(rest, "\n")) end
+  quiet.timer.start(10, quiet_off)
+  if not eq.check_worn() then quiet_off() end   -- no {/eqdata} coming: hide nothing
+end
+rune.gmcp.on("room.info", function()
+  if not quiet.unconfirmed then return end
+  if game.room.num == T.cfg.home_vnum then at_home()
+  else not_home("landed in " .. tostring(game.room.name)) end
+end, { name = "travel_home_arrived" })
+quiet_line.add("starts", "", function(_, ctx)
+  local clean = ctx.line:clean()
+  if clean:find("^{/eqdata}") then
+    quiet_off()
+    return   -- modules/eq.lua hides it, and the blank after
+  end
+  if not quiet.hiding then
+    if clean == "{/roomchars}" or clean == "You are already in your home!"
+      or clean:find("^You see nothing but darkness%.%.%.%s*$") then
+      quiet.hiding, quiet.first = true, true
+    end
+    if clean == "You are already in your home!" then at_home() end
+    return
+  end
+  if quiet.unconfirmed then return end   -- no chores sent yet: nothing to hide
+  -- The blank line that follows a room shows, as when you walk in
+  if quiet.first then
+    quiet.first = false
+    if util.blank(clean) then return end
+  end
+  return false
+end, { name = "travel_home_quiet", priority = 1 })
+
+-- One at a time: the routine and qc (modules/quest.lua) each hide lines
+-- up to an eqdata reply, with one hider each and modules/eq.lua's one waiting
+-- eqdata. A g sent while one runs used to switch the first one's hiding
+-- off (seen live 2026-11-09: rapid g showed the bank lines), and a qc
+-- could have its quest reply hidden as a g's chores. So while either runs,
+-- a g or qc typed waits (the user, 2026-11-11 - it used to be refused):
+-- held here, not sent, and run as the one running ends. One waits at most;
+-- a later one replaces it. T.home_busy(fn): fn() is true while that one
+-- runs; its owner calls T.home_done() as it ends
+local busy = {}
+local waiting   -- the g or qc typed while one ran
+function T.home_busy(fn) busy[#busy + 1] = fn end
+function T.home_running()
+  if quiet_line.is_on() and not quiet.unconfirmed then return true end
+  for _, on in ipairs(busy) do if on() then return true end end
+  return false
+end
+-- True if fn is held for later (one is running); `who` names it ("[quest] qc")
+function T.home_after(fn, who)
+  if not T.home_running() then return false end
+  waiting = fn
+  say(who .. ": waiting for the last g or qc to finish.")
+  return true
+end
+function T.home_done()
+  if not waiting or T.home_running() then return end
+  local fn = waiting
+  waiting = nil
+  fn()
+end
+
+local function home_routine()
+  if T.home_after(home_routine, "[travel] g") then return end
+  quiet.timer.stop()   -- an unconfirmed g before this one is replaced
+  quiet.hiding, quiet.unconfirmed = false, true
+  quiet_line.set(true)
+  rune.send_raw(T.cfg.home_cmds[1])
+end
+
+-- To one of `zones`, the nearest (a picker if several reach): one zone's
+-- limited portal first; no route on the map: home and the game's runto
+-- with `rt`. `what` names it in the message. One zone, and you're in it:
+-- home, then to it from there
+local function go_zones(zones, rt, what)
+  local function route()
+    local choices = {}
+    for _, zone in ipairs(zones) do choices[#choices + 1] = zone_choice(zone) end
+    choose("g", choices, function() runto(what, rt) end)
+  end
+  if #zones == 1 then
+    local r = M.here and M.rooms[M.here]
+    if r and r.area == zones[1] then walk_from_home(zones[1], "area " .. zones[1]); return end
+    try_limited(zones[1], route)
+    return
+  end
+  route()
+end
+
+-- g: the home routine. g <area>: an area - exact zone or keyword, else part
+-- of a name (a picker if several). An area the map can't route to (not
+-- mapped, or no mapped way in) falls back to the game's runto, from home
+rune.alias.exact("g", function(args)
+  local text = trim(args):lower()
+  -- (not "return rune.send_raw": an alias's return value is run as a command)
+  if text == "" then
+    home_routine()
+    return
+  end
+  local zones = areas_matching(text)
+  if not zones[1] then
+    warn("[travel] g: no area matches \"" .. text .. "\" - ga for this area, find for anywhere.")
+    return
+  end
+  go_zones(zones, text, "\"" .. text .. "\"")
+end)
+
+-- To an area by zone, as g <area> does (for qx, modules/quest.lua)
+-- An area of several zones (area_zones) is reached at its nearest room in
+-- any of them - a portal into one of them ends the route there
+function T.go_area(zone)
+  local rt = (M.areas[zone] or {}).kw or zone
+  local zones = area_zones(zone)
+  if #zones == 1 then go_zones({ zone }, rt, area_label(zone)); return end
+  local is, rooms = set_of(zones), {}
+  for v, r in pairs(M.rooms) do
+    if is[r.area] then rooms[v] = true end
+  end
+  try_limited(zone, function()
+    local c = zone_choice(zone)
+    c.zone, c.set = nil, rooms   -- every zone of the area
+    choose("g", { c }, function() runto(area_label(zone), rt) end)
+  end)
+end
+
+-- The gnome airship isn't on the map
+rune.alias.exact("gnom", function()
+  rune.send_raw("home\ndown\nrt gnom\ns\nw\nboard airship")
+end)
+
+-- where -----------------------------------------------------------------
+-- For modules/target.lua. The where reply (tags where on) is the tag line, ONE
+-- answer line - the mob's name in a 30-column field, a space, its room - or
+-- "There is no <mob> around here.", then the closing tag. The answer can
+-- also come on the tag's own line, the closing tag too. where only covers
+-- your own area, and some areas refuse it ("There are too many doors ...").
+
+-- One of `zones`, chosen: each is a choice, measured to its entrance (its
+-- room nearest you) - one reachable goes straight there, several open the
+-- picker (nearest first, with its steps). It walks to the entrance only;
+-- on_pick(zone) runs as the walk is sent. For a campaign room name several
+-- areas share (modules/campaign.lua)
+function T.go_area_of(zones, title, on_pick)
+  local choices = {}
+  for _, z in ipairs(zones) do choices[#choices + 1] = zone_choice(z) end
+  choose(title, choices, nil, function(prev, how, v, w)
+    on_pick(M.rooms[v].area)
+    walk(prev, how, v, w)
+  end)
+end
+
+-- To the room named `room` in `zone` - the nearest, if several share it.
+-- In the area you're in: walked when the map has a way on foot, else by
+-- any route (home, portals)
+function T.go_room(zone, room, what)
+  local set = {}
+  for v, r in pairs(M.rooms) do
+    if M.same_area(r.area, zone) and plain_name(r):lower() == room:lower() then set[v] = true end
+  end
+  if next(set) == nil then
+    warn("[travel] no room named \"" .. room .. "\" in " .. area_label(zone) .. " on the map.")
+    return
+  end
+  local r = M.here and M.rooms[M.here]
+  T.go_nearest(set, what, r and M.same_area(r.area, zone) and "first" or nil)
+end
+
+-- One where question at a time: T.where(kw, cb) sends "where <kw>" and
+-- calls cb(name, room) with the answer, or cb(nil, why), or cb(nil, why,
+-- true) when the area refuses where. The answer line is always hidden, and
+-- the blank line(s) after it - callers say what came of it
+local where_asked, where_cb = 0, nil
+local where_got    -- the answer line, held until {/where} closes the reply
+local where_line = util.group(true)   -- one catch-all, only inside a reply
+
+-- The reply is over: the blank line(s) after it hidden, cb told. The answer
+-- goes out only now - cb may ask the next where at once, and this reply's
+-- {/where} must not be taken for that one's
+local function where_done(clean)
+  where_line.set(false)
+  util.eat_blanks(clean)
+  where_asked = 0
+  local line, cb = where_got, where_cb
+  where_got = nil
+  if not line then cb(nil, "the game gave no answer."); return end
+  line = line:gsub("{/where}%s*$", "")
+  local text = trim(line)
+  if text:find("^There is no ") then cb(nil, text); return end
+  if text:find("^There are too many ") then cb(nil, text, true); return end
+  local name, room = trim(line:sub(1, 30)), trim(line:sub(31))
+  if room == "" then cb(nil, "can't read the where reply \"" .. text .. "\"."); return end
+  cb(name, room)
+end
+
+-- The reply's lines after its {where} tag, up to {/where} - all hidden.
+-- On only for those few lines
+where_line.add("starts", "", function(_, ctx)
+  local clean = ctx.line:clean()
+  if clean:find("^{where}") then return end   -- the tag line that turned it on
+  if clean:find("^{/where}") then where_done(clean); return false end
+  where_got = where_got or clean
+  if clean:find("{/where}", 1, true) then where_done(clean) end
+  return false
+end, { name = "travel_where_line", priority = 5 })
+
+-- Before modules/tags.lua cuts the tag out. Only while one is asked. The answer
+-- may come on the tag's line, the closing tag too
+tags.on("where", function(rest, ctx)
+  if where_asked == 0 then return end
+  where_got = not util.blank(rest) and rest or nil
+  if rest:find("{/where}", 1, true) then where_done(ctx.line:clean()); return false end
+  where_line.set(true)
+  if where_got then return false end   -- else modules/tags.lua hides the bare tag
+end)
+
+-- No timeout (the user, 2026-11-13 - a slow reply came after a 5 s one
+-- gave up, and was misread or shown): the reply's {/where} ends it. One
+-- still waiting when another is asked is replaced - its cb hears so
+function T.where(kw, cb)
+  local old = where_asked ~= 0 and where_cb
+  where_asked, where_cb, where_got = os.time(), cb, nil
+  if old then old(nil, "replaced by a newer where.") end
+  rune.send_raw("where " .. kw)
+end
+
+-- A where question still waiting for its answer
+function T.where_busy() return where_asked ~= 0 end
+
+-- Probe (tt++ campaign.tin's where plan): finds a mob by its full name.
+-- where is asked with `kw` first if given, then each of
+-- util.mob_keywords(name). where shows the FIRST mob a keyword fits, so a
+-- try only counts when the answer is this mob - names compared lowercased,
+-- cut to where's 30 columns. An answer naming another mob means an earlier
+-- one holds the keyword: 2.kw, 3.kw ... are asked (to PROBE_MAX) until this
+-- mob or no answer (no more mobs with it). Found as N.kw, kw is "N.kw" -
+-- where's count, for the area (k strips it: modules/combat.lua). The tries' lines
+-- are hidden. cb(kw, room), or cb(nil) when nothing fit or the area
+-- refuses where (no more tries). The room may be a same-named mob's
+local PROBE_MAX = 15
+function T.probe(name, cb, kw)
+  local tries = {}
+  if kw then tries[1] = kw end
+  for _, k in ipairs(util.mob_keywords(name)) do
+    if k ~= kw then tries[#tries + 1] = k end
+  end
+  local want, i, n = trim(name:sub(1, 30):lower()), 0, 1
+  local function next_try(other)
+    -- another mob answered: the same keyword's next one, else the next keyword
+    if other and n < PROBE_MAX and not tries[i]:find("^%d+%.") then
+      n = n + 1
+    else
+      i, n = i + 1, 1
+    end
+    local k = tries[i]
+    if not k then cb(nil); return end
+    if n > 1 then k = n .. "." .. k end
+    T.where(k, function(got, room, refused)
+      if refused then cb(nil); return end
+      if got and got:lower() == want then cb(k, room); return end
+      next_try(got ~= nil)
+    end)
+  end
+  next_try()
+end
+
+-- The zones holding a room of each name: names = { [name] = true }, any
+-- case. One pass over the map for them all. Returns name -> { zone, ... }
+function T.zones_with_rooms(names)
+  local want, out = {}, {}
+  for n in pairs(names) do want[n:lower()] = n; out[n] = {} end
+  local seen = {}
+  for _, r in pairs(M.rooms) do
+    local n = want[plain_name(r):lower()]
+    if n and not seen[n .. "\t" .. r.area] then
+      seen[n .. "\t" .. r.area] = true
+      table.insert(out[n], r.area)
+    end
+  end
+  return out
+end
+
+-- Help (lib/help.lua): /help
+local help = require("lib.help")
+help.add("g", "g [area]", "bare: the home routine; with an area: go there (a picker if several match)")
+help.add("ga", "ga <text>", "this area: the nearest room labelled or named <text>, walked")
+help.add("find", "find [text]", "anywhere: labels, areas, room names, a vnum - one match goes there, several open a picker")
+help.add("mf", "mf [text]", "as find, but shows the route instead of walking it, and copies it to the clipboard (3n2e;open north;north)")
+help.add("gnom", "gnom", "the gnome airship (not on the map)")
+help.add("13s", "13s, 3e2n ...", "speedwalk: a count and a direction letter, run together")
+
+return T

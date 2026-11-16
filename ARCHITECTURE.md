@@ -24,7 +24,7 @@ header comment documents its own commands and the game messages it reads.
 that has to survive a reload (the quest's start time, a running timer, the
 moons' phases, the rings rh swapped out) goes in `rune.store`.
 
-Rune connects at the login prompts, before any GMCP. `core/login.lua` answers
+Rune connects at the login prompts, before any GMCP. `modules/login.lua` answers
 the name and password prompts from `.env`, which is never committed and is
 kept chmod 600 (see `.env.example`). Anything that needs a character in the
 game, not just a connection, uses `game.on_login(fn)`. It runs at the first
@@ -33,30 +33,38 @@ game, not just a connection, uses `game.on_login(fn)`. It runs at the first
 ## Folders and layering
 
 ```
-core/     util  game  layout  tags  aliases  login  history  debug  help  profile
-panes/    status  group  chats  info  affects  timer
-gear/     eq  invmon
-nav/      mapper  maprec  travel  minimap  moons  repop
-targets/  target  quest  campaign  doubles  soh
-fight/    combat  autocast  heal  hunt  dps  rheal  pup  instinct  quiet  bcc
-host/     spup (hosting spellups)
-areas/    loader  + one script per zone (geniewish, knossos, partroxis, blackclaw)
-data/     settings and game data (Lua tables), data/classes/<subclass>.lua
-map/      aard.map, the room map
-tools/    one-time converters from the tt++ data, rune-api.txt (API dump),
-          trigbench/ (what the triggers cost per line)
+lib/            util  debug  help  profile
+ui/             colors  theme  layout  view
+panes/          status  group  chats  info  affects  timer
+modules/        game  tags  group  aliases  login  history  copy  act
+                mapper  maprec  travel  minimap  moons  repop
+                target  quest  campaign  doubles  soh
+                combat  autocast  heal  hunt  dps  rheal  pup  instinct  quiet  bcc
+                eq  invmon  spup
+modules/zones/  loader  + one script per zone (geniewish, knossos, partroxis, blackclaw)
+data/           settings and game data (Lua tables), data/classes/<subclass>.lua
+map/            aard.map, the room map
+tools/          one-time converters from the tt++ data, rune-api.txt (API dump),
+                trigbench/ (what the triggers cost per line)
 ```
 
-The folders form layers, top to bottom. A file requires only from its own
-folder or one above it in that list, never below. So:
+Organized by module (2026-11-15), in three kinds:
 
-- `core/util`, `core/game` and `core/layout` require nothing of ours.
-- **Panes know no features.** A pane offers slots or a provider API, and the
-  features plug in. Features require panes, never the other way round.
-- **Area scripts may require anything**, because they're loaded last and only
-  while you're in their zone.
+- **Libraries** (`lib/`, `ui/`): game-agnostic code the rest builds on - the
+  framework. They require nothing in `modules/` or `panes/`.
+- **Modules** (`modules/`): anything that does something in the game or knows
+  Aardwolf, even when many others require it (`game`, `tags`, `mapper`). A
+  module requires the libraries and the modules it uses; requires never go in
+  a circle. Modules publish data (`ui/view.lua`) and know no pane.
+- **Panes** (`panes/`): each pane's configuration - which widgets show which
+  modules' data. Generic: for another MUD they'd be configured on that MUD's
+  modules. `status` and `group` are there; `info`, `chats`, `affects` and
+  `timer` still draw their own text, and modules still push text into `info`
+  (`info.set`) until it's converted.
+- **Zone scripts** (`modules/zones/`) may require anything, because they're
+  loaded last and only while you're in their zone.
 
-Every module that others use returns its table (`local game = require("core.game")`).
+Every module that others use returns its table (`local game = require("modules.game")`).
 Lua's `require` runs each file once per Lua state, so the order of the
 `require` lines in `init.lua` doesn't matter.
 
@@ -65,13 +73,13 @@ Lua's `require` runs each file once per Lua state, so the order of the
 In order of preference:
 
 1. **GMCP.** Character, vitals, room, quest, group, channels and the tick. It's
-   structured, needs no parsing and costs nothing per line. `core/game.lua`'s
+   structured, needs no parsing and costs nothing per line. `modules/game.lua`'s
    handlers run first (priority 1) and keep the current values in `game`
    (`game.state`, `game.room.num`, `game.tick` …), so every later handler of the
    same message reads fresh values. Aardwolf sometimes sends numbers as
    strings, so everything goes through `tonumber`.
 2. **The game's inline tags.** `{rname}`, `{affon}`, `{invmon}`, `{where}` and
-   the like. The tags stay on in the game. `core/tags.lua` has the one
+   the like. The tags stay on in the game. `modules/tags.lua` has the one
    trigger that looks at tag lines. Features register with
    `tags.on(name, fn)` instead of adding triggers, and `fn(rest, ctx)`
    returning `false` hides the line.
@@ -84,7 +92,7 @@ In order of preference:
 ## Triggers and their cost
 
 From Rune's source (`lua/matcher.go`) and benchmarks of this config
-(2026-11-06; the note is also in `core/util.lua`):
+(2026-11-06; the note is also in `lib/util.lua`):
 
 - **Every registered trigger is matched in Go against every line, disabled ones
   too.** `enabled` is checked in Lua only after a match, and a line with any
@@ -132,7 +140,7 @@ while one is expected, and a timeout empties the queue if no reply comes.
 `util.eat_blanks` hides the blank lines the game sends after a hidden reply.
 
 **No stray blank lines.** Anything that hides lines must not leave a blank or
-double blank behind. `core/tags.lua` squeezes room-block blanks, and
+double blank behind. `modules/tags.lua` squeezes room-block blanks, and
 `util.eat_blanks` follows hidden replies. Nor may it make the main pane
 jump: Rune shows half a line (a packet that ends mid-line) as a temporary
 row before output triggers see it, so while anything hides lines,
@@ -142,54 +150,54 @@ it's on with `util.group(true)` or `util.hider(fn)`.
 **Hiding a walk's rooms.** `tags.hide_rooms(n, owner)` hides the next `n - 1`
 room blocks and shows only the last, the room you arrive in. `g` and
 speedwalks use it, and so does the Partroxis maze's run back. `owner` (nil for
-travel, `"maze"` for Partroxis) tells nav/travel.lua's wrong-exit handling to
+travel, `"maze"` for Partroxis) tells modules/travel.lua's wrong-exit handling to
 leave a walk to whoever started it. A 5 s watchdog shows the held room if a
 walk stalls.
 
 **Panes.**
-- **`core/layout.lua`** sets every pane's size.
+- **`ui/layout.lua`** sets every pane's size.
 - **`util.pane(name, text)`** writes a pane only when its text changed, so redraws are cheap.
 - **The status rows** (`panes/status.lua`) are two native Rune bars, `status1`
   and `status2`, which Rune redraws every 250 ms. Row 1 is timers and running measures
   (clocks, countdowns, DPS, PUP), row 2 is you (your stats, then the enemy). A row-1 segment
   with nothing running shows a gray `--`, padded to its usual width. Each segment is a generic
-  widget (`core/view.lua`: `cases`, `text`, ...) on data a module publishes; `panes/status.lua`
+  widget (`ui/view.lua`: `cases`, `text`, ...) on data a module publishes; `panes/status.lua`
   binds them, so the modules know nothing of the rows. Slots `row1`, `row1_end` and `row2` take
   more widgets (`status.add`).
 - **The info pane** (`panes/info.lua`) is shared by priority with `info.set(name, prio, text)`.
   The lowest priority wins: alerts 20/25, quest 50, campaign 60, account 90.
   `info.alert(level, secs, title, text)` flashes it.
 
-**The target.** `targets/target.lua` holds the one mob you're after: area,
+**The target.** `modules/target.lua` holds the one mob you're after: area,
 keyword, name and room. Quest (`qx`) and campaign (`cn`) set it, and `k` and
 `gm` use it. `target.on_change(fn)` notifies listeners such as the campaign
 row.
 
 **Messages.** `util.say` (cyan, news), `util.warn` (yellow, a problem),
 `util.err` (red, an error). Every message starts with its module's tag:
-`[maze]`, `[eq]`, `[areas]`.
+`[maze]`, `[eq]`, `[zones]`.
 
 **Help.** Every command has an entry: the module that makes it registers
-it next to its code with `require("core.help").add(name, usage,
-description)` (an area script: `A.help(...)`, gone when it unloads).
-`core/help.lua` wraps Rune's own `/help`, which lists Rune's commands and
-then ours; `/help <text>` searches both. `core/aliases.lua`
+it next to its code with `require("lib.help").add(name, usage,
+description)` (a zone script: `A.help(...)`, gone when it unloads).
+`lib/help.lua` wraps Rune's own `/help`, which lists Rune's commands and
+then ours; `/help <text>` searches both. `modules/aliases.lua`
 registers its one-liners from its own table, so a new one gets help too.
 A slash command (`/act`, `/copy`, `/debug`, `/profile` - the client's tools, nothing
 to do with the game) needs no entry: Rune's list shows its description.
 A new command without a help entry is unfinished.
 
-**Debug output.** `core/debug.lua` holds named topics: a module registers
-one with `local dbg = require("core.debug").topic(name, description, status_fn)`
+**Debug output.** `lib/debug.lua` holds named topics: a module registers
+one with `local dbg = require("lib.debug").topic(name, description, status_fn)`
 and writes `if dbg.on then dbg.log(msg) end` - the check first, so a debug
 line costs nothing to build while its topic is off. `/debug` lists them and
 switches them (`/debug <topic> [on|off]`, `/debug all off`). A topic that's
 on stays on across `/reload`. Debug code goes in a topic, not a command of
-its own. Topics: `act` (core/act.lua), `gmcp` (core/debug.lua), `group`,
-`chats`, `recov` (panes/affects.lua), `rooms` (nav/mapper.lua), `minimap`,
+its own. Topics: `act` (modules/act.lua), `gmcp` (lib/debug.lua), `group`,
+`chats`, `recov` (panes/affects.lua), `rooms` (modules/mapper.lua), `minimap`,
 `quiet`, `pup`, `dps`, `campaign`.
 
-**Profiling.** `/profile` (`core/profile.lua`) times every callback Rune
+**Profiling.** `/profile` (`lib/profile.lua`) times every callback Rune
 runs - trigger, span, GMCP, timer, hook, bar, alias, command, bind. They all
 go through `rune.guarded_call`; `/profile on` swaps a timing wrapper into
 that field and `/profile off` puts Rune's own function back, so off costs
@@ -208,13 +216,13 @@ fine for means over many calls, rough for one.
 
 **Aliases.** Rune keys aliases by name, so adding one replaces any other of
 that name. An alias's return value is run as a command, so a handler never
-does `return rune.send_raw(...)` (see Conventions). One-line aliases live in `core/aliases.lua`,
+does `return rune.send_raw(...)` (see Conventions). One-line aliases live in `modules/aliases.lua`,
 and everything else sits with its feature.
 
 ## Per-subclass modules
 
 A module that only one subclass uses goes in that subclass's
-`data/classes/<subclass>.lua` as `modules = { ... }` (Shaman: `nav.moons`),
+`data/classes/<subclass>.lua` as `modules = { ... }` (Shaman: `modules.moons`),
 not in `init.lua`. Every other module loads on every subclass, so a class
 file lists only its extras. The loader is the last section of `init.lua`:
 the subclass comes in GMCP `char.base` and is kept in `rune.session`, so a
@@ -223,10 +231,10 @@ another character) reloads, because Lua can't take a module's triggers and
 slots back out. Parts of a shared module that depend on the subclass (the
 totem, `only` affects) check `game.subclass` themselves.
 
-## Area scripts
+## Zone scripts
 
-`areas/loader.lua` watches GMCP `room.info`. On entering a zone with a file
-`areas/<zone>.lua`, it loads that file. On leaving, it removes everything the
+`modules/zones/loader.lua` watches GMCP `room.info`. On entering a zone with a file
+`modules/zones/<zone>.lua`, it loads that file. On leaving, it removes everything the
 script added. A script costs nothing anywhere else, and its triggers can't
 take a line from anything else there.
 
@@ -244,8 +252,8 @@ script's own `room.info` handlers miss that one. A script that needs the
 current room reads `game.room` when it loads (partroxis does).
 
 A command that has to work from outside its area (`bcc find`) belongs in an
-always-loaded module, not an area script: fight/bcc.lua, with the fight itself
-in areas/blackclaw.lua.
+always-loaded module, not a zone script: modules/bcc.lua, with the fight itself
+in modules/zones/blackclaw.lua.
 
 ## Data and the map
 
@@ -261,18 +269,18 @@ in areas/blackclaw.lua.
   Rune's `/log` files go in `userlogs/` there, with `userlogs/` as the root of
   any path given (`panes/status.lua` wraps `rune.log.start`). No folder is
   made; a missing one is an error. Rune's `/log` leaves out `rune.echo`; ours
-  puts it in (`core/copy.lua` wraps `rune.echo`), so our messages and debug
+  puts it in (`modules/copy.lua` wraps `rune.echo`), so our messages and debug
   topics' lines are in a log, except a chat-only one.
 - `data/classes/<subclass>.lua` holds the attack commands for `k`, `kk` and
   `aa`, chosen by GMCP `char.base` subclass.
 - `map/aard.map` is the room map: TAB-separated `R` (room) and `X` (exit)
   lines, about 34,800 rooms. It was converted from tt++ by
-  `tools/convert_ttmap.py`, and `nav/mapper.lua` keeps it current from GMCP as
-  you walk; `nav/maprec.lua` (map record) adds the custom exits GMCP can't show.
-  `nav/mapper.lua` also owns the rest of the world's data - areas
+  `tools/convert_ttmap.py`, and `modules/mapper.lua` keeps it current from GMCP as
+  you walk; `modules/maprec.lua` (map record) adds the custom exits GMCP can't show.
+  `modules/mapper.lua` also owns the rest of the world's data - areas
   (`data/areas.lua`: names, `same_area`, `zone_of`) and room labels
   (`data/labels.lua`, `map label`) - and requires nothing of the modules that
-  use it. `nav/travel.lua` does route search, walks and the travel commands
+  use it. `modules/travel.lua` does route search, walks and the travel commands
   on top of it.
 
 ## Conventions

@@ -23,19 +23,19 @@
 -- and a hidden "totem" reads its time and area.
 --   saf / aff / affects [args]   the game's command, then a hidden slist
 --   affectsreset                 just the hidden slist
---   /debug recov [on|off]        show the {recon}/{recoff} tags as they come (core/debug.lua)
--- core/tags.lua hides the affon, affoff, sfail, recon and recoff lines.
+--   /debug recov [on|off]        show the {recon}/{recoff} tags as they come (lib/debug.lua)
+-- modules/tags.lua hides the affon, affoff, sfail, recon and recoff lines.
 
-local util = require("core.util")
-local theme = require("core.theme")
+local util = require("lib.util")
+local theme = require("ui.theme")
 -- This module's colors: theme.affects.* - /theme lists them, data/theme.lua
--- changes them (core/theme.lua)
+-- changes them (ui/theme.lua)
 local T = theme.define("affects", "The affects pane", {
   { "totem_area",  theme.cyan, "the totem's area" },
 })
-local game = require("core.game")       -- the subclass (tracked affects, the totem)
-local layout = require("core.layout")   -- the pane's width
-local tags = require("core.tags")       -- the slist and affect tags
+local game = require("modules.game")       -- the subclass (tracked affects, the totem)
+local layout = require("ui.layout")   -- the pane's width
+local tags = require("modules.tags")       -- the slist and affect tags
 
 local say, trim = util.say, util.trim
 
@@ -407,7 +407,7 @@ rune.trigger.exact("{recoveries affected}", function(_, ctx)
 end, { name = "affects_slist_recov", gag = true, span = { to = "^\\{/recoveries\\}$", max = 50 } })
 
 -- The tags ----------------------------------------------------------------
--- (core/tags.lua hides them)
+-- (modules/tags.lua hides them)
 
 tags.on("affon", function(rest)
   local sn, secs = rest:match("^(%d+),(%-?%d+)$")
@@ -428,9 +428,9 @@ end)
 -- {recon}id,secs / {recoff}id: 65 is Create Totem; a tracked recovery's
 -- id. Another id while a tracked one's id isn't known yet: a hidden slist,
 -- once per id, whose recoveries rows name it
--- "debug recov" (core/debug.lua): each tag as it comes (hidden otherwise),
+-- "debug recov" (lib/debug.lua): each tag as it comes (hidden otherwise),
 -- with the recovery it matched; its status line, the ids learned so far
-local rec_dbg = require("core.debug").topic("recov",
+local rec_dbg = require("lib.debug").topic("recov",
   "the {recon}/{recoff} recovery tags as they come", function()
     local known = {}
     for id, r in pairs(rec_by_id) do known[#known + 1] = r.d.label .. "=" .. id end
@@ -551,7 +551,7 @@ totem_trig.add("regex", "^Your totem has expired\\.", function()
 end, { name = "affects_totem_expired" })
 
 -- Literal matches checked in Lua: as regexes these cost 1-1.3 us a line
--- (see core/util.lua's note on triggers)
+-- (see lib/util.lua's note on triggers)
 local function head() if totem_quiet then return false end end
 reply_trig.add("contains", "Totem Name", head, { name = "affects_totem_head" })
 reply_trig.add("contains", "------------ -----------------------------------", head,
@@ -618,8 +618,8 @@ end)
 
 build()
 
--- Help (core/help.lua): /help
-local help = require("core.help")
+-- Help (lib/help.lua): /help
+local help = require("lib.help")
 help.add("saf", "saf / aff / affects [args]", "the game's command, then a hidden slist that resets the affects pane")
 help.add("slist", "slist [args]", "the game's slist; a typed slist affected also resets the affects pane")
 help.add("affectsreset", "affectsreset", "resync the affects pane (a light looks stuck or wrong)")

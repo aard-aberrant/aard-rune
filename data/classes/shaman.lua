@@ -16,5 +16,5 @@ return {
   pattack_hit = "fury",
   sattack = "c 'tempest'",
   paoe = "c 'call lightning'",
-  modules = { "nav.moons" },   -- the 3MN light, moons, weather notices hidden
+  modules = { "modules.moons" },   -- the 3MN light, moons, weather notices hidden
 }

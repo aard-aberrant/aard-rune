@@ -1,7 +1,7 @@
 -- School of Horror mob keywords: mob name (lower case, its last word only -
 -- "evil euphonix" is euphonix) -> its hidden keyword, from Bambot's replies
 -- to "bb soh <mob>". Converted from tt++ conf/soh_keywords.tin 2026-11-07;
--- targets/soh.lua adds a name a reply brings and rewrites this file (a
+-- modules/soh.lua adds a name a reply brings and rewrites this file (a
 -- different keyword for a saved name is only reported). Hand-edit freely,
 -- then /reload.
 return {

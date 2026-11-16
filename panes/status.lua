@@ -1,6 +1,6 @@
 -- The status rows (require("panes.status")): two rows between the main output
 -- and the input, under the layout's divider line, like the tt++ status box.
--- Two native Rune bars, status1 and status2 (rune.ui.bar; core/layout.lua
+-- Two native Rune bars, status1 and status2 (rune.ui.bar; ui/layout.lua
 -- places them): Rune calls their renderers every 250 ms on its own steady
 -- clock, lines up each row's left and right parts, and redraws only a row
 -- whose text changed (ui/tui/widget/bar.go).
@@ -8,7 +8,7 @@
 --          2QP [row1_end]; REC (Rune's /log) at the right end
 --   row 2, you: HP MN MV ALN LVL TNL | AC [row2] and the enemy (name and
 --          health) - your state out of a fight
--- Each segment is a generic widget (core/view.lua) on data a module
+-- Each segment is a generic widget (ui/view.lua) on data a module
 -- publishes - quest, repop, moons, dps, pup, doubles, autocast know nothing
 -- of this file; the configuration here binds them (to move to the user's
 -- layout file, phase 5). A module's data not there (not loaded): its
@@ -16,18 +16,18 @@
 -- pos]), the segment's text alone - the row puts the spaces between.
 --   status.add("row1" | "row1_end" | "row2", widget, pos)
 
-local util = require("core.util")
-local colors = require("core.colors")
-local theme = require("core.theme")
+local util = require("lib.util")
+local colors = require("ui.colors")
+local theme = require("ui.theme")
 local mix, bg = colors.mix, colors.bg
 -- This module's colors: theme.rec.* - /theme lists them, data/theme.lua
--- changes them (core/theme.lua)
+-- changes them (ui/theme.lua)
 local T = theme.define("rec", "REC (status bar)", {
   { "on",     mix(theme.black_tc, bg(theme.red)), "REC while a log is open, flashing with rec.flash" },
   { "flash",  theme.red,                          "REC's other flash" },
 })
-require("core.game")   -- publishes aard.char (hp, mana, tick ...) to the engine
-local view = require("core.view")
+require("modules.game")   -- publishes aard.char (hp, mana, tick ...) to the engine
+local view = require("ui.view")
 local w, h, ref = view.widgets, view.helpers, view.ref
 local eq, any, all, no, above, below = h.eq, h.any, h.all, h.no, h.above, h.below
 
@@ -89,7 +89,7 @@ end
 --        first tick
 -- then the segments below, a space between each
 
--- QST (targets/quest.lua's aard.quest): minutes until you can quest again,
+-- QST (modules/quest.lua's aard.quest): minutes until you can quest again,
 -- red under 3 - RD once the wait has run out (before the game says so) or
 -- the game says ready - AC on a quest (red after the game's warning) - "--"
 -- not known. Built at the first pass (later): the quest module loads after
@@ -103,7 +103,7 @@ local qst = w.later(function() return w.cases("QST", {
   { "--", style = "qst.none" },
 }) end)
 
--- POP (nav/repop.lua's aard.repop): MM:SS to this area's next repop, red
+-- POP (modules/repop.lua's aard.repop): MM:SS to this area's next repop, red
 -- for the last 10 s, gray when an estimate; "--" once past or not known.
 -- 5 columns so the row doesn't shift
 local pop = w.later(function() return w.cases("POP", {
@@ -113,7 +113,7 @@ local pop = w.later(function() return w.cases("POP", {
   { "--   ", style = "pop.none" },
 }) end)
 
--- 3MN (nav/moons.lua's aard.moons): the three moons, 7 columns - "??" a
+-- 3MN (modules/moons.lua's aard.moons): the three moons, 7 columns - "??" a
 -- weather reading owed; all up: ticks until one sets ("--" not known);
 -- else ticks until all are up and for how long ("now/3t", "12t/3t"), soon
 -- (4 or fewer) colored, later gray; "--" not known
@@ -131,7 +131,7 @@ local moon = w.later(function()
   })
 end)
 
--- DPS (fight/dps.lua's aard.dps): damage per second and combat time,
+-- DPS (modules/dps.lua's aard.dps): damage per second and combat time,
 -- 11 columns - the rate "--" under 5 s; after a reset the last session's,
 -- gray, until new damage; "--" before any
 local dps = w.later(function() return w.cases("DPS", {
@@ -142,7 +142,7 @@ local dps = w.later(function() return w.cases("DPS", {
   { "{dps.secs|as:--|pad:5|style:dps.none} {dps.secs|clock|pad:5|style:dps.last}" },
 }, { pad = 11 }) end)
 
--- PUP (fight/pup.lua's aard.pup): "23s / 25s (104)" - the last gap, the
+-- PUP (modules/pup.lua's aard.pup): "23s / 25s (104)" - the last gap, the
 -- average (underlined), the count; gray once the session is over; "--"
 -- before the first. 15 columns
 local pup = w.later(function() return w.cases("PUP", {
@@ -151,7 +151,7 @@ local pup = w.later(function() return w.cases("PUP", {
   { "--", style = "pup.none" },
 }, { pad = 15 }) end)
 
--- 2XP / 2QP (targets/doubles.lua's aard.doubles): minutes of double
+-- 2XP / 2QP (modules/doubles.lua's aard.doubles): minutes of double
 -- experience / quest points left, dim when none
 local function double(label, name, key)
   return w.later(function() return w.cases("", {
@@ -183,7 +183,7 @@ local enemy = w.first(
 --   (ALN padded after to 5, room for the minus sign: "ALN 2500  TNL",
 --   "ALN -2500 TNL". LVL unpadded - it changes width seldom)
 --   TNL  experience to the next level, red under 300
--- then " | ", AC (fight/autocast.lua's aard.autocast: autocast on, dim
+-- then " | ", AC (modules/autocast.lua's aard.autocast: autocast on, dim
 -- off), the row2 slots and the enemy, a space between each.
 -- Not yet: ALN's lock colour
 local row2_left = w.join(

@@ -25,19 +25,19 @@
 -- The pin is kept in rune.session: a /reload keeps it, quitting Rune
 -- forgets it.
 
-local util = require("core.util")
-local colors = require("core.colors")
-local theme = require("core.theme")
+local util = require("lib.util")
+local colors = require("ui.colors")
+local theme = require("ui.theme")
 -- This module's colors: theme.target.* - /theme lists them, data/theme.lua
--- changes them (core/theme.lua)
+-- changes them (ui/theme.lua)
 local T = theme.define("target", "Quest and campaign targets (info pane)", {
   { "area",  theme.cyan,    "the area" },
   { "room",  theme.blue,    "the room" },
   { "mob",   theme.magenta, "the mob" },
   { "gone",  theme.red,     "the room, when the target is killed or gone" },
 })
-local game = require("core.game")       -- char.worth, char.stats (account)
-local layout = require("core.layout")   -- the pane's width
+local game = require("modules.game")       -- char.worth, char.stats (account)
+local layout = require("ui.layout")   -- the pane's width
 
 local info = {}
 -- Below these, the account view shows red. The defaults (conf/equipment.tin);
@@ -197,7 +197,7 @@ for _, pkg in ipairs({ "char.worth", "char.stats" }) do
   rune.gmcp.on(pkg, account, { name = "info_" .. pkg })
 end
 
--- A new subclass (core/game.lua has stored char.base already): its minimums
+-- A new subclass (modules/game.lua has stored char.base already): its minimums
 rune.gmcp.on("char.base", function()
   local sub = game.subclass
   if not sub or sub == mins_for then return end
@@ -280,8 +280,8 @@ rune.alias.exact("infopane", function(args)
     .. ". infopane reset to undo.")
 end)
 
--- Help (core/help.lua): /help
-local help = require("core.help")
+-- Help (lib/help.lua): /help
+local help = require("lib.help")
 help.add("infopane", "infopane [<name>|reset]", "list what can show in the info pane; <name>: pin one (it shows whenever it has something, beating all but an alert); reset: the normal order again")
 help.add("infomsg", "infomsg [-t secs] [text]", "your own text on the info pane (| starts a line, 4 lines); -t: gone after secs; bare clears it")
 

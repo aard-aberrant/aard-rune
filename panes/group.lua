@@ -1,4 +1,4 @@
--- The group pane (tt++ modules/group.tin): generic widgets on core/group.lua's
+-- The group pane (tt++ modules/group.tin): generic widgets on modules/group.lua's
 -- data (aard.group) - this file is configuration only.
 --
 -- One line per member, "M lvl name hp%" (21 columns: marker 1, level 3,
@@ -17,19 +17,19 @@
 --   F   the one you follow
 --   E   both: the leader, and you follow them (L and F laid over each other)
 -- Drawn only when the group data or the pane's size changed; a member's
--- line is built again only when what it shows changed (core/view.lua's list).
-local colors = require("core.colors")
-local theme = require("core.theme")
+-- line is built again only when what it shows changed (ui/view.lua's list).
+local colors = require("ui.colors")
+local theme = require("ui.theme")
 local bg = colors.bg
 -- This pane's colors: theme.group.* - /theme lists them, data/theme.lua
--- changes them (core/theme.lua)
+-- changes them (ui/theme.lua)
 theme.define("group", "The group pane", {
   { "marker",      theme.green,       "L / F / E: leader, followed, both" },
   { "title",       theme.yellow,      "the group's name, where the game sets no color" },
   { "title_band",  bg(theme.default), "the name's row background" },
 })
-local layout = require("core.layout")   -- the pane's size
-local view = require("core.view")
+local layout = require("ui.layout")   -- the pane's size
+local view = require("ui.view")
 local w, h = view.widgets, view.helpers
 
 view.add_styles({
