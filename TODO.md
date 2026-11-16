@@ -132,6 +132,12 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
 
 ## To do
 
+- [ ] Study: the generic group pane (core/view.lua list + flat-compiled rows; panes/group.lua) is ~2x the
+      hand-tuned one it replaced (plain Lua, per group message: 8 members all HP changed 16.9 -> 34.6 us,
+      40 members 40.7 -> 79.4; unchanged 0.5 -> 0.8). Accepted 2026-11-15 as small in absolute terms
+      (~0.36 group messages/s). The rest is spread over ~30 small calls per row (WIDTH finds, FMT,
+      F[] filter calls, cut) vs two string.format before. Measure live with /profile, then look at
+      inlining number formatting and widths of number-only values.
 - [ ] Copy commands: copychat [n] and copyout [n] via rune.clipboard.set (OSC 52;
       tmux already has set-clipboard on). Screen selection crosses panes.
 - [ ] Minimap: switch to the trigger `span` option instead of the on/off catch-all

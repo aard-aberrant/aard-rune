@@ -152,8 +152,10 @@ walk stalls.
 - **The status rows** (`panes/status.lua`) are two native Rune bars, `status1`
   and `status2`, which Rune redraws every 250 ms. Row 1 is timers and running measures
   (clocks, countdowns, DPS, PUP), row 2 is you (your stats, then the enemy). A row-1 segment
-  with nothing running shows a gray `--`, padded to its usual width. They have slots: `row1`, `row1_end` and `row2`. A feature adds functions
-  that return its segment (the text alone; the row adds the spaces), and calls `rune.ui.refresh_bars()` to show a change at once.
+  with nothing running shows a gray `--`, padded to its usual width. Each segment is a generic
+  widget (`core/view.lua`: `cases`, `text`, ...) on data a module publishes; `panes/status.lua`
+  binds them, so the modules know nothing of the rows. Slots `row1`, `row1_end` and `row2` take
+  more widgets (`status.add`).
 - **The info pane** (`panes/info.lua`) is shared by priority with `info.set(name, prio, text)`.
   The lowest priority wins: alerts 20/25, quest 50, campaign 60, account 90.
   `info.alert(level, secs, title, text)` flashes it.

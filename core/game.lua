@@ -27,10 +27,13 @@ local game = { room = { num = nil, zone = "", name = "" } }
 local view = require("core.view")
 local colors = require("core.colors")   -- uncolor: the enemy's name without the game's codes
 
+-- hp, mana, moves: one { cur, max } each, changed in place (read when
+-- drawn - nothing built per vitals message)
+local held = {}
 local V = view.provides("aard.char", "your character, from Aardwolf GMCP char.* and comm.tick", {
-  hp       = { "ratio",     "hit points", standard = true },
-  mana     = { "ratio",     "mana", standard = true },
-  moves    = { "ratio",     "moves", standard = true },
+  hp       = { "ratio",     "hit points", standard = true, get = function() return held.hp end },
+  mana     = { "ratio",     "mana", standard = true, get = function() return held.mana end },
+  moves    = { "ratio",     "moves", standard = true, get = function() return held.moves end },
   align    = { "number",    "alignment, -2500 to 2500" },
   level    = { "number",    "your level", standard = true },
   tnl      = { "number",    "experience to the next level" },
@@ -46,18 +49,40 @@ local STATE_NAMES = {
   [11] = "resting", [12] = "running",
 }
 game.state_names = STATE_NAMES
--- A new { cur, max } only when one of them changed (most vitals messages
--- change one of the three)
-local function ratio(name, cur, max)
-  local o = V.get(name)
-  if o and cur and o.cur == cur and o.max == max then return end
-  V.set(name, (cur and max) and { cur = cur, max = max } or nil)
+-- Setters made once (each GMCP status sets several)
+local set = {}
+for _, n in ipairs({ "align", "level", "tnl", "state", "fighting", "enemy", "enemy_hp" }) do
+  set[n] = V.setter(n)
 end
+local touch = { hp = V.toucher("hp"), mana = V.toucher("mana"), moves = V.toucher("moves") }
+-- touched only when cur or max changed (most vitals messages change one
+-- of the three); nil until both are known
+local function ratio(name, cur, max)
+  local o = held[name]
+  if cur and max then
+    if o then
+      if o.cur == cur and o.max == max then return end
+      o.cur, o.max = cur, max
+    else
+      held[name] = { cur = cur, max = max }
+    end
+  elseif o then
+    held[name] = nil
+  else
+    return
+  end
+  touch[name]()
+end
+-- (the compare made here first: no call for an unchanged value)
+local publish = V.publish
 local function vitals()
-  ratio("hp", game.hp, game.maxhp)
-  ratio("mana", game.mana, game.maxmana)
-  ratio("moves", game.moves, game.maxmoves)
-  V.publish()
+  local o, c, m = held.hp, game.hp, game.maxhp
+  if not (o and o.cur == c and o.max == m) then ratio("hp", c, m) end
+  o, c, m = held.mana, game.mana, game.maxmana
+  if not (o and o.cur == c and o.max == m) then ratio("mana", c, m) end
+  o, c, m = held.moves, game.moves, game.maxmoves
+  if not (o and o.cur == c and o.max == m) then ratio("moves", c, m) end
+  publish()
 end
 
 local function on(pkg, fn)
@@ -80,20 +105,26 @@ on("char.base", function(d)
   end
 end)
 
+local started   -- the first char.status sets every value (nil ones too)
 on("char.status", function(d)
-  game.state = tonumber(d.state)
-  game.level = tonumber(d.level)
-  game.tnl = tonumber(d.tnl)
-  game.align = tonumber(d.align)
-  game.enemy = d.enemy or ""
-  game.enemypct = tonumber(d.enemypct)
-  V.set("state", STATE_NAMES[game.state or 0] or "?")
-  V.set("fighting", game.state == 8)
-  V.set("level", game.level)
-  V.set("tnl", game.tnl)
-  V.set("align", game.align)
-  V.set("enemy", colors.uncolor(game.enemy))
-  V.set("enemy_hp", game.enemypct or 0)
+  -- each value set only when it changed (most status messages change one)
+  local v = tonumber(d.state)
+  if v ~= game.state or not started then
+    game.state = v
+    set.state(STATE_NAMES[v or 0] or "?")
+    set.fighting(v == 8)
+  end
+  v = tonumber(d.level); if v ~= game.level or not started then game.level = v; set.level(v) end
+  v = tonumber(d.tnl); if v ~= game.tnl or not started then game.tnl = v; set.tnl(v) end
+  v = tonumber(d.align); if v ~= game.align or not started then game.align = v; set.align(v) end
+  v = d.enemy or ""
+  if v ~= game.enemy then   -- the codes taken out only when the name changed
+    game.enemy = v
+    set.enemy(colors.uncolor(v))
+  end
+  v = tonumber(d.enemypct)
+  if v ~= game.enemypct or not started then game.enemypct = v; set.enemy_hp(v or 0) end
+  started = true
   V.publish()
 end)
 

@@ -21,27 +21,28 @@
 -- Cost: one literal trigger (contains); the row's
 -- segment is a few string operations each redraw.
 local util = require("core.util")
-local theme = require("core.theme")
-local status = require("panes.status")   -- the PUP segment's slot
 
 local GAP = 60   -- seconds: a longer gap ends the session
-local W = 15     -- the value's columns on the row, "60s / 60s (999)", so what follows stays put
 
 local prev            -- os.time() of the last pup
 local sess            -- the latest session: { start, last, n, ends, logged }
 local LOG = "pup.log"
 local over = util.slot()   -- fires GAP + 1 s after a counted pup: the session is over
 
--- Published (core/view.lua): the latest session (a new record at each pup)
--- and the last pup's time
-local view = require("core.view")
-local P = view.provides("aard.pup", "your powerup pace", {
-  ["pup.session"] = { "record", "the latest session: { start, last, n, ends }" },
-  ["pup.prev"]    = { "timestamp", "the last pup" },
-})
-
 local function avg(s) return math.floor((s.ends - s.start) / s.n + 0.5) end
 local function live() return prev and os.time() - prev <= GAP end
+
+-- Published (core/view.lua): the latest session's numbers, and whether it
+-- runs on (its last pup the latest, under GAP s ago - from the clock)
+local view = require("core.view")
+local P = view.provides("aard.pup", "your powerup pace", {
+  ["pup.last"] = { "seconds", "the latest session's last gap" },
+  ["pup.avg"]  = { "seconds", "the latest session's average gap, whole" },
+  ["pup.n"]    = { "number", "pups in the latest session" },
+  ["pup.live"] = { "boolean", "the latest session runs on", time = true,
+                   get = function() return sess ~= nil and sess.ends == prev and live() or false end },
+})
+local touch_live = P.toucher("pup.live")
 
 local function log_it()
   if not sess or sess.logged then return end
@@ -60,7 +61,7 @@ rune.trigger.contains("You have increased your powerups to ", function(_, ctx)
   local now = os.time()
   local gap = prev and now - prev
   prev = now
-  P.set("pup.prev", prev)
+  touch_live()
   if not gap or gap > GAP then P.publish(); return end   -- the baseline (a new one dims the row)
   if not sess or sess.ends ~= now - gap then   -- the first gap of a new session
     log_it()
@@ -69,26 +70,11 @@ rune.trigger.contains("You have increased your powerups to ", function(_, ctx)
   sess.n, sess.last, sess.ends = sess.n + 1, gap, now
   over.start(GAP + 1, log_it)
   if dbg.on then dbg.log("gap " .. gap .. "s, " .. sess.n .. " in this session") end
-  P.set("pup.session", { start = sess.start, last = sess.last, n = sess.n, ends = sess.ends })
+  P.set("pup.last", sess.last); P.set("pup.avg", avg(sess)); P.set("pup.n", sess.n)
   P.publish()
 end, { name = "pup_line" })
 
--- "PUP 23s / 25s (104)": "PUP --" before the first session. PUP as DPS's
--- label, the numbers green as its value (gray once the session is over). The average's
--- underline is SGR 4 (24 ends it); an overline (53) didn't show live, 2026-11-08
--- Rebuilt at each pup and once the session is over (live: the last pup
--- under GAP + 1 s ago - a value that changes only then). The underline
--- stays theme.emphasis's codes inside the line's own color, not a style
--- slot (a slot's text ends with a reset)
-status.add("row1_end", view.widgets.custom("pup",
-  { inputs = { "pup.session", "pup.prev", view.helpers.less(view.ref("pup.prev.ago"), GAP + 1) } },
-  function(st, s, p, live)
-    if not s then return "PUP " .. st("none", "--") .. string.rep(" ", W - 2) end
-    local plain = string.format("%ds / %ds (%d)", s.last, avg(s), s.n)
-    local text = string.format("%ds / %s%ds%s (%d)", s.last, theme.emphasis.on, avg(s), theme.emphasis.off, s.n)
-    local on = live and s.ends == p
-    return "PUP " .. st(on and "on" or "over", text) .. string.rep(" ", W - #plain)
-  end))
+-- PUP on the status row: panes/status.lua
 
 local clock = util.clock
 

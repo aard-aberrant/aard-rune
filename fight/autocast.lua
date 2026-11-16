@@ -24,9 +24,7 @@
 -- Off at every load. The AC light on status row 2, after "|": green on, gray off.
 
 local util = require("core.util")
-local theme = require("core.theme")
 local game = require("core.game")
-local status = require("panes.status")   -- the AC light, in a row-2 slot
 local combat = require("fight.combat")   -- the attack, and k's hook
 
 local say, warn, trim = util.say, util.warn, util.trim
@@ -94,9 +92,7 @@ local A = view.provides("aard.autocast", "autocast (ac)", {
   ["ac.on"] = { "boolean", "ac is on" },
 })
 A.set("ac.on", on)
-status.add("row2", view.widgets.custom("ac", { inputs = { "ac.on" } }, function(st, is_on)
-  return st(is_on and "on" or "off", "AC")
-end))
+-- AC on the status row: panes/status.lua
 
 local function show()
   local c, w = attack()

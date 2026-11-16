@@ -9,7 +9,10 @@ return {
   -- put, hold = 6 commands). The held default portal and home cost 1
   portal_cost = 6,
 
-  home_cmds = { "home", "gulp", "deposit all", "withdraw 1000000" },
+  home_cmds = { "home", "gulp" },
+  -- after them, one bank transaction to leave this much gold on hand:
+  -- deposit what's over, or withdraw what's short (none when it's exact)
+  home_gold = 1000000,
 
   -- name = { obj = item id or keyword, lvl = tier level, vnum = where it lands }
   -- A limited-use portal has zone instead of vnum: routes never spend it, and

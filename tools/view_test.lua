@@ -346,5 +346,146 @@ check("palette: a group member", view.palette("red") ~= nil)
 eq("less", view.value(h.less(view.const(3), 5)), true)
 eq("less false", view.value(h.less(view.const(7), 5)), false)
 
+-- cases, tests, due, mmss ----------------------------------------------------------
+local Q = view.provides("t.cases", "cases test", {
+  ["cq.state"] = { "text", "" }, ["cq.warn"] = { "boolean", "" }, ["cq.at"] = { "timestamp", "" },
+})
+eq("eq: equal", view.value(h.eq("cq.state", "x")), false)
+Q.set("cq.state", "x")
+eq("eq: now equal", view.value(h.eq("cq.state", "x")), true)
+eq("any: one nil", view.value(h.any("cq.warn", h.eq("cq.state", "x"))), true)
+eq("all: one nil", view.value(h.all("cq.warn", h.eq("cq.state", "x"))), false)
+eq("no: nil", view.value(h.no("cq.warn")), true)
+Q.set("cq.at", now + 61)
+eq("due", view.value(view.ref("cq.at.due")), 61)
+now = now + 62
+eq("due: past is nil", view.value(view.ref("cq.at.due")), nil)
+eq("left: past is 0", view.value(view.ref("cq.at.left")), 0)
+now = now - 62
+view.add_styles({ ["cq.on"] = "red", ["cq.none"] = "plain" })
+local function mk()
+  return w.cases("CQ", {
+    { when = h.all(h.eq("cq.state", "wait"), "cq.warn"), "W", style = "cq.on" },
+    { when = h.eq("cq.state", "wait"), "{cq.at.due|mmss}" },
+    { when = h.any(h.eq("cq.state", "a"), h.eq("cq.state", "b")), "AB" },
+    { "--", style = "cq.none" },
+  }, { pad = 5 })
+end
+-- alone (its own clock keys) and as a bar's only changing item (fused: the
+-- bar compares the keys its code reads)
+local alone, fused = mk(), mk()
+view.bar("cqb", { left = { fused } })
+local fa = view.gen(alone)
+local function both() bars_reg.zb1(); return fa(), bars_reg.cqb() and bars_reg.cqb().left end   -- zb1 hosts the pass
+local function case_eq(name, want)
+  local a, b = both()
+  eq("cases " .. name, a and plain(a), want); eq("cases " .. name .. " (fused)", b and plain(b), want)
+  eq("cases " .. name .. " (tree)", plain(view.draw(mk())), want)
+end
+case_eq("fallback padded", "CQ --   ")
+Q.set("cq.state", "a"); case_eq("any", "CQ AB   ")
+Q.set("cq.state", "wait"); case_eq("a value", "CQ 01:01")
+now = now + 1; case_eq("next second", "CQ 01:00")
+now = now + 61; case_eq("past: a nil value moves on", "CQ --   ")
+Q.set("cq.warn", true); case_eq("all", "CQ W    ")
+check("cases: style applied", (fa()):find("\27[", 1, true) ~= nil)
+Q.set("cq.at", now + 7000); Q.set("cq.warn", false); case_eq("mmss cap", "CQ 99:99")
+errs("cases: needs a template", function() w.cases("X", { { when = "cq.warn" } }) end, "needs a template")
+-- the code holds the styles' codes: a style change builds it again
+Q.set("cq.warn", true); bars_reg.zb1()
+local red_row = bars_reg.cqb().left
+view.add_styles({ ["cq.on"] = "green" }); bars_reg.zb1()
+local green_row = bars_reg.cqb().left
+check("style change: new codes in built code", green_row ~= red_row and green_row:find(view.palette("green").on, 1, true) ~= nil, green_row)
+eq("style change: same text", plain(green_row), "CQ W    ")
+
+-- pads whose width is known when built (a literal, as:, pad: before a
+-- style): the spaces written in or left out - the same text as measuring;
+-- after:, clock
+local PW = view.provides("t.padw", "pad widths test", {
+  ["pw.k"] = { "text", "" }, ["pw.n"] = { "number", "" },
+})
+view.add_styles({ ["pw.s"] = "red" })
+local function pw()
+  return w.cases("PW", {
+    { when = h.eq("pw.k", "lit"), "--", style = "pw.s" },                                  -- exactly 2
+    { when = h.eq("pw.k", "as"), "{pw.n|as:none|style:pw.s}" },                             -- exactly 4
+    { when = h.eq("pw.k", "wide"), "{pw.n|pad:6|style:pw.s} {pw.n|pad:6}" },                -- at least 13
+    { when = h.eq("pw.k", "after"), "{pw.n|after:s|style:pw.s}", width = 4 },               -- not known
+    { when = h.eq("pw.k", "clock"), "{pw.n|clock}" },
+  }, { pad = 8 })
+end
+local pwa = pw(); view.bar("pwb", { left = { pwa } })
+local function pw_eq(name, want)
+  bars_reg.zb1()
+  local a, b = bars_reg.pwb().left, view.draw(pw())
+  eq("pad widths " .. name, plain(a), want); eq("pad widths " .. name .. " (tree)", plain(b), want)
+  eq("pad widths " .. name .. ": built = tree", a, b)
+end
+PW.set("pw.n", 7)
+PW.set("pw.k", "lit"); pw_eq("literal", "PW --      ")
+check("pad widths: spaces after the style", (bars_reg.pwb().left):find("\27%[0m      $") ~= nil, bars_reg.pwb().left)
+PW.set("pw.k", "as"); pw_eq("as", "PW none    ")
+PW.set("pw.k", "wide"); pw_eq("wide enough", "PW 7      7     ")
+PW.set("pw.k", "after"); pw_eq("after", "PW 7s      ")
+PW.set("pw.n", 1234567); pw_eq("after, wider", "PW 1234567s")
+PW.set("pw.k", "clock"); PW.set("pw.n", 125); pw_eq("clock", "PW 2:05    ")
+PW.set("pw.n", 6000); pw_eq("clock cap", "PW >100m   ")
+
+-- list, row refs, banner, a sized pane ---------------------------------------
+local LS = view.provides("t.list", "list test", {
+  ["ls.rows"] = { "list", "rows", fields = { n = "text", v = "number", on = "boolean" } },
+  ["ls.title"] = { "block", "title" }, ["ls.mark"] = { "text", "outside a row" },
+})
+errs("row: not list data", function() view.row("ls.title") end, "isn't list data")
+local lr = view.row("ls.rows")
+errs("row: no such field", function() return lr.nope end, "have n, on, v")
+view.add_styles({ ["ls.v"] = { { below = 10, "red" }, "green" }, ["ls.t"] = "yellow", ["ls.f"] = "plain" })
+local lsize = { 1, 17 }
+local built = 0
+local lv = { n = lr.n, v = lr.v, m = view.ref("ls.mark") }
+local lrow = w.cases("", {
+  { when = h.no(lr.on), "-{n|pad:4}{v|rpad:3}", vars = lv },
+  { w.join(w.text("{n|cut:4|pad:4}", { vars = lv }), w.text("{v|rpad:3|style:ls.v}{m}", { vars = lv })) },
+})
+view.pane("lp", { size = function() return lsize[1], lsize[2] end,
+  w.banner("ls.title", { style = "ls.t", fill = "ls.f" }),
+  w.list("ls.rows", { row = lrow, sort = { h.no(lr.on), lr.v }, key = lr.n, width = 8, gap = " " }) })
+local function lp()
+  bars_reg.zb1()
+  for k = #panes_written, 1, -1 do if panes_written[k][1] == "lp" then return panes_written[k][2] end end
+end
+LS.set("ls.mark", "*")
+LS.set("ls.rows", { { n = "a", v = 50, on = true }, { n = "bb", v = 5, on = true }, { n = "c", v = 7, on = false },
+                    { n = "ddddd", v = 20, on = true } })
+eq("list: sorted, two columns of one row, rest cut", plain(lp()), "bb    5* dddd 20*")
+lsize = { 3, 30 }
+LS.set("ls.title", "Hi")
+eq("list: banner takes a row", plain(lp()), "              Hi              \nbb    5* a    50*\ndddd 20* -c     7")
+check("banner: style, fill, reset", lp():find("^\27%[33mHi", 15) ~= nil or lp():find("\27%[33mHi") ~= nil, lp())
+LS.set("ls.title", nil); lsize[2] = 10
+eq("list: narrow - one column, every row", plain(lp()), "bb    5*\ndddd 20*\na    50*\n-c     7")
+LS.set("ls.mark", "!")
+eq("list: data outside the row - rebuilt", plain(lp()), "bb    5!\ndddd 20!\na    50!\n-c     7")
+LS.set("ls.rows", { { n = "a", v = 1, on = true } })
+eq("list: a field changed - rebuilt", plain(lp()), "a     1!")
+check("list: style on a value (rules)", lp():find("\27[31m", 1, true) ~= nil, lp())
+view.add_styles({ ["ls.v"] = "green" })
+check("list: a style change - built again", lp():find(view.palette("green").on, 1, true) ~= nil, lp())
+LS.set("ls.rows", {})
+eq("list: empty - nothing", lp(), "")
+
+-- later: built at the first pass; data not provided, left out; provided later, shown
+local late = w.later(function() return w.text("L {zl.v}") end)
+view.bar("lb", { left = { late, "x" } })
+bars_reg.zb1()
+eq("later: no such data - left out", bars_reg.lb().left, "x")
+local ZL = view.provides("t.later", "later test", { ["zl.v"] = { "text", "" } })
+ZL.set("zl.v", "here")
+bars_reg.zb1()
+eq("later: data provided after - shown", bars_reg.lb().left, "L herex")
+ZL.set("zl.v", "again"); bars_reg.zb1()
+eq("later: follows its data", bars_reg.lb().left, "L againx")
+
 print(string.format("%d passed, %d failed", passed, failed))
 os.exit(failed == 0 and 0 or 1)

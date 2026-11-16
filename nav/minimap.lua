@@ -46,6 +46,7 @@ local T = theme.define("map", "The minimap", {
   { "player",  theme.red,      "another player's square" },
 })
 local game = require("core.game")       -- the room's zone and vnum
+local view = require("core.view")       -- fighting and state changes (aard.char)
 local mapper = require("nav.mapper")   -- the room's note
 local maprec = require("nav.maprec")   -- map record / plan / edit / drop / apply
 local layout = require("core.layout")   -- the pane's size
@@ -189,15 +190,18 @@ end
 -- (the header note); kept for when the minimap looks wrong
 local dbg = require("core.debug").topic("minimap", "the run check: state changes, map blocks, each room.info and what it drew")
 -- No redraw when the state leaves 12: run 10w's state went back before
--- its map block came, so a redraw then showed the start room's map a moment
+-- its map block came, so a redraw then showed the start room's map a moment.
+-- Run when aard.char's state changes, not on each char.status (two state
+-- numbers core/game.lua has no name for both read "?": a change between
+-- them isn't logged)
 local prev_state
-rune.gmcp.on("char.status", function()
+view.subscribe("state", function()
   if not dbg.on then return end
   local s = game.state
   if s == prev_state then return end
   dbg.log("state " .. tostring(prev_state) .. " -> " .. tostring(s))
   prev_state = s
-end, { name = "minimap_debug_state" })
+end)
 
 -- The block is one Rune span, <MAPSTART> to <MAPEND>, all of it hidden
 -- (gag): the action runs once at <MAPEND> with its lines. A block that
@@ -365,9 +369,10 @@ end, { name = "minimap_stale" })
 -- when the fight starts (12 to 8) becomes FIGHTING. Nothing is sent during
 -- the fight (the user, 2026-11-09: a command can queue and disrupt it):
 -- the moment it ends (8 to anything else), still no block, a silent map.
--- Cost: one compare per char.status
+-- Run when aard.char's fighting changes (core/game.lua's char.status
+-- handler publishes it), not on each char.status
 local fight_prev
-rune.gmcp.on("char.status", function()
+view.subscribe("fighting", function()
   local s, was = game.state, fight_prev
   fight_prev = s
   if stale and s == 8 and was ~= 8 then
@@ -376,7 +381,7 @@ rune.gmcp.on("char.status", function()
     if dbg.on then dbg.log("fight over (8 -> " .. tostring(s) .. ") with the pane stale: silent map") end
     minimap.refresh()
   end
-end, { name = "minimap_stale_fight" })
+end)
 
 -- Help (core/help.lua): /help
 local help = require("core.help")

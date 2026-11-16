@@ -27,7 +27,6 @@
 -- earlier fight's name, at a one-hit kill).
 
 local util = require("core.util")
-local colors = require("core.colors")
 local theme = require("core.theme")
 local game = require("core.game")       -- the area you're in (cn's order)
 local info = require("panes.info")       -- the campaign's rows
@@ -343,13 +342,12 @@ live("^Congratulations, that was one of your CAMPAIGN mobs!$", function()
   row()
 end, "cp_kill")
 
--- The enemy's name, without the game's color codes
-rune.gmcp.on("char.status", function(d)
-  local e = type(d) == "table" and d.enemy
-  if type(e) == "string" and e ~= "" then
-    last_enemy = colors.uncolor(e):lower()
-  end
-end, { name = "campaign_enemy" })
+-- The enemy's name, without the game's color codes: aard.char's enemy
+-- (core/game.lua takes the codes out), when it changes - not on each
+-- char.status
+require("core.view").subscribe("enemy", function(_, e)
+  if type(e) == "string" and e ~= "" then last_enemy = e:lower() end
+end)
 sync()
 
 -- cn --------------------------------------------------------------------

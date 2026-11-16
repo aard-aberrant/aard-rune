@@ -38,7 +38,6 @@ theme.define("double", "2XP / 2QP (status bar)", {
   { "qp",  theme.red,    "2QP, while on" },
 })
 local game = require("core.game")      -- on_login
-local status = require("panes.status") -- the lights (row1_end slots, last)
 local info = require("panes.info")     -- the flash
 
 local FLASH = 3
@@ -66,18 +65,7 @@ local function set(k, mins)
   D.publish()
 end
 
--- The lights ---------------------------------------------------------------
-
--- Minutes left, rounded up; rebuilt when that changes
-local function light(k, label)
-  return view.widgets.custom(k, { inputs = { NAME[k] .. ".left.min" } }, function(st, mins)
-    if not mins or mins <= 0 then return st("off", label) .. "   " end
-    return st("on", string.format("%s %-2d", label, mins))
-  end)
-end
--- 24-bit, as tt++'s <FFFFF00> / <FFF0000> (theme.double.xp / .qp)
-status.add("row1_end", light("dxp", "2XP"))
-status.add("row1_end", light("dqp", "2QP"))
+-- 2XP / 2QP on the status row: panes/status.lua
 
 -- The game's lines -------------------------------------------------------------
 

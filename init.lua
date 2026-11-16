@@ -82,9 +82,11 @@ require("core.tags")         -- the game's tag lines, hidden or cut out
 require("core.aliases")      -- one-line aliases: su, sq, qs, gh ...
 require("core.copy")         -- /copy <n>: the last n lines of the main pane to the clipboard
 require("core.act")          -- /act, /unact: ad hoc triggers, kept in acts.txt
+require("core.group")        -- your group, from GMCP group (the group pane shows it)
+require("panes.status")      -- the status bars (TCK, HP/MN/MV, the enemy ...) - before the
+                             -- group pane: its first bar runs the engine's pass (no extra bar)
 require("panes.group")       -- the group pane
 require("panes.chats")       -- the chats pane: channels, tells, remote socials
-require("panes.status")      -- the status bars (TCK, HP/MN/MV, the enemy ...)
 require("panes.info")        -- the info pane: quest, campaign, alerts, account, infomsg
 require("panes.timer")       -- timer
 require("panes.affects")     -- the affects pane, saf, affectsreset

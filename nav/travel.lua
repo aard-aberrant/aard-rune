@@ -877,11 +877,23 @@ local function not_home(why)
 end
 function home_refused() not_home("home refused") end
 -- Home confirmed: the chores, then eqdata (whose reply ends the hiding)
+-- The bank at home: one transaction to leave home_gold on hand - from the
+-- gold GMCP char.worth last said you carry (core/game.lua). Not known yet:
+-- deposit all, then withdraw it (two, as before)
+local function bank_cmd()
+  local want = tonumber(T.cfg.home_gold)
+  if not want then return nil end
+  local gold = type(game.worth) == "table" and tonumber(game.worth.gold)
+  if not gold then return "deposit all\nwithdraw " .. want end
+  if gold > want then return "deposit " .. (gold - want) end
+  if gold < want then return "withdraw " .. (want - gold) end
+end
 local function at_home()
   if not quiet.unconfirmed then return end
   quiet.unconfirmed = false
   local rest = {}
   for i = 2, #T.cfg.home_cmds do rest[#rest + 1] = T.cfg.home_cmds[i] end
+  rest[#rest + 1] = bank_cmd()
   if rest[1] then rune.send_raw(table.concat(rest, "\n")) end
   quiet.timer.start(10, quiet_off)
   if not eq.check_worn() then quiet_off() end   -- no {/eqdata} coming: hide nothing

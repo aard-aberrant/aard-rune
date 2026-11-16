@@ -24,7 +24,6 @@
 local util = require("core.util")
 local theme = require("core.theme")
 local game = require("core.game")
-local status = require("panes.status")   -- POP, first of the row1_end slots
 
 local say, warn = util.say, util.warn
 
@@ -117,15 +116,7 @@ rune.trigger.starts(SENSE, function(_, ctx)
   end
 end, { name = "repop_sense" })
 
--- POP: MM:SS, 5 columns so the row doesn't shift; red for the last 10 s,
--- gray when an estimate; "--" once past or not known. Rebuilt each second
-status.add("row1_end", view.widgets.custom("pop", { inputs = { "pop.next", "pop.sure" }, clock = true },
-  function(st, nxt, sure)
-    local left = nxt and nxt - os.time()
-    if not left or left < 0 then return "POP " .. st("none", "--   "), false end   -- nothing counting
-    local v = left > 5999 and "99:99" or string.format("%02d:%02d", math.floor(left / 60), left % 60)
-    return "POP " .. st(left <= 10 and "low" or not sure and "guess" or "value", v)
-  end), 1)
+-- POP (panes/status.lua) shows it
 
 rune.alias.exact("pop", function()
   if #stats == 0 then say("[pop] no exact countdown checked against a repop yet."); return end

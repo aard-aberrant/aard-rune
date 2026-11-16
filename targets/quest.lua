@@ -30,7 +30,6 @@ local T = theme.define("quest", "QST and the quest lines", {
   { "text",    theme.red,                            "the same: the values" },
   { "label",   theme.white,                          "the same: labels" },
 })
-local status = require("panes.status")   -- QST, in a row-1 slot
 local info = require("panes.info")       -- the quest's rows
 local target = require("targets.target")   -- qx sets it, a kill or the end drops it
 local travel = require("nav.travel")   -- qx goes
@@ -91,18 +90,7 @@ local function publish()
   Q.publish()
 end
 
--- QST: the minutes (red under 3) - RD once the wait has run out, before the
--- game says so - RD, AC (red after the warning), or "--". Rebuilt when the
--- minute or the state changes
-status.add("row1", view.widgets.custom("qst", { inputs = { "quest.state", "quest.ready_at.left.min", "quest.warn" } },
-  function(st, state, mins, warn)
-    if state == "wait" and mins and mins > 0 then
-      return "QST " .. st(mins < 3 and "low" or "value", string.format("%-2s", mins), mins)
-    end
-    if state == "wait" or state == "ready" then return "QST " .. st("ready", "RD") end
-    if state == "active" then return "QST " .. st(warn and "warn" or "active", "AC") end
-    return "QST " .. st("none", "--")
-  end))
+-- QST (panes/status.lua) shows it
 
 local function qst_update(d)
   local function wait(m, polled)

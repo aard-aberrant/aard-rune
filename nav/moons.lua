@@ -42,7 +42,6 @@ theme.define("moon", "3MN, the moons (status bar)", {
 })
 local game = require("core.game")       -- state, room, tick, at login
 local tags = require("core.tags")       -- no reading while walking
-local status = require("panes.status")  -- the 3MN light (a row1_end slot)
 local info = require("panes.info")      -- the all-up alert
 local travel = require("nav.travel")    -- home_vnum
 
@@ -128,10 +127,16 @@ end
 -- and when a reading falls owed
 local view = require("core.view")
 local L = view.provides("aard.moons", "the three moons", {
-  ["moon.light"] = { "record", "{ need, allup, setleft, ok, lo, len } - the 3MN light's facts" },
+  ["moon.need"]    = { "boolean", "a weather reading is owed (a moon's phase not known)" },
+  ["moon.allup"]   = { "boolean", "all three are up now" },
+  ["moon.setleft"] = { "number", "while all are up: ticks until one sets (-1: unknown)" },
+  ["moon.ok"]      = { "boolean", "the next all-up is known" },
+  ["moon.lo"]      = { "number", "ticks until the next all-up, at the soonest" },
+  ["moon.len"]     = { "number", "how many ticks it lasts" },
 })
 local function publish()
-  L.set("moon.light", { need = need(), allup = allup, setleft = setleft, ok = span.ok, lo = span.lo, len = span.len })
+  L.set("moon.need", need()); L.set("moon.allup", allup); L.set("moon.setleft", setleft)
+  L.set("moon.ok", span.ok); L.set("moon.lo", span.lo); L.set("moon.len", span.len)
   L.publish()
 end
 
@@ -365,22 +370,7 @@ rune.trigger.exact("It starts to rain a little.", function(_, ctx) return hide(c
 rune.trigger.regex("^A .+ blows from the (?:north|south|east|west|northeast|northwest|southeast|southwest)\\.$",
   function(_, ctx) if not cap then return hide(ctx) end end, { name = "moons_notice_wind" })
 
--- The 3MN light -----------------------------------------------------------
--- Second in row1_end, after POP: this loads last (a Shaman's module,
--- init.lua), so appending would put it after 2XP 2QP
-
-local function lf(st, slot, v) return "3MN " .. st(slot, string.format("%-7s", v)) end
-status.add("row1_end", view.widgets.custom("moon", { inputs = { "moon.light" } }, function(st, l)
-  if not l then return nil end
-  if l.need then return lf(st, "unknown", "??") end
-  if l.allup then
-    if l.setleft < 0 then return lf(st, "none", "--") end   -- "--" is always the faint one
-    return lf(st, "up", (l.setleft + 1) .. "t")
-  end
-  if not l.ok then return lf(st, "none", "--") end
-  local v = (l.lo > 0 and (math.min(l.lo, 999) .. "t") or "now") .. "/" .. l.len .. "t"
-  return lf(st, l.lo <= 4 and "soon" or "later", v)
-end), math.min(2, #status.row1_end + 1))
+-- 3MN on the status row: panes/status.lua
 
 -- The command -------------------------------------------------------------
 

@@ -18,14 +18,12 @@
 --   log       each session, when it ends (a reset, /reload, disconnect), one
 --             line in dps.log (util.state_dir: ~/.local/state/rune),
 --             tab-separated: start, seconds, damage, hits, area
--- On status row 1, after 3MN (a row1_end slot): "DPS 1234  1:23",
+-- On status row 1, after 3MN (panes/status.lua): "DPS 1234  1:23",
 -- always shown (a gray "--" before any damage, as PUP's, no clock; after a
 -- reset the last session's numbers, dimmed, until the next damage).
 
 local util = require("core.util")
-local theme = require("core.theme")
 local game = require("core.game")        -- fighting (char.status state)
-local status = require("panes.status")   -- the DPS segment's slot
 
 -- debug dps: each solo second counted, and the fight clock going on and off
 local dbg = require("core.debug").topic("dps", "the fight clock on and off, and each hit second counted outside a fight")
@@ -54,19 +52,36 @@ end
 
 local LOG = "dps.log"
 
--- Published (core/view.lua): the session so far, read when drawn (a
--- getter - nothing built at each hit), touched at each hit, fight start or
--- end, and reset. secs leaves out the fight under way (since: when it
--- began); last: the session before a reset, or nil
+-- Published (core/view.lua): what DPS shows - this session once it has
+-- damage, else the last one (before a reset) until new damage, else none.
+-- Read when drawn (getters - nothing built at each hit); rate and secs
+-- from the clock too (a fight's time runs on), compared each second;
+-- touched at a hit outside a fight and the session's first, fight start or
+-- end, and reset
+local function shown()
+  if d.damage > 0 then return "live" end
+  if last then return "last" end
+  return "none"
+end
+local function shown_secs()
+  if d.damage > 0 then return secs() end
+  return last and last.secs or nil
+end
 local view = require("core.view")
 local P = view.provides("aard.dps", "your damage per second, this area's session", {
-  ["dps.session"] = { "record", "{ damage, hits, secs, since, last = { damage, secs } } - read only",
-                      get = function() return d end },
+  ["dps.shown"] = { "text", "live (this session), last (the one before a reset, until new damage) or none",
+                    get = shown },   -- changes only when published, not with the clock
+  ["dps.rate"]  = { "number", "the shown session's damage per second, whole; nil under 5 s", time = true,
+                    get = function()
+                      local t = shown_secs()
+                      if not t or t < 5 then return nil end
+                      return math.floor((d.damage > 0 and d.damage or last.damage) / t)
+                    end },
+  ["dps.secs"]  = { "seconds", "the shown session's combat time", get = shown_secs, time = true },
 })
-local touch = P.toucher("dps.session")
+local touches = { P.toucher("dps.shown"), P.toucher("dps.rate"), P.toucher("dps.secs") }
 local function publish()
-  d.last = last
-  touch()
+  for _, t in ipairs(touches) do t() end
 end
 
 local function zero()
@@ -92,12 +107,16 @@ rune.trigger.regex("^\\*?(?:\\[\\d+\\] )?Your (.*) \\[(\\d+)\\]$", function(m)
   if d.damage == 0 then d.start = now end
   d.damage = d.damage + (tonumber(m[2]) or 0)
   d.hits = d.hits + 1
-  publish()
+  -- in a fight the widget's clock shows it, once a second; outside one
+  -- (a hit GMCP calls no fight) and the session's first damage, at once
+  if not d.since or d.hits == 1 then publish() end
 end, { name = "dps_hit" })
 
 -- The fight's clock: on at state 8, off when it ends. A hit's second
--- already counted (a first blow just before) isn't counted twice
-rune.gmcp.on("char.status", function()
+-- already counted (a first blow just before) isn't counted twice. Run
+-- when aard.char's fighting changes (core/game.lua publishes it in its
+-- char.status handler - the same moment), not on each char.status
+view.subscribe("fighting", function()
   local now = os.time()
   if game.state == 8 and not d.since then
     d.since = now
@@ -110,7 +129,7 @@ rune.gmcp.on("char.status", function()
     return
   end
   publish()
-end, { name = "dps_fight" })
+end)
 
 rune.gmcp.on("room.info", function(r)
   if type(r) ~= "table" or not r.zone or r.zone == "" or r.zone == d.area then return end
@@ -125,23 +144,7 @@ end, { name = "dps_area" })
 rune.hooks.on("reloading", zero, { name = "dps_log_reload" })
 rune.hooks.on("disconnected", zero, { name = "dps_log_disconnect" })
 
--- Always shown, the same 11 columns: a gray "--" before any damage (no
--- clock - nothing is running), as PUP's. After a reset the last session's
--- numbers stay, dimmed, until the next damage. Rebuilt on each change and
--- each second (the fight's clock)
-dps.widget = view.widgets.custom("dps", { inputs = { "dps.session" }, clock = true }, function(st, p)
-  if not p then return nil end
-  local secs, damage, rs, cs = p.secs + (p.since and (os.time() - p.since) or 0), p.damage, "rate", "time"
-  if damage == 0 then
-    if not p.last then return "DPS " .. st("none", "--") .. string.rep(" ", 9), false end
-    secs, damage, rs, cs = p.last.secs, p.last.damage, "last", "last"
-  end
-  local v, c = value(damage, secs), secs < 6000 and clock(secs) or ">100m"   -- 5 columns at most
-  if v == "--" then rs = "none" end   -- under 5 s: no rate yet
-  -- the clock matters only while a fight is under way (and its numbers show)
-  return "DPS " .. st(rs, string.format("%-5s", v)) .. " " .. st(cs, string.format("%-5s", c)), (p.since ~= nil and damage == p.damage)
-end)
-status.add("row1_end", dps.widget)
+-- DPS on the status row: panes/status.lua
 publish()
 
 rune.alias.exact("dps", function(args)

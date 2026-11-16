@@ -4,20 +4,17 @@
 -- places them): Rune calls their renderers every 250 ms on its own steady
 -- clock, lines up each row's left and right parts, and redraws only a row
 -- whose text changed (ui/tui/widget/bar.go).
---   row 1, timers and running measures: TCK, [row1 slots: QST (targets/quest.lua)],
---          [row1_end slots: POP (nav/repop.lua), 3MN (nav/moons.lua), DPS
---          (fight/dps.lua), PUP (fight/pup.lua), 2XP 2QP (targets/doubles.lua)];
---          REC (Rune's /log) at the right end
---   row 2, you: HP MN MV ALN LVL TNL | [row2 slots: AC (fight/autocast.lua)]
---          and the enemy (name and health) - your state out of a fight
--- A slot's segment is its text alone; the row puts the spaces between.
--- Features add their own segments with status.add(slot, widget[, pos]) - a
--- widget on the data the feature publishes (core/view.lua), rebuilt only
--- when that data changes. A plain function still works (called on every
--- pass). So this file knows no feature - they require it, never the other
--- way round; the segments' styles are set below, by name.
+--   row 1, timers and running measures: TCK QST [row1] POP 3MN DPS PUP 2XP
+--          2QP [row1_end]; REC (Rune's /log) at the right end
+--   row 2, you: HP MN MV ALN LVL TNL | AC [row2] and the enemy (name and
+--          health) - your state out of a fight
+-- Each segment is a generic widget (core/view.lua) on data a module
+-- publishes - quest, repop, moons, dps, pup, doubles, autocast know nothing
+-- of this file; the configuration here binds them (to move to the user's
+-- layout file, phase 5). A module's data not there (not loaded): its
+-- segment is left out. The [slots] take more: status.add(slot, widget[,
+-- pos]), the segment's text alone - the row puts the spaces between.
 --   status.add("row1" | "row1_end" | "row2", widget, pos)
---   status.field(label, value, width, style)   a "LBL value" segment
 
 local util = require("core.util")
 local colors = require("core.colors")
@@ -32,6 +29,7 @@ local T = theme.define("rec", "REC (status bar)", {
 require("core.game")   -- publishes aard.char (hp, mana, tick ...) to the engine
 local view = require("core.view")
 local w, h, ref = view.widgets, view.helpers, view.ref
+local eq, any, all, no, above, below = h.eq, h.any, h.all, h.no, h.above, h.below
 
 local status = { row1 = {}, row1_end = {}, row2 = {} }
 function status.add(slot, item, pos) view.slot_add(status[slot], item, pos) end
@@ -42,11 +40,9 @@ local LOG = view.provides("rune.log", "Rune's /log", {
 })
 LOG.set("log.open", rune.log.status() ~= nil)
 
--- The rows are built from the engine's widgets on aard.char's data (the
--- modular display plan, phase 2): each piece is rebuilt only when what it
--- shows changed. The segments other modules add (row1, row1_end, row2) are
--- still functions, called on every pass as before, until they publish data
--- too. The styles below are the layout's - by role, so data/theme.lua
+-- The rows are built from the engine's widgets on the modules' data (the
+-- modular display plan): each piece is rebuilt only when what it shows
+-- changed. The styles below are the layout's - by role, so data/theme.lua
 -- still applies - and move to the user's layout file in phase 5.
 view.add_styles({
   value = "value", unavailable = "unavailable", muted = "muted",
@@ -61,11 +57,12 @@ view.add_styles({
   -- The segments other modules add: "<widget>.<slot>" (each module's
   -- widget names its slots); their own color groups as "quest.ready"
   ["rec.off"] = "off", ["rec.on"] = "rec.on", ["rec.flash"] = "rec.flash",
-  ["qst.value"] = "value", ["qst.low"] = "danger", ["qst.ready"] = "quest.ready",
+  ["qst.mins"] = { { below = 3, "danger" }, "value" }, ["qst.ready"] = "quest.ready",
   ["qst.active"] = "quest.active", ["qst.warn"] = "danger", ["qst.none"] = "unavailable",
   ["pop.value"] = "value", ["pop.low"] = "danger", ["pop.guess"] = "muted", ["pop.none"] = "unavailable",
   ["moon.unknown"] = "moon.unknown", ["moon.up"] = "moon.up", ["moon.none"] = "unavailable",
   ["moon.soon"] = "moon.soon", ["moon.later"] = "muted",
+  ["pup.avg"] = "emphasis",
   ["dps.rate"] = "on", ["dps.time"] = "value", ["dps.last"] = "muted", ["dps.none"] = "unavailable",
   ["pup.on"] = "on", ["pup.over"] = "muted", ["pup.none"] = "unavailable",
   ["dxp.on"] = "double.xp", ["dxp.off"] = "unavailable", ["dqp.on"] = "double.qp", ["dqp.off"] = "unavailable",
@@ -90,25 +87,86 @@ end
 -- padded to its usual width (DPS, PUP):
 --   TCK  seconds to the next tick (game.tick()); red under 10. "--" until the
 --        first tick
--- then the row1 slots (QST) and the row1_end slots (POP 3MN DPS PUP 2XP
--- 2QP - in load order, init.lua), a space between each
---
--- status.field: a value of "--" is always theme.unavailable, whatever
--- style is passed - so every placeholder looks the same without each
--- segment asking
+-- then the segments below, a space between each
 
-function status.field(label, value, width, style)
-  value = tostring(value)
-  if value == "--" then style = theme.unavailable end
-  return label .. " " .. (style or theme.value)(string.format("%-" .. width .. "s", value))
+-- QST (targets/quest.lua's aard.quest): minutes until you can quest again,
+-- red under 3 - RD once the wait has run out (before the game says so) or
+-- the game says ready - AC on a quest (red after the game's warning) - "--"
+-- not known. Built at the first pass (later): the quest module loads after
+-- this file; not loaded, no QST
+local qst = w.later(function() return w.cases("QST", {
+  { when = all(eq("quest.state", "wait"), above(ref("quest.ready_at.left.min"), 0)),
+    "{quest.ready_at.left.min|pad:2|style:qst.mins}" },
+  { when = any(eq("quest.state", "wait"), eq("quest.state", "ready")), "RD", style = "qst.ready" },
+  { when = all(eq("quest.state", "active"), "quest.warn"), "AC", style = "qst.warn" },
+  { when = eq("quest.state", "active"), "AC", style = "qst.active" },
+  { "--", style = "qst.none" },
+}) end)
+
+-- POP (nav/repop.lua's aard.repop): MM:SS to this area's next repop, red
+-- for the last 10 s, gray when an estimate; "--" once past or not known.
+-- 5 columns so the row doesn't shift
+local pop = w.later(function() return w.cases("POP", {
+  { when = below(ref("pop.next.due"), 11), "{pop.next.due|mmss}", style = "pop.low" },
+  { when = no("pop.sure"), "{pop.next.due|mmss}", style = "pop.guess" },
+  { "{pop.next.due|mmss}", style = "pop.value" },
+  { "--   ", style = "pop.none" },
+}) end)
+
+-- 3MN (nav/moons.lua's aard.moons): the three moons, 7 columns - "??" a
+-- weather reading owed; all up: ticks until one sets ("--" not known);
+-- else ticks until all are up and for how long ("now/3t", "12t/3t"), soon
+-- (4 or fewer) colored, later gray; "--" not known
+local moon = w.later(function()
+  local function c(t) t.width = 7; return t end
+  local lo = h.min(ref("moon.lo"), 999)
+  return w.cases("3MN", {
+    c{ when = "moon.need", "??", style = "moon.unknown" },
+    c{ when = all("moon.allup", below(ref("moon.setleft"), 0)), "--", style = "moon.none" },
+    c{ when = "moon.allup", "{n}t", style = "moon.up", vars = { n = h.sum(ref("moon.setleft"), 1) } },
+    c{ when = eq("moon.ok", false), "--", style = "moon.none" },
+    c{ when = below(ref("moon.lo"), 1), "now/{moon.len}t", style = "moon.soon" },
+    c{ when = below(ref("moon.lo"), 5), "{lo}t/{moon.len}t", style = "moon.soon", vars = { lo = lo } },
+    c{ "{lo}t/{moon.len}t", style = "moon.later", vars = { lo = lo } },
+  })
+end)
+
+-- DPS (fight/dps.lua's aard.dps): damage per second and combat time,
+-- 11 columns - the rate "--" under 5 s; after a reset the last session's,
+-- gray, until new damage; "--" before any
+local dps = w.later(function() return w.cases("DPS", {
+  { when = eq("dps.shown", "none"), "--", style = "dps.none" },
+  { when = eq("dps.shown", "live"), "{dps.rate|pad:5|style:dps.rate} {dps.secs|clock|pad:5|style:dps.time}" },
+  { when = eq("dps.shown", "live"), "{dps.secs|as:--|pad:5|style:dps.none} {dps.secs|clock|pad:5|style:dps.time}" },
+  { when = eq("dps.shown", "last"), "{dps.rate|pad:5|style:dps.last} {dps.secs|clock|pad:5|style:dps.last}" },
+  { "{dps.secs|as:--|pad:5|style:dps.none} {dps.secs|clock|pad:5|style:dps.last}" },
+}, { pad = 11 }) end)
+
+-- PUP (fight/pup.lua's aard.pup): "23s / 25s (104)" - the last gap, the
+-- average (underlined), the count; gray once the session is over; "--"
+-- before the first. 15 columns
+local pup = w.later(function() return w.cases("PUP", {
+  { when = "pup.live", "{pup.last}s / {pup.avg|after:s|style:pup.avg} ({pup.n})", style = "pup.on" },
+  { "{pup.last}s / {pup.avg|after:s|style:pup.avg} ({pup.n})", style = "pup.over" },
+  { "--", style = "pup.none" },
+}, { pad = 15 }) end)
+
+-- 2XP / 2QP (targets/doubles.lua's aard.doubles): minutes of double
+-- experience / quest points left, dim when none
+local function double(label, name, key)
+  return w.later(function() return w.cases("", {
+    { when = above(ref(name .. ".left.min"), 0), label .. " {" .. name .. ".left.min|pad:2}", style = key .. ".on" },
+    { label, style = key .. ".off" },
+  }, { pad = 6 }) end)
 end
-local field = status.field
 
 -- Row 1: TCK (seconds to the next tick, from the clock on every pass; red
--- under 10; "--" until the first tick), then the row1 and row1_end slots
+-- under 10; "--" until the first tick), QST, the row1 slot, POP, 3MN, DPS,
+-- PUP, 2XP, 2QP, the row1_end slot
 local row1_left = w.spaced(
   w.first(w.text("TCK {tick.left|pad:2|style:tck}"), w.join("TCK ", w.lit("--", "unavailable"))),
-  w.slot(status.row1), w.slot(status.row1_end))
+  qst, w.slot(status.row1), pop, moon, dps, pup,
+  double("2XP", "double.xp", "dxp"), double("2QP", "double.qp", "dqp"), w.slot(status.row1_end))
 
 -- Row 2's last field (tt++ statusbar.tin): the enemy while fighting - its
 -- health, padded to 3 so the name never moves, then its name cut to 25
@@ -125,7 +183,8 @@ local enemy = w.first(
 --   (ALN padded after to 5, room for the minus sign: "ALN 2500  TNL",
 --   "ALN -2500 TNL". LVL unpadded - it changes width seldom)
 --   TNL  experience to the next level, red under 300
--- then " | ", the row2 slots (AC) and the enemy, a space between each.
+-- then " | ", AC (fight/autocast.lua's aard.autocast: autocast on, dim
+-- off), the row2 slots and the enemy, a space between each.
 -- Not yet: ALN's lock colour
 local row2_left = w.join(
   w.spaced(meter("HP", "hp"), meter("MN", "mana"), meter("MV", "moves"),
@@ -133,7 +192,9 @@ local row2_left = w.join(
     w.text("LVL {lvl|style:value}", { vars = { lvl = h.below(ref("level"), 201) } }),
     w.first(w.text("TNL {tnl|pad:4|style:tnl}"), w.join("TNL ", w.lit("--  ", "unavailable")))),
   w.lit(" | ", "muted"),
-  w.spaced(w.slot(status.row2), enemy))
+  w.spaced(w.later(function() return w.cases("", {
+    { when = "ac.on", "AC", style = "ac.on" }, { "AC", style = "ac.off" } }) end),
+    w.slot(status.row2), enemy))
 
 local SCROLLED = "SCR"   -- right-aligned under row 1's REC
 
@@ -141,12 +202,12 @@ local SCROLLED = "SCR"   -- right-aligned under row 1's REC
 -- each second, black on red, then bright red (the terminal's blink didn't
 -- show in tt++); dim when not logging. log.open is set at load from
 -- rune.log.status() (the open log's path or nil) and by the start/stop
--- wrappers below - /log goes through them. Rebuilt each second
-local rec = w.custom("rec", { inputs = { "log.open" }, clock = true }, function(st, open)
-  if not open then return st("off", "REC"), false end   -- no log: nothing flashes
-  if os.time() % 2 == 0 then return st("on", "REC") end
-  return st("flash", "REC")
-end)
+-- wrappers below - /log goes through them. Rebuilt each second while open
+local rec = w.cases("", {
+  { when = all(h.even(), "log.open"), "REC", style = "rec.on" },
+  { when = "log.open", "REC", style = "rec.flash" },
+  { "REC", style = "rec.off" },
+})
 
 -- /log's files (Rune's /log start [raw] [file]): in util.state_dir's
 -- userlogs/ (~/.local/state/rune/userlogs), not Rune's config_dir/logs.
