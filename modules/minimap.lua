@@ -164,15 +164,6 @@ rune.trigger.exact("<MAPSTART>", function(_, ctx)
   end
 end, { name = "aard_map", priority = 10, gag = true, span = { to = "^<MAPEND>$", max = 120 } })
 
--- TEMPORARY probe (2026-11-11, slope jets): with debug minimap on, every
--- line holding MAPSTART, MAPEND or {rname} - hidden or not, any shape -
--- shown raw (codes as \27). Remove once the jets question is settled
-for _, s in ipairs({ "MAPSTART", "MAPEND", "{rname}" }) do
-  rune.trigger.contains(s, function(_, ctx)
-    if dbg.on then dbg.log("probe " .. s .. ": " .. ctx.line:raw():gsub("\27", "\\27")) end
-  end, { name = "minimap_probe_" .. s, priority = 1 })
-end
-
 -- A room you can't see (heighten senses off) shows "You see nothing but
 -- darkness..." and sends no map block (seen live 2026-11-09), so the last
 -- room's map stayed up. That line blanks the pane to DARKNESS until the
@@ -206,6 +197,11 @@ end, { name = "minimap_dark" })
 -- - and RUNNING stayed up. A moving run always reports a new room: the same
 -- room twice in a row at 12 with no block since means the run stopped
 -- here - a silent map instead of RUNNING. Cost: a compare per room.info
+-- A run that never leaves (5e straight into a wall - seen live 2026-11-16,
+-- debug minimap): the three failed steps came before state 12, then
+-- "Too many run errors.", then one room.info at 12 for the room whose map
+-- was already shown - and RUNNING stayed up. A room.info at 12 for the
+-- room on screen keeps its map: a moving run's always names a new room
 local last_info   -- the previous room.info's vnum
 rune.gmcp.on("room.info", function()
   local s, num = game.state, game.room.num
@@ -220,7 +216,7 @@ rune.gmcp.on("room.info", function()
     return
   end
   local fighting = s == 8 and not fresh and not same
-  local word = s == 12 and "RUNNING" or dark and "DARKNESS" or fighting and "FIGHTING" or nil
+  local word = s == 12 and not same and "RUNNING" or dark and "DARKNESS" or fighting and "FIGHTING" or nil
   local keep = not word and same and not fresh   -- the map shown is already this room's
   if dbg.on then
     dbg.log(string.format("room.info %s %s (state %s) -> %s", tostring(num),

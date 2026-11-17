@@ -5,8 +5,8 @@
 -- A bonus going from off to on flashes the info pane yellow for FLASH s
 -- (alerts.alert warn, titles 2XP / 2QP). The end times are kept in
 -- rune.session, so a /reload keeps the lights and its resync doesn't flash.
---   double    the game's command; its reply also sets both lights
--- At login (and /reload) a hidden double resyncs both.
+-- At login (and /reload) a hidden double resyncs both. A double you type
+-- goes to the game as typed (double hist too) and doesn't touch the lights.
 -- There's no GMCP for this - game text (tt++'s patterns; seen in its logs
 -- unless marked):
 --   For the next 15 minutes experience is doubled in honor of the new superhero.
@@ -27,7 +27,7 @@
 -- and, tt++'s guesses: "Double exp is not currently running.", "Double
 -- quest points will expire in roughly N minute(s).", "Double QP is not
 -- currently running." The reply is read as every line starting "Double "
--- up to the first that doesn't (hidden only for ours, with the blank after).
+-- up to the first that doesn't (hidden, with the blank after).
 local util = require("lib.util")
 local colors = require("ui.colors")
 local theme = require("ui.theme")
@@ -105,10 +105,9 @@ rune.gmcp.on("comm.channel", function(d)
   if type(d) == "table" and d.chan == "info" and d.msg then info_line(colors.uncolor(colors.strip(d.msg))) end
 end, { name = "doubles_info_chan" })
 
--- double: the reply, read while it's expected ---------------------------------
+-- The login resync: a hidden double, its reply read and gagged ---------------
 
-local q = {}         -- per double sent, not answered yet: true = hide
-local reader = nil
+local reader = nil   -- on while a resync's reply is expected
 
 local function reply_line(c)
   local m = c:match("^Double exp will expire in roughly (%d+) minute")
@@ -129,35 +128,25 @@ local function stop()
   reader_timeout.stop()
 end
 
-local function send(hidden)
-  q[#q + 1] = hidden
-  if not reader then
-    local seen = false
-    reader = rune.trigger.starts("", function(_, ctx)
-      local c = ctx.line:clean()
-      -- "in honor of <name> reaching superhero." / "courtesy of ...": a
-      -- "running" line's wrapped end (tt++'s note)
-      if c:find("^Double ") or (seen and (c:find("^in honor of ") or c:find("^courtesy of "))) then
-        seen = true
-        reply_line(c)
-        if q[1] then return false end
-        return
-      end
-      if not seen then return end
-      -- the reply is over
-      local hid = table.remove(q, 1)
-      seen = false
-      if #q == 0 then stop() end
-      if hid and util.blank(c) then util.eat_blanks(c); return false end
-    end, { name = "doubles_reply", priority = 5 })
-    reader_timeout.start(15, function() q = {}; stop() end)
-  end
+local function resync()
+  if reader then return end   -- one already waiting
+  local seen = false
+  reader = rune.trigger.starts("", function(_, ctx)
+    local c = ctx.line:clean()
+    -- "in honor of <name> reaching superhero." / "courtesy of ...": a
+    -- "running" line's wrapped end (tt++'s note)
+    if c:find("^Double ") or (seen and (c:find("^in honor of ") or c:find("^courtesy of "))) then
+      seen = true
+      reply_line(c)
+      return false
+    end
+    if not seen then return end
+    -- the reply is over
+    stop()
+    if util.blank(c) then util.eat_blanks(c); return false end
+  end, { name = "doubles_reply", priority = 5 })
+  reader_timeout.start(5, stop)
   rune.send_raw("double")
 end
 
-rune.alias.exact("double", function() send(false) end)
-game.on_login(function() send(true) end)
-
--- Help (lib/help.lua): /help
-local help = require("lib.help")
-help.add("double", "double", "the game's double; its reply also sets the 2XP and 2QP lights")
+game.on_login(resync)
