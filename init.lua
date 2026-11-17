@@ -190,4 +190,12 @@ game.on_login(function()
   rune.gmcp.send("request quest")   -- QST
 end)
 
+-- The layouts' data, checked now everything has loaded: a name no module
+-- provides is a typo or a module not loaded (ui/screen.lua's check; /data
+-- lists the names there are)
+local unknown = require("ui.screen").check()
+if #unknown > 0 then
+  util.warn("[layout] data no module provides - a typo, or a module not loaded? " .. table.concat(unknown, ", ") .. " (/data lists the names)")
+end
+
 util.say("[init] loaded.")

@@ -22,6 +22,9 @@
 --   w: what's inside padded to w columns (the label not counted)
 --   alt = { state = text }: that text in place of what's inside
 --   every: as a widget's
+--   optional = true (here, on a widget, or on a priority item): its data
+--     may never come - a module that loads only sometimes; M.check (a
+--     warning at load for data no module provides) leaves it out
 --
 -- Widgets in a container:
 --   panel:widget { text = "..." }                  fixed text
@@ -342,7 +345,8 @@ end
 
 function Container:widget(t)
   local line = self.inner or line_for(self, t)
-  local wd = { panel = top_of(self), item = item_of(self), line = line, w = t.w, slot = #line.outs + 1 }
+  local wd = { panel = top_of(self), item = item_of(self), line = line, w = t.w, slot = #line.outs + 1,
+               optional = t.optional or self.optional }
   line.widgets[#line.widgets + 1] = wd
   if t.text then
     line.outs[wd.slot] = t.text
@@ -381,7 +385,8 @@ function Container:container(t)
   local b = setmetatable({ kind = "box", top = top_of(self), itm = item_of(self), line = line,
                            slot = #line.outs + 1, label = t.label or "", iw = t.w, alt = t.alt,
                            inner = new_line(), src = src or {}, every = t.every,
-                           process = src and (t.process or ident) or always }, Container)
+                           process = src and (t.process or ident) or always,
+                           optional = t.optional or self.optional }, Container)
   b.panel, b.item = b.top, b.itm
   b.inner.owner = b
   b.last, b.shown = NONE, NONE
@@ -402,7 +407,8 @@ function Container:list(t)
   local wd = { panel = self, kind = "list", lazy = true, src = src, key = key,
                process = t.records or ident, every = t.every, max = t.max,
                rowproc = t.process or ident, format = t.format, order = t.order,
-               cw = t.w, gap = t.gap or "  ", rows = {}, list = {}, dat = {}, out = nil }
+               cw = t.w, gap = t.gap or "  ", rows = {}, list = {}, dat = {}, out = nil,
+               optional = t.optional or self.optional }
   wd.line = wd
   add_item(self, wd)
   if not attach(wd) then waiting[#waiting + 1] = wd end
@@ -441,7 +447,7 @@ function Container:priority(t)
   end
   function P:item(o)
     local it = setmetatable({ items = {}, root = self.panel, name = o.name or tostring(#self.list + 1),
-                              prio = o.prio, keep = o.keep, have = 0, dirtyw = {} }, Container)
+                              prio = o.prio, keep = o.keep, have = 0, dirtyw = {}, optional = o.optional }, Container)
     self.list[#self.list + 1] = it
     return it
   end
@@ -503,8 +509,35 @@ end })
 -- engine's own: widget, list, append, priority) is an error
 function M.add_widget(name, fn)
   if Container[name] ~= nil then error("[screen] a widget named " .. name .. " exists already", 2) end
-  Container[name] = fn
-  return fn
+  -- optional (see M.check) passed on to what the widget builds
+  local function made(panel, t)
+    local wd = fn(panel, t)
+    if t and t.optional and type(wd) == "table" then wd.optional = true end
+    return wd
+  end
+  Container[name] = made
+  return made
+end
+
+-- The layout's data checked: the names a widget waits for that no loaded
+-- module provides - a typo, or a module not loaded. A widget, container or
+-- priority item marked optional = true (everything inside it too) is
+-- expected to go without: its data comes from a module that loads only
+-- sometimes (a subclass's, a zone's). Returns { "name (container)", ... };
+-- init.lua warns with it once everything has loaded
+function M.check()
+  local out, seen = {}, {}
+  for _, wd in ipairs(waiting) do
+    if not wd.optional then
+      for _, n in ipairs(wd.src or {}) do
+        local where = wd.panel and wd.panel.name or "?"
+        local k = n .. " (" .. where .. ")"
+        if not view.data(n) and not seen[k] then seen[k] = true; out[#out + 1] = k end
+      end
+    end
+  end
+  table.sort(out)
+  return out
 end
 
 -- the inside of a panel now (the terminal's size): rows, columns

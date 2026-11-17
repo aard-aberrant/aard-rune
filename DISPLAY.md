@@ -75,7 +75,15 @@ row2:value { source = "steps.n", label = " STP ", show = F.commas }
   whenever its widget does. (A module used without a widget is listed in
   `init.lua` instead.)
 - `source` is the data name. A list of names gives the processor all of
-  them: `source = { "quest.on", "quest.ends" }`.
+  them: `source = { "quest.on", "quest.ends" }`. `/data` lists every name
+  the modules publish, with its shape and description; `/data <word>`
+  narrows it (`/data quest`), and an exact name shows its value now.
+- A name no module provides gets a warning at load, `[layout] data no
+  module provides ...`: a typo, or a module that isn't loaded. `/data`
+  repeats it at the top while it's so (a `/reload`'s redraw hides the one at load). Data from a
+  module that loads only sometimes (a subclass's, a zone's) is marked
+  `optional = true` on the widget, container or priority item, and isn't
+  warned about.
 - `F` is `format/generic.lua` (`num`, `commas`, `short`, `clock` ...), and
   `P` is `process/generic.lua`, both already loaded at the top of the file.
 

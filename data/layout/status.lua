@@ -46,7 +46,8 @@ row1:value { source = { "pop.next", "pop.sure" }, every = 1, label = " POP ",
 
 -- 3MN: the three moons (a Shaman's module), 7 columns
 row1:value { source = { "moon.need", "moon.allup", "moon.setleft", "moon.ok", "moon.lo", "moon.len" },
-  label = " 3MN ", w = 7, missing = "", process = PM.moons, show = FM.moons, color = FM.moons_color }
+  label = " 3MN ", w = 7, missing = "", process = PM.moons, show = FM.moons, color = FM.moons_color,
+  optional = true }   -- moons loads only for a Shaman
 
 -- DPS (modules/dps.lua): " DPS 1234  1:05" - damage a second and combat
 -- time, 11 columns after the label: bright while live, gray the last

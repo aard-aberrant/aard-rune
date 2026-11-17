@@ -120,7 +120,7 @@ end
 local pins = require("ui.pin").new { key = "info_pin", command = "infopane", tag = "info", what = "info pane",
   help = "list what can show in the info pane; <name>: pin one (it shows whenever it has something, beating all but an alert); reset: the normal order again" }
 local pick = screen.containers.info:priority { shown = "info.shown", pin = pins.get }
-bcc(pick:item { name = "bcc", prio = 10 })
+bcc(pick:item { name = "bcc", prio = 10, optional = true })   -- its data: modules/zones/blackclaw.lua, loaded only there
 alert(pick:item { name = "alert_crit", prio = 20, keep = true }, "crit", "alert", "danger")
 alert(pick:item { name = "alert_warn", prio = 25, keep = true }, "warn", "alert_caution", "caution")
 infomsg(pick:item { name = "msg", prio = 40 })

@@ -72,7 +72,10 @@ Organized by module (2026-11-15; the display 2026-11-16), in these kinds:
   which data, with which processor and formatter, and the display's own
   settings (widths, labels, colors, a chart's buckets). `screen.lua` places the
   containers; one file per container fills it. For another MUD, the same
-  widgets are configured on that MUD's modules.
+  widgets are configured on that MUD's modules. `/data` lists the data names
+  there are (`ui/view.lua`); at load `init.lua` warns about any a layout uses
+  that no module provides (`ui/screen.lua`'s `check`), except where the layout
+  marks it `optional = true` - a module that loads only sometimes.
 - **Zone scripts** (`modules/zones/`) may require anything, because they're
   loaded last and only while you're in their zone.
 

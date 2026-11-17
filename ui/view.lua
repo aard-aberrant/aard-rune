@@ -215,6 +215,62 @@ end
 function view.data(name) return decl[name] end
 function view.modules() return modules end
 
+-- /data [word]: every module's data - name, shape, description (* a
+-- standard name, the same across MUDs) - for building a layout. A word
+-- keeps the modules and names it starts (or starts a dot-part of); a data
+-- name exactly also shows its value now. First, if there are any, the
+-- names a layout uses that no module provides. Runs only when typed
+local function value_text(v)
+  if type(v) == "table" then
+    local n = 0
+    for _ in pairs(v) do n = n + 1 end
+    return "a table (" .. n .. " entries)"
+  end
+  return tostring(v)
+end
+if rune and rune.command then
+  rune.command.add("data", function(args)
+    deps()
+    local word = util.trim(args):lower()
+    local mods = {}
+    for m in pairs(modules) do mods[#mods + 1] = m end
+    table.sort(mods)
+    -- a name (or a module's) matches a word starting it or one of its
+    -- dot-separated parts: "ac" finds ac.on and acct.gold, not "character"
+    local function hit(s)
+      s = "." .. s:lower()
+      return s:find("." .. word, 1, true) ~= nil
+    end
+    local out = {}
+    for _, m in ipairs(mods) do
+      local info = modules[m]
+      local whole = word == "" or hit(m)
+      local rows = {}
+      for _, name in ipairs(info.names) do
+        local d = decl[name]
+        if whole or hit(name) then
+          rows[#rows + 1] = string.format("  %-20s %-10s %s%s", name, d.shape, d.standard and "* " or "", d.desc)
+          if name:lower() == word then rows[#rows + 1] = "  " .. string.rep(" ", 20) .. " now: " .. value_text(view.get(name)) end
+        end
+      end
+      if #rows > 0 then
+        out[#out + 1] = string.format("%s  - %s", m, info.desc)
+        for _, r in ipairs(rows) do out[#out + 1] = r end
+      end
+    end
+    -- First, any name a layout uses that no module provides (ui/screen.lua's
+    -- check - the same as init.lua's warning at load, which a /reload's
+    -- redraw hides)
+    local ok, screen = pcall(require, "ui.screen")
+    local unknown = ok and screen.check and screen.check() or {}
+    if #unknown > 0 then
+      util.warn("[data] layout names no module provides - a typo, or a module not loaded? " .. table.concat(unknown, ", "))
+    end
+    if #out == 0 then util.warn("[data] nothing matches \"" .. word .. "\"."); return end
+    for _, l in ipairs(out) do rune.echo(l) end
+  end, "the data modules publish, for layouts (data/layout/): /data [word] - names, shapes, descriptions; an exact name shows its value")
+end
+
 -- For tests
 function view._reset() decl, getters, store, subs, modules = {}, {}, {}, {}, {} end
 

@@ -47045,13 +47045,13 @@ X	13865	13866	enter oak
 R	13866	autumn	dungeon	2		The Earthen Stair
 X	13866	13867	d		
 X	13866	13865	enter hole		
-R	13867	autumn	dungeon			At the Base of the Stair
+R	13867	autumn	dungeon	2		At the Base of the Stair
 X	13867	13866	u		
 X	13867	13868	w		open w;west
-R	13868	autumn	pillar			Before the Great Hall
+R	13868	autumn	pillar	2		Before the Great Hall
 X	13868	13867	e		
 X	13868	13869	w		
-R	13869	autumn	pillar			In the Great Hall
+R	13869	autumn	pillar	2		In the Great Hall
 X	13869	13868	e		
 X	13869	13870	n		
 X	13869	13871	s		
