@@ -1,5 +1,5 @@
 -- Your group (require("modules.group")), from GMCP group - data only: the
--- group pane (panes/group.lua) shows it.
+-- group pane (data/layout/group.lua) shows it.
 --
 -- Each member: name, level, HP and max HP as numbers, whether they're here,
 -- and three marks - you, the group's leader, the one you follow:

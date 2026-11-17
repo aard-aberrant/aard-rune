@@ -1,5 +1,7 @@
 -- Loads the real status-bar modules from ROOT (arg[1]) with Rune stubbed.
 -- H.feed(pkg, data), H.line(text) drive them; H.pass() renders the bars.
+-- LAYOUT(name): data/layout/<name> on this tree, else an older tree's panes/<name> (ui/layout for "screen")
+LAYOUT = LAYOUT or function(n) local new = "data.layout." .. n; if package.searchpath(new, package.path) then return require(new) end return require(n == "screen" and "ui.layout" or "panes." .. n) end
 local ROOT = arg[1]
 package.path = ROOT .. "/?.lua;" .. package.path
 H = { handlers = {}, triggers = {}, bars = {}, bar_order = {}, now = 1000000, sess = {} }
@@ -43,9 +45,10 @@ util.write_file = function() return true end
 util.dir_exists = function() return true end
 util.say = function() end
 function H.feed(pkg, d) for _, fn in ipairs(H.handlers[pkg] or {}) do fn(d) end end
-for _, m in ipairs({ "modules.game", "panes.status", "modules.quest", "modules.repop", "modules.dps", "modules.pup",
+for _, m in ipairs({ "modules.game", "layout:status", "modules.quest", "modules.repop", "modules.dps", "modules.pup",
                      "modules.doubles", "modules.autocast" }) do
-  local ok, err = pcall(require, m)
+  local name = m:match("^layout:(.*)")
+  local ok, err = pcall(name and LAYOUT or require, name or m)
   if not ok then print("LOAD " .. m .. ": " .. tostring(err)) end
 end
 function H.pass()

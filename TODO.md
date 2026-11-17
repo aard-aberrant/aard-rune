@@ -37,7 +37,7 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
       can't remove anything else; a bad regex is refused with Rune's error; a /reload and a restart
       keep them (acts.txt in the config folder, one "pattern = commands" a line), an /unact stays gone
       after a restart, a hand edit counts at /reload, a bad line is reported with its number.
-- [ ] Chats in /log (panes/chats.lua, 2026-11-08, offline-tested; chats.log retired): a normal
+- [ ] Chats in /log (modules/chats.lua, 2026-11-08, offline-tested; chats.log retired): a normal
       /log start gets chat lines among the game's; /log start chat [raw] [file] gets only chats
       (and the start/stop stamps), still after a /reload; /log stop puts the game lines back.
       The chats pane starts empty after a Rune restart.
@@ -82,9 +82,9 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
       dark room keeps the map. An aborted run redraws via minimap.refresh: confirmed live 2026-11-09 (10s into a wall)
 - [ ] Our messages in /log (modules/copy.lua's rune.echo wrapper, 2026-11-09, untested): [debug ...] and [eq] ...
       lines appear in a /log, colored in /log start raw, not in /log start chat; each once
-- [ ] infopane (panes/info.lua, offline-tested 2026-11-08, on widgets 2026-11-15): ported from tt++ - list,
+- [ ] infopane (ui/pin.lua, data/layout/info.lua, offline-tested 2026-11-08, on widgets 2026-11-15): ported from tt++ - list,
       pin an item (e.g. infopane account during a campaign break), reset; an alert still beats the pin
-- [ ] panes/group.lua markers (offline-tested 2026-11-08): L leader (GMCP group.leader - a guess, check with
+- [ ] Group pane markers (format/group.lua) (offline-tested 2026-11-08): L leader (GMCP group.leader - a guess, check with
       "/debug group on"), F whom you follow (game text, ~/groupinfo), E both; no mark for a follow outside the group
 - modules/quiet.lua (confirmed live 2026-11-07): a fight's xp/gold/tax added up, one line
       "+xp, +gold (N kills)" when GMCP state leaves fighting (live order checked 2026-11-07); tells reminder only when the count changes; skinning
@@ -132,18 +132,20 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
 
 ## To do
 
-- [ ] Study: the generic group pane (ui/view.lua list + flat-compiled rows; panes/group.lua) is ~2x the
-      hand-tuned one it replaced (plain Lua, per group message: 8 members all HP changed 16.9 -> 34.6 us,
-      40 members 40.7 -> 79.4; unchanged 0.5 -> 0.8). Accepted 2026-11-15 as small in absolute terms
-      (~0.36 group messages/s). The rest is spread over ~30 small calls per row (WIDTH finds, FMT,
-      F[] filter calls, cut) vs two string.format before. Measure live with /profile, then look at
-      inlining number formatting and widths of number-only values.
+- [x] Study: the generic group pane ~2x the hand-tuned one (2026-11-15, the first widget engine).
+      Settled by the 2026-11-16 engine (ui/screen.lua): one HP changed ~9 us, all 8 ~21 us, a repeated
+      packet ~5.5 us (tools/bench/group_bench.lua, plain Lua).
+- [x] Display redesign (2026-11-16, offline: every pane cell-identical to before, every bench level or
+      faster; live checks passed for status, group, affects, DPS, PUP, a quest, alerts crit and warn, a campaign incl. an out-of-order kill's "k of n"): containers + generic widgets
+      (ui/screen.lua, ui/widgets/), processors and formatters per module (process/, format/), the
+      layout in data/layout/ (placement only); /log and chats code moved to modules/log.lua and
+      modules/chats.lua; infopane is ui/pin.lua. Live check still to do: the breath grid.
 - [ ] Copy commands: copychat [n] and copyout [n] via rune.clipboard.set (OSC 52;
       tmux already has set-clipboard on). Screen selection crosses panes.
 - [ ] Minimap: switch to the trigger `span` option instead of the on/off catch-all
 - [ ] Minimap: fixed height (22 lines, like MINIMAP_HEIGHT) once its size is settled
 - [ ] Minimap fills only after the first move - send "map" at login (tt++ does)
-- [ ] Info pane on widgets (panes/info.lua, 2026-11-15, offline: matches the old pane cell by cell; the
+- [ ] Info pane on widgets (data/layout/info.lua, 2026-11-15, offline: matches the old pane cell by cell; the
       breath grid's east square is no longer bold): live check - quest countdown, campaign line,
       account, an alert (timer 5s x), infomsg, the grid in Black Claw Crag
 - [x] timer (modules/timer.lua) - confirmed live: flashes black (24-bit) on red with a beep. Survives
@@ -275,7 +277,7 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
       walked), a failed walk names the first step that went wrong, map unlink / map exit (modules/mapper.lua),
       a typed map shows in the main output
 - [ ] Mapper: correct an exit when GMCP gives another destination for it? (tt++ only ever adds)
-- [ ] Channels: gmcpchannels on sent at load and login (panes/chats.lua) - check ct/gt show only in chats
+- [ ] Channels: gmcpchannels on sent at load and login (modules/chats.lua) - check ct/gt show only in chats
 - [ ] autohunt / autohuntoff / hqq / hqof (modules/hunt.lua, offline-tested): tt++ hunt.tin; hunt replies are
       game text, triggers on only while one runs; a fight pauses autohunt until char.status says
       it's over; hqq's find becomes the target (N.mob). Not ported: huntmaster before hqq
@@ -292,4 +294,4 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
 - [ ] 2XP / 2QP (modules/doubles.lua, offline-tested 2026-11-07): tt++ doubles.tin; hidden double at login.
       Check live: the double reply's QP lines and its "not running" lines (tt++ guessed them), whether
       INFO lines come as text or the GMCP info channel (both read)
-- [ ] REC at status row 1's right end (panes/status.lua): flashes while Rune's /log is open
+- [ ] REC at status row 1's right end (data/layout/status.lua, modules/log.lua): flashes while Rune's /log is open

@@ -1,5 +1,7 @@
 -- lua info_drive.lua ROOT old|new > out: the info pane after each step of
 -- one scenario (real inputs: GMCP, commands, timers)
+-- LAYOUT(name): data/layout/<name> on this tree, else an older tree's panes/<name> (ui/layout for "screen")
+LAYOUT = LAYOUT or function(n) local new = "data.layout." .. n; if package.searchpath(new, package.path) then return require(new) end return require(n == "screen" and "ui.layout" or "panes." .. n) end
 local ROOT, MODE = arg[1], arg[2]
 package.path = ROOT .. "/?.lua;" .. package.path
 H = { handlers = {}, aliases = {}, timers = {}, now = 1000000, sess = {}, panes = {} }
@@ -38,13 +40,13 @@ rune.timer = {
 }
 rune.pane = { replace = function(n, text) H.panes[n] = text end }
 io.write = function() end   -- the beep
-local layout = require("ui.layout")
+local layout = LAYOUT("screen")
 rune._state.width = 44 + layout.RIGHT_W + 1
 local util = require("lib.util")
 util.say, util.warn, util.err = function() end, function() end, function() end
 
 require("modules.game")
-local info = require("panes.info")
+local info = LAYOUT("info")
 require("modules.quest")
 local alert
 if MODE == "new" then

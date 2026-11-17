@@ -11,11 +11,13 @@ end
 -- table when others use it; requires never go in a circle:
 --   lib/       util, debug, help, profile - game-agnostic, the framework;
 --              they require nothing of the modules
---   ui/        colors, theme, layout, view (the display engine) - framework
---   panes/     status, group, chats, info, affects - each pane's
---              configuration: widgets on the modules' data (status, group,
---              info; chats and affects still draw their own text, to be
---              moved over)
+--   ui/        colors, theme, view (the data), screen (the display engine),
+--              widgets/ (the generic widgets) - framework
+--   process/, format/  processors and formatters: generic.lua, and one
+--              file per module for its data (affects, quest, group ...)
+--   data/layout/  the screen (screen.lua: the containers' rectangles) and
+--              what each container shows (status, group, chats, info,
+--              affects, minimap): generic widgets on the modules' data
 --   modules/   everything that does something in the game or knows Aardwolf:
 --              game (GMCP state), tags, group, mapper, travel, quest, dps ...
 --              a module requires the libraries and the modules it uses
@@ -23,14 +25,15 @@ end
 --              zone: geniewish, knossos, blackclaw ...) - a script may
 --              require anything
 -- Then the per-subclass ones (data/classes/<subclass>.lua's modules), below
--- data/ is settings and game data, map/ the map, tools/ the converters.
+-- data/ is settings, game data and the layout, map/ the map, tools/ the
+-- converters and benchmarks.
 -- This file only sets Rune up and lists the features
 local util = require("lib.util")
 -- /profile (lib/profile.lua). After /profile startup, it times every
 -- require from here to startup_end() below; otherwise both do nothing
 local profile = require("lib.profile")
 profile.startup_begin()
-require("ui.layout")            -- the panes, and the picker wrapper
+require("data.layout.screen")  -- the containers (and ui/picker.lua)
 
 -- Ctrl+E goes to the end of the input line, as in a shell (Ctrl+A already
 -- goes to the start). Rune binds Ctrl+E to "edit the line in $EDITOR" -
@@ -63,7 +66,7 @@ end)
 -- Sending a command while the main pane is scrolled back jumps it to live
 -- output, as Ctrl+End would (Rune's own binding, 95_ui.lua - run through
 -- binds._dispatch; scroll_to_bottom on the pane as well, in case). The
--- status line shows SCROLLED meanwhile (panes/status.lua). A pane can't take a
+-- status line shows SCROLLED meanwhile (data/layout/status.lua). A pane can't take a
 -- background colour - Rune's layout refuses bg/background/style (tried)
 rune.hooks.on("input", function()
   if rune._state.scroll_mode ~= "scrolled" then return end
@@ -86,15 +89,15 @@ require("modules.group")        -- your group, from GMCP group (the group pane s
 require("modules.alerts")       -- alerts: a title and text, crit or warn (the info pane flashes them)
 require("modules.account")      -- gold, points and stats, from GMCP (the info pane shows them)
 require("modules.infomsg")      -- infomsg: your own text on the info pane
-require("panes.status")         -- the status bars (TCK, HP/MN/MV, the enemy ...) - before the
+require("data.layout.status")  -- the status bars (TCK, HP/MN/MV, the enemy ...) - before the
                                 -- group pane: its first bar runs the engine's pass (no extra bar)
-require("panes.group")          -- the group pane
-require("panes.chats")          -- the chats pane: channels, tells, remote socials
-require("panes.info")           -- the info pane: bcc, alerts, infomsg, quest, campaign, account; infopane
+require("data.layout.group")    -- the group pane
+require("data.layout.chats")    -- the chats pane: channels, tells, remote socials
+require("data.layout.info")     -- the info pane: bcc, alerts, infomsg, quest, campaign, account; infopane
 require("modules.timer")        -- timer
-require("panes.affects")        -- the affects pane, saf, affectsreset
+require("data.layout.affects")  -- the affects pane, saf, affectsreset
 require("modules.eq")           -- eqwear, eqsave, eqcheck, eqsets
-require("panes.minimap")        -- the minimap pane (modules/minimap.lua: the game's map tag)
+require("data.layout.minimap")  -- the minimap pane (modules/minimap.lua: the game's map tag)
 require("modules.mapper")       -- map/aard.map, kept current from GMCP room.info
 require("modules.maprec")       -- map record: custom exits from what you do
 require("modules.travel")       -- routes and g, ga, find, label

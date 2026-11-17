@@ -65,7 +65,7 @@ local function set(k, mins)
   D.publish()
 end
 
--- 2XP / 2QP on the status row: panes/status.lua
+-- 2XP / 2QP on the status row: data/layout/status.lua
 
 -- The game's lines -------------------------------------------------------------
 

@@ -1,5 +1,5 @@
 -- The minimap (require("modules.minimap")): what the minimap pane shows,
--- as data (panes/minimap.lua draws it). Not drawn from a map file: with
+-- as data (data/layout/minimap.lua draws it). Not drawn from a map file: with
 -- "tags map" on, the game sends its own ASCII map with every room, between
 -- <MAPSTART> and <MAPEND> (modules/map.tin does the same in tt++). The lines
 -- in between are hidden from the main output and kept, colors and all, by
@@ -40,7 +40,7 @@ local game = require("modules.game")       -- the room's zone and vnum
 local view = require("ui.view")       -- fighting and state changes (aard.char)
 local mapper = require("modules.mapper")   -- the room's note
 local maprec = require("modules.maprec")   -- map record / plan / edit / drop / apply
-local layout = require("ui.layout")   -- the most map rows kept
+local layout = require("data.layout.screen")   -- the most map rows kept
 
 local minimap = {}
 local H = layout.MINIMAP_H

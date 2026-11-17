@@ -74,7 +74,7 @@ rune.trigger.contains("You have increased your powerups to ", function(_, ctx)
   P.publish()
 end, { name = "pup_line" })
 
--- PUP on the status row: panes/status.lua
+-- PUP on the status row: data/layout/status.lua
 
 local clock = util.clock
 

@@ -55,7 +55,9 @@ game's own tags wherever it can, and through its text only where those can't tel
 - **status row 2**: you: HP, MN, MV, alignment, level, TNL, autocast, then
   the enemy's health and name in a fight, else your state.
 
-Sizes are in `ui/layout.lua`.
+The layout is in `data/layout/`: `screen.lua` places the containers, and
+one file per container (`status.lua`, `info.lua` ...) says what it shows -
+generic widgets on the modules' data.
 
 ## Commands
 
@@ -96,14 +98,19 @@ to Alt+E). F12 switches the mouse between wheel scrolling and selecting text.
 ```
 init.lua    sets Rune up and loads every feature
 lib/        the framework's shared code: util, help, debug, /profile
-ui/         the display framework: colors, theme, layout, the display engine (view)
-panes/      each pane's configuration: status, group, chats, info, affects
+ui/         the display framework: colors, theme, the data (view), the display
+            engine (screen), the generic widgets (widgets/)
+process/    processors - data to what a widget compares: generic.lua, and one
+            file per module (affects, group, quest ...)
+format/     formatters - that value to the text shown: the same files
 modules/    everything that does something in the game: GMCP state, tags, the map
             and travel, targets, quest, campaign, fights, gear, hosting ...
 modules/zones/  one script per zone, loaded only while you're in it
-data/       settings and game data (portals, areas, labels, gear sets, classes)
+data/       settings and game data (portals, areas, labels, gear sets, classes),
+            and the layout (data/layout/)
 map/        aard.map, the room map (saved as you explore)
-tools/      converters from the tt++ data, Rune's API dump, a trigger benchmark
+tools/      converters from the tt++ data, Rune's API dump, a trigger benchmark,
+            the display benchmarks and screen comparisons (bench/)
 ```
 
 Files the setup writes stay here and in git: the map, labels, gear sets, School
@@ -114,4 +121,6 @@ history go to `~/.local/state/rune`.
 
 - `ARCHITECTURE.md`: how the pieces fit, the layering rules, trigger costs,
   shared patterns.
+- `DISPLAY.md`: how to show a new piece of data - a module that publishes it,
+  a widget in the layout, a processor and formatter of your own; a worked example.
 - `TODO.md`: what's ported, what's been confirmed live, what's next.

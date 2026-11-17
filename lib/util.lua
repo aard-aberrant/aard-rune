@@ -14,7 +14,7 @@ function util.err(s) rune.echo(theme.error(s)) end
 local shown = {}
 -- Triggers, from Rune's source (lua/core/50_triggers.lua, matcher.go) and
 -- benchmarks of this config (2026-11-06): every enabled trigger is matched
--- in Go against every line; disabled ones are skipped (Rune #169 - before
+-- in Go against every line; disabled ones are skipped (Rune PR #174 - before
 -- it they were matched too). A line with any match at all goes through the
 -- Lua dispatch (a line with none, and no open span, skips Lua). So no
 -- catch-all stays on: a block is a span (rune.trigger opts.span, e.g. the
@@ -125,7 +125,7 @@ rune.trigger.starts("", function(_, ctx)
 end, { name = "util_hide_partial", on = "prompt" })
 
 -- Triggers switched on and off together: declared once, disabled while
--- off. Rune's matcher skips disabled triggers (Rune #169), so an off group
+-- off. Rune's matcher skips disabled triggers (Rune PR #174), so an off group
 -- costs nothing per line.
 --   local g = util.group(hides)   hides: true for a group that hides lines
 --   g.add(kind, pattern, fn, opts)   kind: regex, exact, starts, contains

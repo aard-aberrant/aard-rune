@@ -34,32 +34,45 @@ game, not just a connection, uses `game.on_login(fn)`. It runs at the first
 
 ```
 lib/            util  debug  help  profile
-ui/             colors  theme  layout  view
-panes/          status  group  chats  info  affects  timer
-modules/        game  tags  group  aliases  login  history  copy  act
+ui/             colors  theme  view  screen  pin  picker
+ui/widgets/     value  tenths  timer  countdown  text  indicator  banner  block  barchart
+process/        generic  + one per module: affects  group  quest  campaign  account  bcc
+                repop  moons  dps  pup  game  minimap
+format/         generic  + the same, and chats  log
+modules/        game  tags  group  aliases  login  history  copy  act  chats  log
                 mapper  maprec  travel  minimap  moons  repop
                 target  quest  campaign  doubles  soh
                 combat  autocast  heal  hunt  dps  rheal  pup  instinct  quiet  bcc
                 eq  invmon  spup
 modules/zones/  loader  + one script per zone (geniewish, knossos, partroxis, blackclaw)
 data/           settings and game data (Lua tables), data/classes/<subclass>.lua
+data/layout/    the screen: screen (the containers) + status  group  chats  info  affects  minimap
 map/            aard.map, the room map
 tools/          one-time converters from the tt++ data, rune-api.txt (API dump),
-                trigbench/ (what the triggers cost per line)
+                trigbench/ (what the triggers cost per line), bench/ (the display's
+                benchmarks and screen comparisons)
 ```
 
-Organized by module (2026-11-15), in three kinds:
+Organized by module (2026-11-15; the display 2026-11-16), in these kinds:
 
-- **Libraries** (`lib/`, `ui/`): game-agnostic code the rest builds on - the
-  framework. They require nothing in `modules/` or `panes/`.
+- **Libraries** (`lib/`, `ui/`, `process/generic.lua`, `format/generic.lua`):
+  game-agnostic code the rest builds on - the framework. They require nothing
+  in `modules/` or `data/layout/`. The widgets in `ui/widgets/` are all
+  generic: nothing in them knows Aardwolf.
 - **Modules** (`modules/`): anything that does something in the game or knows
   Aardwolf, even when many others require it (`game`, `tags`, `mapper`). A
   module requires the libraries and the modules it uses; requires never go in
-  a circle. Modules publish data (`ui/view.lua`) and know no pane.
-- **Panes** (`panes/`): each pane's configuration - which widgets show which
-  modules' data. Generic: for another MUD they'd be configured on that MUD's
-  modules. `status`, `group` and `info` are there; `chats` and `affects` still draw
-  their own text until they're converted.
+  a circle. Modules publish raw facts (`ui/view.lua`) and know no container.
+- **Processors and formatters** (`process/<module>.lua`, `format/<module>.lua`):
+  what one module's data becomes on the screen - the value a widget compares
+  (rounded to what's shown, several facts packed into one number where a row
+  shows several) and the text it shows. One file per module, not per
+  container, so a widget moved to another container takes its processor along.
+- **The layout** (`data/layout/`): placement only - which generic widget shows
+  which data, with which processor and formatter, and the display's own
+  settings (widths, labels, colors, a chart's buckets). `screen.lua` places the
+  containers; one file per container fills it. For another MUD, the same
+  widgets are configured on that MUD's modules.
 - **Zone scripts** (`modules/zones/`) may require anything, because they're
   loaded last and only while you're in their zone.
 
@@ -90,28 +103,32 @@ In order of preference:
 
 ## Triggers and their cost
 
-From Rune's source (`lua/matcher.go`) and benchmarks of this config
-(2026-11-06; the note is also in `lib/util.lua`):
+From Rune's source (`lua/matcher.go`, `lua/core/50_triggers.lua`) and
+benchmarks of this config (2026-11-06; the note is also in `lib/util.lua`):
 
-- **Every registered trigger is matched in Go against every line, disabled ones
-  too.** `enabled` is checked in Lua only after a match, and a line with any
-  match at all (a disabled one included) goes through Rune's Lua dispatch.
-  A line with none skips Lua. So disabling a trigger saves its callback, not
-  its match, and a disabled catch-all still sends every line through Lua.
+- **Every enabled trigger is matched in Go against every line; disabled ones
+  cost nothing** (Rune PR #174, "skip disabled triggers in Go"; before it they
+  were matched too). A trigger in a disabled group counts as disabled. A line
+  with any match goes through Rune's Lua dispatch; a line with none (and no
+  open span) skips Lua. Enabling or disabling a trigger only marks the list
+  changed: the next line brings the matcher's on/off flags up to date in one
+  Go call (and a Lua loop over that pass's triggers), once per batch of
+  changes.
 - **Anchored and literal patterns are cheap** (10–90 ns a line). Regexes with a
   leading `.+` or `\w+`, or alternations, cost 600–1300 ns. So: `exact`,
   `starts` or `contains` plus a check in Lua wherever a regex can't be
   anchored with a literal start.
-- **No catch-all stays registered.** A catch-all is `rune.trigger.starts("", ...)`
-  (a string compare, not the regex `.*`), and one sitting disabled would send
-  every line through Lua. Instead:
+- **No catch-all stays on.** A catch-all is `rune.trigger.starts("", ...)`
+  (a string compare, not the regex `.*`), and while it's enabled every line
+  goes through Lua. Disabled it costs nothing, so a reader is on only while
+  it's needed:
   - **a block is a Rune span** (`opts.span = { to = ..., max = ... }`, with
     `gag = true` to hide it): one literal header trigger, and its action runs
     once with `ctx.lines`. The minimap block, the room description, finger's
     reply and slist's two blocks are spans. A gagged span whose reply was typed,
     or whose closing line never came, shows its lines again in its action;
-  - `util.group()` holds a declared set of triggers and adds or removes them
-    with `set(on)` (hunt, campaign, the totem, the home-routine
+  - `util.group()` holds a declared set of triggers and enables or disables
+    them together with `set(on)` (hunt, campaign, the totem, the home-routine
     hiders, the walk's room hider, the blank-line eater);
   - `util.await(kind, pattern, fn, name, secs)` waits for one reply to
     something just sent (Rune's `once`), then goes (heal's refusal, the login
@@ -123,7 +140,8 @@ From Rune's source (`lua/matcher.go`) and benchmarks of this config
   (literals ~8 ns each, regexes 15-115 ns). Rune's own `/triggers` lists them.
   That is the Go matcher only; `/profile` times the Lua side, live (below).
 - **Adding or removing a trigger rebuilds the matcher,** so a trigger toggled
-  every combat round (autocast's) stays registered and disabled.
+  often (autocast's, every combat round) stays registered and is enabled and
+  disabled - which, since PR #174, costs nothing per line while off.
 - **Timers are cancelled, not outlived.** `rune.timer.after` returns a handle with
   `:cancel()`. `util.slot()` is a timer that replaces its waiting one
   (`start(secs, fn)`, `stop()`), in place of tt++-style generation counters.
@@ -153,21 +171,20 @@ travel, `"maze"` for Partroxis) tells modules/travel.lua's wrong-exit handling t
 leave a walk to whoever started it. A 5 s watchdog shows the held room if a
 walk stalls.
 
-**Panes.**
-- **`ui/layout.lua`** sets every pane's size.
-- **`util.pane(name, text)`** writes a pane only when its text changed, so redraws are cheap.
-- **The status rows** (`panes/status.lua`) are two native Rune bars, `status1`
-  and `status2`, which Rune redraws every 250 ms. Row 1 is timers and running measures
+**The screen.**
+- **`data/layout/screen.lua`** places every container and sets their sizes.
+- **The status rows** (`data/layout/status.lua`) are two native Rune bars, `status1`
+  and `status2`, which Rune polls every 250 ms. Row 1 is timers and running measures
   (clocks, countdowns, DPS, PUP), row 2 is you (your stats, then the enemy). A row-1 segment
   with nothing running shows a gray `--`, padded to its usual width. Each segment is a generic
-  widget (`ui/view.lua`: `cases`, `text`, ...) on data a module publishes; `panes/status.lua`
-  binds them, so the modules know nothing of the rows. Slots `row1`, `row1_end` and `row2` take
-  more widgets (`status.add`).
-- **The info pane** (`panes/info.lua`) is a `pick`: the first item in its list with something
-  to show wins - Black Claw Crag's grid, alerts, infomsg, quest, campaign, account. Each
-  item is widgets on a module's data (`aard.quest`, `aard.campaign`, `aard.account` ...).
-  `alerts.alert(level, secs, title, text)` (`modules/alerts.lua`) flashes it; an alert
-  counts down only while it's shown (`info.shown`, published by the pick).
+  widget on data a module publishes, so the modules know nothing of the rows. DPS and PUP are
+  nested containers: their state (live, last, none) picks the colors of the widgets inside.
+- **The info pane** (`data/layout/info.lua`) is a priority container: the first item with
+  something to show wins - Black Claw Crag's grid, alerts, infomsg, quest, campaign, account.
+  Each item is widgets on a module's data. `infopane` (`ui/pin.lua`, for any priority
+  container) lists the items and pins one. `alerts.alert(level, secs, title, text)`
+  (`modules/alerts.lua`) flashes it; an alert counts down only while it's shown
+  (`info.shown`, published by the container).
 
 **The target.** `modules/target.lua` holds the one mob you're after: area,
 keyword, name and room. Quest (`qx`) and campaign (`cn`) set it, and `k` and
@@ -195,7 +212,7 @@ line costs nothing to build while its topic is off. `/debug` lists them and
 switches them (`/debug <topic> [on|off]`, `/debug all off`). A topic that's
 on stays on across `/reload`. Debug code goes in a topic, not a command of
 its own. Topics: `act` (modules/act.lua), `gmcp` (lib/debug.lua), `group`,
-`chats`, `recov` (panes/affects.lua), `rooms` (modules/mapper.lua), `minimap`,
+`chats` (modules/chats.lua), `recov` (modules/affects.lua), `rooms` (modules/mapper.lua), `minimap`,
 `quiet`, `pup`, `dps`, `campaign`.
 
 **Profiling.** `/profile` (`lib/profile.lua`) times every callback Rune
@@ -222,60 +239,48 @@ and everything else sits with its feature.
 
 ## How the screen is redrawn
 
-The display engine (`ui/view.lua`) decides when each pane and status bar is
-drawn again. Module developers and pane config need nothing from this
-section: modules publish exact values, panes describe what to show, and
-the engine works out the rest. It matters only to someone changing the
-engine, chiefly adding a filter (the last part below).
+The display engine is `ui/screen.lua`; its header documents every call.
+`DISPLAY.md` walks through adding a data source and showing it. In short:
 
-**Passes.** Everything is drawn in a *pass*. A module setting a value that
-differs from the stored one asks for a pass; Rune runs it once at the end
-of the event (a packet, a key, a timer), however many values changed in
-it. Rune also polls the bars every 250 ms, which runs a pass nobody asked
-for. A pass nobody asked for, in the same second as the last one, skips
-every pane drawn only from data: nothing it shows can have changed. Once a
-second the pass runs in full, for countdowns. (A pane with `calls` or slot
-functions, which read a module's state directly, is never skipped.)
+**Containers and widgets.** `screen:container { name, x, y, w, h, border,
+title }` is a rectangle that becomes a Rune pane (a one-row one, a bar).
+Widgets go in it: `c:widget { source, process, format, every, w, x, y }`,
+and the generic widgets in `ui/widgets/` built on it (`c:value`, `c:tenths`,
+`c:barchart` ...). Beside them: `c:list` (a row per record, each compared on
+its own), `c:append` (a stream, each event added), `c:priority` (items, the
+first with something wins) and `c:container` (nested: one entry in its
+parent's line, whose state picks its children's colors).
 
-**What a pass redraws.** Only widgets marked *dirty*, and their parents.
-Setting a value marks the widgets that show it - but only if what they
-*show* changed, not merely the value:
+**A widget.** `source` (data names) -> `process(v..., now)`, which returns
+one value -> compared with `~=` to the last; only a change marks the widget
+dirty. `format(value)` makes the text, and runs only for a dirty widget.
+A processor rounds to what's shown, so a change you couldn't see does
+nothing: gold 2,500,000 -> 2,500,001 is "2.5M" either way (`P.round`), HP
+69,960 -> 69,990 of 88,000 is 79.5% either way (`c:tenths`). Where a row
+shows several things, the processor packs them into one number (the
+affects rows, a group member), so the comparison is still one `~=`. The
+stored data is always exact - `view.get` and subscribers see 2,500,001.
 
-- Gold goes from 2,500,000 to 2,500,001. The info pane shows it as
-  `{acct.gold|short}`, "2.5M" either way, so that widget isn't marked and
-  no pass is asked for.
-- HP goes from 69,960 to 69,990 of 88,000. The bar shows
-  `{hp.pct|fixed:1}`, "79.5" either way - not marked.
-- HP crosses 60%. The text may still read "60.0", but the style rule
-  (`below = 60`) changed, so it is marked.
+**Passes.** A module's `set` runs the processors of the widgets on that
+name; a changed one is dirty and asks for a pass. Rune runs the pass once
+at the end of the event (a packet, a key, a timer), however many values
+changed: dirty widgets are formatted, their lines rebuilt, each changed
+container written once. A widget dirty already isn't processed again on
+more changes in the same event - it's processed once more at the pass.
+Nothing dirty: the pass does nothing.
 
-To tell, each widget has *keys*: for each use of a value, what it makes
-of it - the text the template part's first filter makes (`short`,
-`fixed:1`, `dhm` ...), which style rule applies, or whether a `when` test
-holds. When a value is set, the widgets showing it work out their keys and
-compare them with the last; only a widget whose keys differ is marked. The
-stored value is always exact - `view.get` and subscribers see 2,500,001.
+**Timed widgets.** `every = n` processes a widget at most every n seconds,
+on the bar poll - never a Rune timer of its own. A timed processor may
+return a second value, the seconds until its value can change (`math.huge`:
+only its data changes it); the widget isn't looked at again until then.
 
-A widget is *not keyed* - any change of the value marks it, as before keys -
-when keys can't save anything or can't be trusted:
-
-- it shows the value as it is (no formatting filter: `{acct.hr}`) - any
-  change shows anyway;
-- it follows the clock (a countdown) - it's drawn each second anyway;
-- it isn't a `text` or `cases` widget (lists, banners, panels, render
-  widgets);
-- a template part has a filter after its first that isn't on the
-  text-only list (below).
-
-**Adding a filter.** A filter is `f(s, v, arg)`: `s` the text so far, `v`
-the raw value. Keys skip filters that only rework the text - `pad`,
-`rpad`, `cut`, `fit`, `plain`, `after`, `ell`, `as` (`TEXT_ONLY` in
-`ui/view.lua`) - because the text before them already decides their
-output. A new filter that never reads `v` belongs on that list. Leaving it
-off is safe: widgets using it after their first filter simply aren't keyed
-(redrawn on any change, a little slower). The one thing never to do is put
-a filter that reads `v` on the list - its widgets could then miss a change
-and show a stale value until the next real one.
+**Adding to it.** A generic widget is a file in `ui/widgets/` that registers
+itself (`screen.add_widget(name, fn)` -> `c:name {...}`); a layout file
+requires each widget it uses. A processor or formatter is a plain function:
+generic ones in `process/generic.lua` / `format/generic.lua`, one module's in
+`process/<module>.lua` / `format/<module>.lua`. Nothing game-specific goes in
+a widget; settings for how it shows (a chart's buckets, a list's order and
+length) go in its constructor, in the layout file.
 
 ## Per-subclass modules
 
@@ -325,7 +330,7 @@ in modules/zones/blackclaw.lua.
   or `~/.local/state/rune`. `util.append_log` adds a line to `dps.log` or `pup.log`,
   one per finished session, and `util.log_tail` reads the last few back.
   Rune's `/log` files go in `userlogs/` there, with `userlogs/` as the root of
-  any path given (`panes/status.lua` wraps `rune.log.start`). No folder is
+  any path given (`modules/log.lua` wraps `rune.log.start`). No folder is
   made; a missing one is an error. Rune's `/log` leaves out `rune.echo`; ours
   puts it in (`modules/copy.lua` wraps `rune.echo`), so our messages and debug
   topics' lines are in a log, except a chat-only one.

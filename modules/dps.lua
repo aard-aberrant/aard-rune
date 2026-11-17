@@ -18,7 +18,7 @@
 --   log       each session, when it ends (a reset, /reload, disconnect), one
 --             line in dps.log (util.state_dir: ~/.local/state/rune),
 --             tab-separated: start, seconds, damage, hits, area
--- On status row 1, after 3MN (panes/status.lua): "DPS 1234  1:23",
+-- On status row 1, after 3MN (data/layout/status.lua): "DPS 1234  1:23",
 -- always shown (a gray "--" before any damage, as PUP's, no clock; after a
 -- reset the last session's numbers, dimmed, until the next damage).
 
@@ -144,7 +144,7 @@ end, { name = "dps_area" })
 rune.hooks.on("reloading", zero, { name = "dps_log_reload" })
 rune.hooks.on("disconnected", zero, { name = "dps_log_disconnect" })
 
--- DPS on the status row: panes/status.lua
+-- DPS on the status row: data/layout/status.lua
 publish()
 
 rune.alias.exact("dps", function(args)

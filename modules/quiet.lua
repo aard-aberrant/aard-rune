@@ -66,7 +66,7 @@ local t            -- this fight's: { xp, gold, kills } or nil
 -- a terminal or font that draws it); "◀" (U+25C0) is the plain stand-in.
 -- Codes run on (.on) - a call ends in a reset, which would end the
 -- background too
-local layout = require("ui.layout")
+local layout = require("data.layout.screen")
 local TRI = "\238\130\178"   -- U+E0B2, one column
 local XP, GOLD, DIM = T.xp.on, T.gold.on, T.text.on
 -- The icons, before their amounts: emoji, two columns each (U+1F9E0 brain,

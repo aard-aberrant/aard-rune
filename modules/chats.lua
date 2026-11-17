@@ -1,10 +1,13 @@
--- The chats pane: channels and tells (GMCP comm.channel), remote socials,
--- and its scroll keys.
+-- Chats (require("modules.chats")): channels and tells (GMCP comm.channel)
+-- and remote socials, published as a stream (chat.line) for the chats pane
+-- (data/layout/chats.lua); /copy chat and an open /log get each line too. Also
+-- /log start chat (the chats alone) and finger's reply without its blank
+-- lines.
 local util = require("lib.util")
 local colors = require("ui.colors")
-local theme = require("ui.theme")
 local game = require("modules.game")   -- at login
 local copy = require("modules.copy")   -- /copy chat: each line the pane gets
+local line_text = require("format.chats").line
 
 -- The log: no file of its own. While a /log is open, each line the pane
 -- gets goes into it too (Rune's log has the game's text lines only, and
@@ -17,17 +20,17 @@ local copy = require("modules.copy")   -- /copy chat: each line the pane gets
 -- a restart starts it empty (a /reload keeps it)
 local CHAT_ONLY = "log_chat_only"
 
--- The chat lines are a stream (aard.chat): the chats panel
--- shows them (an append widget, below); /copy and the log take them here
+-- The chat lines are a stream (aard.chat): the chats pane shows them
+-- (data/layout/chats.lua); /copy and the log take them here
 local view = require("ui.view")
 local C = view.provides("aard.chat", "channels, tells and remote socials, as they come", {
   ["chat.line"] = { "stream", "one line: { time = os.time(), text = the line in the game's colors }" },
 })
 local function chat(msg)
   msg = msg:gsub("\n", " ")
-  local now = os.time()
-  C.emit("chat.line", { time = now, text = msg })
-  local text = theme.muted(os.date("%H:%M", now)) .. " " .. msg
+  local e = { time = os.time(), text = msg }
+  C.emit("chat.line", e)
+  local text = line_text(e)
   copy.keep(text)
   if rune.log.status() then
     rune.log.write(rune.session.get("log_raw") and text or colors.strip(text))
@@ -138,25 +141,5 @@ rune.trigger.regex("^-+ Player : ", function(_, ctx)
   end
 end, { name = "chats_finger", gag = true, span = { to = "^-+$", max = 40 } })
 
--- The chats container: each chat line (chat.line) appended as it comes -
--- its time first (HH:MM, dim), then the line in the game's colors
-require("ui.layout")
-require("ui.screen").containers.chats:append { source = "chat.line",
-  format = function(e) return theme.muted(os.date("%H:%M", e.time)) .. " " .. e.text end }
 
--- Scrolling the chats pane. PgUp/PgDn and Ctrl+Home/Ctrl+End scroll the
--- main output (Rune's defaults); the same keys with Alt scroll chats, and
--- Alt+End goes back to live tailing. Shift too - but most terminals keep
--- Shift+PgUp for their own scrollback (Shift didn't scroll chats live
--- 2026-11-07 - the terminal, presumably). The mouse wheel scrolls the pane
--- under the pointer - with our patched Rune (branch scrolling-panes on the
--- aard-aberrant fork, PR'd upstream); stock Rune 5d808d6 sends every wheel
--- tick to the main output
-local function up() rune.pane.scroll_up("chats", 10) end
-local function down() rune.pane.scroll_down("chats", 10) end
-local function live() rune.pane.scroll_to_bottom("chats") end
-for _, mod in ipairs({ "alt", "shift" }) do
-  rune.bind(mod .. "+pgup", up)
-  rune.bind(mod .. "+pgdown", down)
-  rune.bind(mod .. "+end", live)
-end
+return {}

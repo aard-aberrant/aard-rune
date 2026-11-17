@@ -13,7 +13,7 @@
 --   the next three of them to run out, by name, colored by how soon
 --   Shaman: the totem - type, minutes left, area; then Create Totem's
 --     recovery, "totem ready"
-require("ui.layout")
+require("data.layout.screen")
 require("modules.affects")
 local screen = require("ui.screen")
 local theme = require("ui.theme")

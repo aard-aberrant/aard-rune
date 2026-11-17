@@ -31,7 +31,7 @@
 -- table writes per callback.
 local util = require("lib.util")
 local theme = require("ui.theme")
-local layout = require("ui.layout")   -- the main pane's width
+local layout = require("data.layout.screen")   -- the main pane's width
 
 local M = {}
 local say, warn = util.say, util.warn

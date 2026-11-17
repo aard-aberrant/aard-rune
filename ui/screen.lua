@@ -661,7 +661,7 @@ function M.tree()
 end
 
 -- screen.apply(picking): Rune's layout; while a picker is open the input
--- sizes itself (ui/layout.lua's picker wrapper)
+-- sizes itself (data/layout/screen.lua's picker wrapper)
 function M.apply(picking)
   local t = M.tree()
   if input_node then

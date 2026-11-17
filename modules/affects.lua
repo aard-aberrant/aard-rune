@@ -1,6 +1,6 @@
 -- Your affects (require("modules.affects")): what's up on you, the
 -- recoveries, the Shaman's totem - published as data, drawn by the panes
--- that want it (panes/affects.lua).
+-- that want it (data/layout/affects.lua).
 -- Kept current from the game's tags: {affon}sn,secs and {affoff}sn as
 -- affects start and end, {recon}id,secs / {recoff}id for recoveries (65 is
 -- Create Totem). One hidden "slist affected" fills it in (at login and

@@ -92,7 +92,7 @@ local A = view.provides("aard.autocast", "autocast (ac)", {
   ["ac.on"] = { "boolean", "ac is on" },
 })
 A.set("ac.on", on)
--- AC on the status row: panes/status.lua
+-- AC on the status row: data/layout/status.lua
 
 local function show()
   local c, w = attack()

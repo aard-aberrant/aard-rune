@@ -1,5 +1,5 @@
 -- Your account (require("modules.account")), from GMCP char.worth and
--- char.stats (tt++ account.tin) - data only: the info pane (panes/info.lua)
+-- char.stats (tt++ account.tin) - data only: the info pane (data/layout/info.lua)
 -- shows it.
 -- The minimums below which the pane shows red: the defaults
 -- (conf/equipment.tin); a subclass's file (data/classes/<subclass>.lua)

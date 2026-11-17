@@ -116,7 +116,7 @@ rune.trigger.starts(SENSE, function(_, ctx)
   end
 end, { name = "repop_sense" })
 
--- POP (panes/status.lua) shows it
+-- POP (data/layout/status.lua) shows it
 
 rune.alias.exact("pop", function()
   if #stats == 0 then say("[pop] no exact countdown checked against a repop yet."); return end

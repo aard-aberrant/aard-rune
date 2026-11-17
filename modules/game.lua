@@ -10,7 +10,7 @@
 --   char.stats    stats = the message as sent (str ... luck, hr, dr)
 --   room.info     room = { num, zone, name } (num can be -1 in a maze)
 --   comm.tick     tick() = seconds to the next tick (30 at a tick), nil before
---                 the first (panes/status.lua's TCK, modules/rheal.lua, modules/moons.lua)
+--                 the first (data/layout/status.lua's TCK, modules/rheal.lua, modules/moons.lua)
 --   game.on_login(fn)  fn() once you're in the game: at the first char.base
 --                 after this loaded (after a /reload: init.lua asks for
 --                 char) and after each reconnect. Not at "connected" - Rune

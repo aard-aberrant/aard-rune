@@ -1,5 +1,5 @@
 -- Alerts (require("modules.alerts")) - data only: the info pane
--- (panes/info.lua) flashes them.
+-- (data/layout/info.lua) flashes them.
 --   alerts.alert("crit"|"warn", secs, TITLE, text)   up for secs seconds
 --   alerts.clear(TITLE)                              taken off; true if it was up
 -- A crit beeps. A second alert with the same title replaces the text of

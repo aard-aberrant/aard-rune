@@ -370,7 +370,7 @@ rune.trigger.exact("It starts to rain a little.", function(_, ctx) return hide(c
 rune.trigger.regex("^A .+ blows from the (?:north|south|east|west|northeast|northwest|southeast|southwest)\\.$",
   function(_, ctx) if not cap then return hide(ctx) end end, { name = "moons_notice_wind" })
 
--- 3MN on the status row: panes/status.lua
+-- 3MN on the status row: data/layout/status.lua
 
 -- The command -------------------------------------------------------------
 

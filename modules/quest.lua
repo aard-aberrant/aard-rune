@@ -86,7 +86,7 @@ local function row()
   Q.publish()
 end
 
--- QST (panes/status.lua) shows it
+-- QST (data/layout/status.lua) shows it
 
 local function qst_update(d)
   local function wait(m, polled)

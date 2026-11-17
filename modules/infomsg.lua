@@ -1,4 +1,4 @@
--- infomsg [-t secs] text: your own text on the info pane (panes/info.lua
+-- infomsg [-t secs] text: your own text on the info pane (data/layout/info.lua
 -- shows it, over quest, campaign and account, under the alerts) - this
 -- module holds it as data. | starts a new line (4 at most). -t: gone after
 -- that many seconds. Bare: cleared.

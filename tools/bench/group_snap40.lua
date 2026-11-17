@@ -1,13 +1,15 @@
+-- LAYOUT(name): data/layout/<name> on this tree, else an older tree's panes/<name> (ui/layout for "screen")
+LAYOUT = LAYOUT or function(n) local new = "data.layout." .. n; if package.searchpath(new, package.path) then return require(new) end return require(n == "screen" and "ui.layout" or "panes." .. n) end
 local root = arg[1]
 package.path = root .. "/?.lua;" .. package.path
 dofile((arg[0]:match("^(.*)/") or ".") .. "/harness.lua")
-local layout = require("ui.layout")
+local layout = LAYOUT("screen")
 local W = 44
 rune._state.width, rune._state.height = W + layout.RIGHT_W + 1, 36   -- the group pane 44 x 8
 local util = require("lib.util")
 local panes = {}
 util.pane = function(n, t) panes[n] = t end
-require("modules.group"); require("panes.group")
+require("modules.group"); LAYOUT("group")
 H.feed("char.base", { name = "Aberrant", tier = "1", subclass = "x" })
 local out = {}
 local function grp(k, sz, leaveout)

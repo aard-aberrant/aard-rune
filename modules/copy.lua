@@ -12,7 +12,7 @@
 --         what an alias sends), and our own messages ([eq] ... lines,
 --         every rune.echo - Rune has no hook for them, so rune.echo is
 --         wrapped below; the wrapper also puts them in an open /log)
---   chat  the last 500 lines panes/chats.lua writes to its pane
+--   chat  the last 500 lines modules/chats.lua sends to the chats pane
 --         (copy.keep)
 -- A /reload keeps both (rune.session, written once at the reload).
 -- Copied with rune.clipboard.set (OSC 52, as inst does).
@@ -59,7 +59,7 @@ rune.hooks.on("echo", function(text) main.push(colors.strip(text)) end, { name =
 -- of (lua/core/60_log.lua: "client chrome (rune.echo) is not logged") - so
 -- a debug topic's lines land in a log (the user, 2026-11-09). Colors kept
 -- in a raw log (rune.session "log_raw", as Rune's own hooks read it);
--- nothing in a chat-only one (panes/chats.lua's "log_chat_only")
+-- nothing in a chat-only one (modules/chats.lua's "log_chat_only")
 local echo = rune.echo
 function rune.echo(text)
   text = tostring(text)
@@ -72,7 +72,7 @@ function rune.echo(text)
   echo(text)   -- returns nothing, as Rune's does
 end
 
--- panes/chats.lua: each line it writes to the chats pane
+-- modules/chats.lua: each line it sends to the chats pane
 function copy.keep(text) chat.push(colors.strip(text)) end
 
 rune.command.add("copy", function(args)

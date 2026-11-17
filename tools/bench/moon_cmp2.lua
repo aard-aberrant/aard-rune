@@ -1,3 +1,5 @@
+-- LAYOUT(name): data/layout/<name> on this tree, else an older tree's panes/<name> (ui/layout for "screen")
+LAYOUT = LAYOUT or function(n) local new = "data.layout." .. n; if package.searchpath(new, package.path) then return require(new) end return require(n == "screen" and "ui.layout" or "panes." .. n) end
 dofile((arg[0]:match("^(.*)/") or ".") .. "/harness.lua")
 local view = require("ui.view")
 local MO
@@ -6,7 +8,7 @@ view.provides = function(m, ...) local h = orig(m, ...); if m == "aard.moons" th
 require("modules.moons")
 view.provides = orig
 local theme = require("ui.theme")
-local status = require("panes.status")
+local status = LAYOUT("status")
 status.field = function(label, value, width, style)
   value = tostring(value)
   if value == "--" then style = theme.unavailable end

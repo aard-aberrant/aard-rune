@@ -1,12 +1,14 @@
+-- LAYOUT(name): data/layout/<name> on this tree, else an older tree's panes/<name> (ui/layout for "screen")
+LAYOUT = LAYOUT or function(n) local new = "data.layout." .. n; if package.searchpath(new, package.path) then return require(new) end return require(n == "screen" and "ui.layout" or "panes." .. n) end
 dofile((arg[0]:match("^(.*)/") or ".") .. "/harness.lua")
 local MODE = arg[2] or "bench"
-local layout = require("ui.layout")
+local layout = LAYOUT("screen")
 rune._state.height = 36   -- the group pane 8 rows: 36 less info, the minimap row and dividers
 rune._state.width = 44 + layout.RIGHT_W + 1
 local util = require("lib.util")
 local panes = {}
 util.pane = function(n, t) if panes[n] ~= t then panes[n] = t end end
-require("modules.group"); require("panes.group")
+require("modules.group"); LAYOUT("group")
 local snaps = {}
 local function snap(tag) H.pass(); snaps[#snaps + 1] = "-- " .. tag .. "\n" .. tostring(panes.group) end
 local function ctx(text) return { line = { clean = function() return text end } } end
