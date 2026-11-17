@@ -101,6 +101,7 @@ require("data.layout.minimap")  -- the minimap pane (modules/minimap.lua: the ga
 require("modules.mapper")       -- map/aard.map, kept current from GMCP room.info
 require("modules.maprec")       -- map record: custom exits from what you do
 require("modules.travel")       -- routes and g, ga, find, label
+require("modules.arrows")       -- arrows: walk mode, the arrow keys move (WLK); Tab toggles
 require("modules.repop")        -- the POP light, pop
 require("modules.target")       -- the target: target / t, gm
 require("modules.quest")        -- qx

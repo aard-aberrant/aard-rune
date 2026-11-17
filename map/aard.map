@@ -375,7 +375,7 @@ X	139	140	n
 R	140	horath	mountain	3		Lair of the Great Wyrm Horath
 X	140	126	n		
 X	140	139	s		
-R	141	seaking	desert			Beach Before the Castle
+R	141	seaking	desert	2		Beach Before the Castle
 X	141	142	n		
 X	141	161	u		
 R	142	seaking	inside			Castle Foyer and Throne
@@ -399,7 +399,7 @@ R	150	seaking	shore	1		Under The Sea
 X	150	151	s		
 R	151	seaking	chaos_sea			Under The Sea
 X	151	152	w		
-R	152	seaking	ocean2			Under Calm Seas
+R	152	seaking	ocean2	2		Under Calm Seas
 X	152	153	d		
 R	153	seaking	shore			Under The Sea
 X	153	154	e		
@@ -419,6 +419,7 @@ R	160	seaking	field	1		Under A Full Moon
 R	161	seaking	field			Washed Up On The Shore
 R	165	seaking	dungeon			Spectre's Dark Moon
 R	167	seaking	underwater			Sea Witch's Waning Moon
+R	173	seaking	cloud3			Shore's Full Moon
 R	178	seaking	ice			Midwinter
 R	181	snuckles	forest			Pathway to Snuckles Forest
 X	181	182	n		
@@ -63880,7 +63881,7 @@ X	19679	19684	n		open n;north
 X	19679	19692	s		open s;south
 X	19679	19678	u		
 X	19679	19688	w		open w;west
-R	19680	terra	mountain	1		Further into the mountain
+R	19680	terra	mountain	3		Further into the mountain
 X	19680	19681	d		
 X	19680	19704	e		open e;east
 X	19680	19700	n		open n;north
@@ -83044,6 +83045,7 @@ R	28361	touchstone	shop			Junior Spelunker's Hut
 X	28361	28358	s		
 R	28363	seaking	shore			Grey Hall of the Epitaph
 R	28364	seaking	shore			Grey Hall of the Tidebringer
+R	28365	seaking	shore			Grey Hall of the Moon
 R	28366	seaking	shore			Grey Hall of the Sea Witch
 R	28367	seaking	shore			Grey Hall of the Kraken
 R	28368	seaking	shore			Grey Hall of the Deep
@@ -120465,12 +120467,18 @@ R	45883	dungeon	hellinside			The Vault Corridor
 X	45883	45882	e		
 X	45883	45884	n		
 X	45883	45885	s		
-R	45884					
-R	45885					
-R	45886					
-R	45887					
-R	45888					
-R	45889					
+R	45884	dungeon	underground			Vault #5
+X	45884	45883	s		
+R	45885	dungeon	underground			Vault #6
+X	45885	45883	n		
+R	45886	dungeon	underground			Vault #3
+X	45886	45881	s		
+R	45887	dungeon	underground			Vault #4
+X	45887	45881	n		
+R	45888	dungeon	underground			Vault #1
+X	45888	45879	s		
+R	45889	dungeon	underground			Vault #2
+X	45889	45879	n		
 R	45890	dungeon	hallway			A Large Corridor
 X	45890	45891	e		
 X	45890	45850	w		open w;west

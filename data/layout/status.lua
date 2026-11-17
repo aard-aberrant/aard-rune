@@ -3,7 +3,7 @@
 -- data, with each module's processors and formatters (process/<module>.lua,
 -- format/<module>.lua).
 --   row 1: TCK QST POP 3MN DPS PUP 2XP 2QP; REC at the right end
---   row 2: HP MN MV ALN LVL TNL | AC, the enemy or your state; SCR right
+--   row 2: HP MN MV ALN LVL TNL | AC, the enemy or your state; WLK SCR right
 -- A segment whose module isn't loaded shows nothing, its space with it (a
 -- widget puts the space before its label).
 local theme = require("ui.theme")
@@ -15,6 +15,7 @@ require("ui.widgets.tenths")      -- panel:tenths (HP MN MV)
 require("ui.widgets.countdown")   -- panel:countdown (TCK 2XP 2QP)
 require("ui.widgets.value")       -- panel:value (QST POP 3MN ALN LVL TNL, the enemy)
 require("ui.widgets.indicator")   -- panel:indicator (REC AC SCR)
+require("modules.arrows")         -- walk.on, theme.walk (WLK)
 require("ui.widgets.timer")       -- panel:timer (DPS's time)
 local containers = screen.containers
 local F, P = require("format.generic"), require("process.generic")
@@ -121,7 +122,15 @@ row2:widget { text = " " }
 row2:value { source = { "fighting", "enemy_hp", "enemy", "state" },
   process = PG.enemy_or_state, show = FG.enemy_or_state, color = FG.enemy_or_state_color }
 
--- SCR (right): the main pane scrolled back - read on every refresh
-row2:indicator { x = -3, every = 0, text = "SCR", colors = { [true] = theme.scrolled }, process = P.scrolled }
+-- The right end: WLK SCR. The right side's widgets run on in order (any
+-- x < 0), flush right: each always takes its 3 columns (blank when off),
+-- so neither light ever moves
+-- WLK: the arrow keys walk (modules/arrows.lua)
+row2:widget { x = -1, source = "walk.on",
+  format = function(on) return on and paint(theme.walk.on, "WLK") or "   " end }
+row2:widget { x = -1, text = " " }
+-- SCR: the main pane scrolled back - read on every refresh
+row2:widget { x = -1, every = 0, process = P.scrolled,
+  format = function(on) return on and paint(theme.scrolled, "SCR") or "   " end }
 
 return {}
