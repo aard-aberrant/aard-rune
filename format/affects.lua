@@ -79,4 +79,14 @@ function F.totem(v, width)
   return STYLE[tonumber(f[3])]((icon or f[1]) .. " " .. rjust(f[2], 2) .. "m") .. " " .. area
 end
 
+-- A recovery on its own line (P.cooldown): "<word> ready", or while it
+-- counts down "<word> ready in 6s" - m:ss above a minute
+function F.cooldown(v)
+  local word, secs = v:match("^(.-)\1(%d+)$")
+  secs = tonumber(secs)
+  if secs == 0 then return GRN(word .. " ready") end
+  if secs <= 60 then return OFF(word .. " ready in " .. secs .. "s") end
+  return OFF(string.format("%s ready in %d:%02d", word, floor(secs / 60), secs % 60))
+end
+
 return F

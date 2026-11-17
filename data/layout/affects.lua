@@ -13,6 +13,9 @@
 --   the next three of them to run out, by name, colored by how soon
 --   Shaman: the totem - type, minutes left, area; then Create Totem's
 --     recovery, "totem ready"
+--   recoveries with a line of their own (data/affects.lua's line - Priest:
+--     smite): "smite ready" green, "smite ready in 6s" gray (m:ss
+--     above a minute)
 require("data.layout.screen")
 require("modules.affects")
 local screen = require("ui.screen")
@@ -55,3 +58,7 @@ p:list { source = SRC, every = 1, max = 3, records = P.timers, key = "name",
 -- a gap, then the totem (Shaman)
 line { every = 1, process = P.any_totem, format = F.blank }
 line { every = 1, process = P.totem, format = F.totem }
+
+-- a gap, then the recoveries on lines of their own (Priest: smiting)
+line { process = P.any_cooldown, format = F.blank }
+for i = 1, P.nlines do line { every = 1, process = P.cooldown(i), format = F.cooldown } end

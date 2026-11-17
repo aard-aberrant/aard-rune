@@ -29,6 +29,10 @@
 --                         id, its recovery id (the {recon} tag's), if known -
 --                         else learned from slist
 --                  only   as in track
+--                  line   a word: shown on a line of its own at the pane's
+--                         foot instead of a row - "<word> ready", or
+--                         "<word> ready in 6s" counting down (m:ss above
+--                         a minute)
 return {
   track = {
     [71]  = { good = true,  label = "SANC", important = true },
@@ -50,6 +54,11 @@ return {
     { name = "augmentation", label = "AUGM",         sn = 532, only = { "Priest" } },
     { name = "serenity",     label = "SERE",     sn = 572, only = { "Priest" } },
     { name = "shielding",    label = "HLSH",      sn = 569, only = { "Priest" } },
+    -- heavenly smiting's cooldown (aa, ac aoe): the game calls it Smiting -
+    -- {recon}37,10 at the cast, "## You may now use Smiting." 10 s later
+    -- (userlogs/smit.log, 2026-11-17); spell number 574 (the user). Its own
+    -- line (line), not a row
+    { name = "smiting", label = "SMIT", sn = 574, id = 37, line = "smite", only = { "Priest" } },
   },
   per_block = 2,
   totem_icons = { Bear = "🐻", Owl = "🦉", Ent = "🌳" },

@@ -119,6 +119,8 @@ require("modules.instinct")     -- inst: instinct above 0 on one line, copied
 require("modules.quiet")        -- a fight's xp and gold on one line at its end, tells reminder, skinning hidden
 require("modules.bcc")          -- bcc, bcc find: Black Claw Crag (the fight: modules/zones/blackclaw.lua)
 require("modules.spup")         -- spup, spn, spq: hosting spellups
+require("modules.alias")        -- /alias, /unalias: your own aliases, kept in aliases.txt - after the
+                                -- config's aliases, so a clash leaves the config's in place
 require("modules.zones.loader") -- modules/zones/<zone>.lua, only while you're in that zone
 
 -- Per-subclass features: the modules in data/classes/<subclass>.lua's

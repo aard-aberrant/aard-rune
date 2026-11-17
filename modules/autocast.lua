@@ -3,6 +3,13 @@
 --   ac cast <command> | <hit>     send that instead, for this session - <hit>
 --                                 is its word after "Your " in its damage line
 --   ac cast reset                 back to k's attack (pattack, pattack_hit)
+--   ac aoe                        toggle the AoE opener: as a fight starts
+--                                 (not fighting -> fighting), your area
+--                                 attack (aa: the class file's paoe) once,
+--                                 before the attack - if its cooldown
+--                                 (paoe_rec, tracked by modules/affects.lua)
+--                                 is over; none named: no check. Only while
+--                                 ac is on; can be set while it's off
 -- While on and fighting, a GMCP char.status sends the attack unless one is
 -- still pending. A char.status comes just before each block of damage - the
 -- melee round and the attack's own hit - so pending (set at the send) skips
@@ -21,15 +28,19 @@
 -- (a cast refused while stunned): it clears, and the next char.status casts.
 -- Your k counts: a bare k in a fight is skipped (ac is attacking already),
 -- any other k is a cast pending.
--- Off at every load. The AC light on status row 2, after "|": green on, gray off.
+-- Off at every load, the opener too. The AC light on status row 2, after
+-- "|": green on, gray off; AOE after it, the opener, the same.
 
 local util = require("lib.util")
 local game = require("modules.game")
-local combat = require("modules.combat")   -- the attack, and k's hook
+local combat = require("modules.combat")   -- the attack, k's hook, paoe
+local affects = require("modules.affects") -- the opener's cooldown (affects.ready)
 
 local say, warn, trim = util.say, util.warn, util.trim
 
 local on = false
+local aoe = false        -- ac aoe: the opener
+local in_fight = false   -- fighting at the last char.status
 local cmd, hit        -- ac cast's command and hit word, or nil for pattack's
 local pending = false
 local timeout = util.slot()   -- 6 s after a send: give up waiting for its line
@@ -71,8 +82,20 @@ result = rune.trigger.regex(
   end, { name = "autocast_result" })
 result:disable()
 
+-- The opener: the area attack, if its cooldown is over
+local function opener()
+  local c, rec = combat.paoe()
+  if not c or (rec and affects.ready(rec) == false) then return end
+  rune.send_raw(c)
+end
+
 rune.gmcp.on("char.status", function()
-  if not on or pending or game.state ~= 8 then return end
+  local fighting = game.state == 8
+  local starts = fighting and not in_fight
+  in_fight = fighting
+  if not on or not fighting then return end
+  if starts and aoe then opener() end   -- sent first: the game runs it first
+  if pending then return end
   local c = attack()
   if not c then return end
   mark()
@@ -86,17 +109,25 @@ combat.k_hook = function(mob)
   return false
 end
 
--- Published (ui/view.lua): ac on or off - the AC light
+-- Published (ui/view.lua): ac on or off, the opener - the AC light
 local view = require("ui.view")
 local A = view.provides("aard.autocast", "autocast (ac)", {
-  ["ac.on"] = { "boolean", "ac is on" },
+  ["ac.on"]  = { "boolean", "ac is on" },
+  ["ac.aoe"] = { "boolean", "ac aoe: ac opens a fight with the area attack" },
 })
 A.set("ac.on", on)
+A.set("ac.aoe", aoe)
 -- AC on the status row: data/layout/status.lua
 
 local function show()
   local c, w = attack()
-  say(string.format("[ac] %s - sends %s, hit word %s%s", on and "on" or "off",
+  local open = ""
+  if aoe then
+    local a, rec = combat.paoe()
+    open = a and (" + aoe - opens with " .. a .. (rec and (" (when " .. rec .. " is ready)") or "") .. ", then")
+      or " + aoe (no area attack for this class) -"
+  end
+  say(string.format("[ac] %s%s sends %s, hit word %s%s", on and "on" or "off", open ~= "" and open or " -",
     c or "?", w or "(none - only the 6 s timeout)", cmd and " (ac cast reset for k's)" or ""))
 end
 
@@ -109,6 +140,11 @@ rune.alias.exact("ac", function(args)
     show()
     A.set("ac.on", on)
     A.publish()
+  elseif args == "aoe" then
+    aoe = not aoe
+    show()
+    A.set("ac.aoe", aoe)
+    A.publish()
   elseif args == "cast reset" then
     cmd, hit = nil, nil
     show()
@@ -118,13 +154,14 @@ rune.alias.exact("ac", function(args)
     cmd, hit = c, w
     show()
   else
-    warn("[ac] ac (toggle), ac cast <command> | <hit word>, ac cast reset")
+    warn("[ac] ac (toggle), ac aoe (toggle the opener), ac cast <command> | <hit word>, ac cast reset")
   end
 end)
 
 -- Help (lib/help.lua): /help
 local help = require("lib.help")
 help.add("ac", "ac", "autocast on/off (a toggle): in a fight, your primary attack (k) once a round, at the melee round")
+help.add("ac aoe", "ac aoe", "toggle: as a fight starts, ac opens with your area attack (aa) if its cooldown is over - the AOE light")
 help.add("ac cast", "ac cast <command> | <hit> | reset", "autocast something else this session (<hit>: its word after \"Your \" in the damage line); reset: back to k's")
 
 -- For others (modules/bcc.lua's check before the mist)

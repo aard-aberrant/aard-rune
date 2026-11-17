@@ -100,6 +100,13 @@ function combat.pattack()
   return c, c and C.pattack_hit
 end
 
+-- The area attack and its cooldown's name (paoe, paoe_rec), for ac aoe
+-- (modules/autocast.lua); quiet - nil when there's none, no warning
+function combat.paoe()
+  if not C then return nil end
+  return C.paoe, C.paoe_rec
+end
+
 -- Your heal spell, for h and rh (modules/heal.lua, modules/rheal.lua): the class
 -- file's heal, else incomplete healing (a subclass not known yet, too)
 function combat.heal()

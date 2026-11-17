@@ -50,7 +50,9 @@ local function lists(sub)
     for _, s in ipairs(d.only) do if s == sub then return true end end
     return false
   end
-  L = { good = {}, bad = {}, also = {}, recs = {}, good_w = 0, bad_w = 0, gen = #by_gen + 1 }
+  -- recs: the rows' labels; rec_at: each row's place in A.recs (which has
+  -- every recovery of the subclass); lines: the ones on a line of their own
+  L = { good = {}, bad = {}, also = {}, recs = {}, rec_at = {}, lines = {}, good_w = 0, bad_w = 0, gen = #by_gen + 1 }
   for id, d in pairs(CFG.track) do
     if mine(d) then
       if d.good then
@@ -65,10 +67,17 @@ local function lists(sub)
   end
   table.sort(L.good)
   table.sort(L.bad)
+  local n = 0
   for _, d in ipairs(CFG.recoveries or {}) do
     if mine(d) then
-      L.recs[#L.recs + 1] = d.label
-      L.good_w = max(L.good_w, #d.label)
+      n = n + 1
+      if d.line then
+        L.lines[#L.lines + 1] = { word = d.line, at = n }
+      else
+        L.recs[#L.recs + 1] = d.label
+        L.rec_at[#L.recs] = n
+        L.good_w = max(L.good_w, #d.label)
+      end
     end
   end
   by_sub[sub or ""], by_gen[L.gen] = L, L
@@ -151,7 +160,7 @@ function P.row(i)
         if left > 0 then nxt = min(till_minute(left), till_band(left)) end
       end
     else
-      local r = A.recs[i - ng]
+      local r = A.recs[L.rec_at[i - ng]]
       if r then
         local e = r.d.sn and up[r.d.sn]
         if e == 0 then g = 3
@@ -228,6 +237,28 @@ end
 function P.any_totem(sub, A, now)
   local v, nxt = P.totem(sub, A, now)
   return A.seen and v and 1 or nil, nxt
+end
+
+-- A recovery on a line of its own (data/affects.lua's line), the i-th of
+-- the subclass's: "word\1secs" - secs left (0: ready), next change in 1 s
+-- while counting. nil (no line) when it has fewer
+local lines_max = 0
+for _, d in ipairs(CFG.recoveries or {}) do if d.line then lines_max = lines_max + 1 end end
+P.nlines = lines_max
+function P.cooldown(i)
+  return function(sub, A, now)
+    local c = lists(sub).lines[i]
+    local r = c and A.recs[c.at]
+    if not r then return nil, NEVER end
+    local left = r.ends - now
+    if left > 0 then return c.word .. "\1" .. left, 1 end
+    return c.word .. "\1" .. 0, NEVER
+  end
+end
+
+-- 1 while any such line shows (the gap above them)
+function P.any_cooldown(sub, A)
+  return A.seen and lists(sub).lines[1] and 1 or nil, NEVER
 end
 
 return P

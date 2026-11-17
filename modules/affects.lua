@@ -398,6 +398,15 @@ end)
 
 build()
 
+-- A recovery ready (not cooling down)? name as in data/affects.lua's
+-- recoveries, any case; nil if it isn't one of this subclass's. For ac aoe
+-- (modules/autocast.lua)
+function A.ready(name)
+  local r = rec_by_name[name:lower()]
+  if not r then return nil end
+  return r.ends <= os.time()
+end
+
 -- Help (lib/help.lua): /help
 local help = require("lib.help")
 help.add("saf", "saf / aff / affects [args]", "the game's command, then a hidden slist that resets the affects pane")
