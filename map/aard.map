@@ -64312,10 +64312,12 @@ X	19827	19828	s
 X	19827	19825	w		
 R	19828	radiance	waternoswim			A Creek Surrounded by Stones
 X	19828	19835	e		
+X	19828	19829	leap		
 X	19828	19827	n		
 X	19828	19830	s		
 X	19828	19824	w		
 R	19829	radiance	underwater			Below the Creek
+X	19829	19828	resurface		
 R	19830	radiance	forest			A Trail Through the Woods
 X	19830	19834	e		
 X	19830	19831	explore cave		
@@ -119746,7 +119748,7 @@ X	45675	45674	s
 X	45675	45679	w		
 R	45676	fury	road_eastwest			Sir Robert Avenue - East
 X	45676	45677	e		
-X	45676	45681	n		
+X	45676	45681	n		open n;n
 X	45676	45675	w		
 R	45677	fury	road			Sir Robert Avenue - East Continues
 X	45677	45678	lift manhole		
@@ -119938,7 +119940,7 @@ X	45731	45732	e
 X	45731	45730	n		
 X	45731	45730	s		
 X	45731	45732	w		
-R	45732	fury	dark			Floating Down the Spiral
+R	45732	fury	dark	2		Floating Down the Spiral
 X	45732	45733	d		
 X	45732	45731	e		
 X	45732	45729	n		

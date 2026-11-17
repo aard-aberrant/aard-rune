@@ -12,7 +12,7 @@ return {
   sattack = "c 'finger of death'",
   paoe = "c 'heavenly smiting'",
   heal = "regeneration",   -- h and rh
-  -- su (core/aliases.lua): this subclass's own, in place of the shared one
-  su = "autoassist off;spellup luck %0;c 'pure faith';c 'self harmony';spellup int %0;spellup %0;autoassist on",
+  -- su (modules/aliases.lua): this subclass's own, in place of the shared one
+  su = "spellup luck %0;c 'pure faith';c 'self harmony';spellup int %0;spellup %0",
   dr_min = 1900,
 }

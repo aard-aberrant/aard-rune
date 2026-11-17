@@ -6,31 +6,34 @@ for _, pkg in ipairs({ "Char", "Room", "Comm", "Core", "Group" }) do
   rune.gmcp.subscribe(pkg, 1)
 end
 
--- The files, by folder. Each requires only from its own folder or the ones
--- above it in this list, with a note on why (Lua's require: each runs once,
--- and /reload starts a fresh Lua state), and returns its table when others
--- use it:
---   core/      util, game (GMCP state), layout, tags, aliases, login, history, debug, help, profile -
---              core/layout, core/game and core/util require nothing of ours
---   panes/     status, group, chats, info, affects, and timer (which
---              shows in info). Features plug into the panes (status's slots,
---              info.set); a pane never requires a feature
---   gear/      eq, invmon
---   nav/       mapper, travel, minimap (the map's pane), moons (Shaman only), repop
---   targets/   target, and quest and campaign, which set it; doubles, soh
---   fight/     combat, autocast, heal, hunt, dps, rheal, pup, instinct, quiet, bcc
---   host/      spup (hosting spellups)
---   areas/     loader (areas/<zone>.lua while you're in the zone: geniewish,
---              knossos, blackclaw ...) - a script may require anything above
+-- The files, by folder (organized by module, 2026-11-15). Lua's require
+-- runs each once, and /reload starts a fresh Lua state. A file returns its
+-- table when others use it; requires never go in a circle:
+--   lib/       util, debug, help, profile - game-agnostic, the framework;
+--              they require nothing of the modules
+--   ui/        colors, theme, view (the data), screen (the display engine),
+--              widgets/ (the generic widgets) - framework
+--   process/, format/  processors and formatters: generic.lua, and one
+--              file per module for its data (affects, quest, group ...)
+--   data/layout/  the screen (screen.lua: the containers' rectangles) and
+--              what each container shows (status, group, chats, info,
+--              affects, minimap): generic widgets on the modules' data
+--   modules/   everything that does something in the game or knows Aardwolf:
+--              game (GMCP state), tags, group, mapper, travel, quest, dps ...
+--              a module requires the libraries and the modules it uses
+--   modules/zones/  loader (modules/zones/<zone>.lua while you're in the
+--              zone: geniewish, knossos, blackclaw ...) - a script may
+--              require anything
 -- Then the per-subclass ones (data/classes/<subclass>.lua's modules), below
--- data/ is settings and game data, map/ the map, tools/ the converters.
+-- data/ is settings, game data and the layout, map/ the map, tools/ the
+-- converters and benchmarks.
 -- This file only sets Rune up and lists the features
-local util = require("core.util")
--- /profile (core/profile.lua). After /profile startup, it times every
+local util = require("lib.util")
+-- /profile (lib/profile.lua). After /profile startup, it times every
 -- require from here to startup_end() below; otherwise both do nothing
-local profile = require("core.profile")
+local profile = require("lib.profile")
 profile.startup_begin()
-require("core.layout")     -- the panes, and the picker wrapper
+require("data.layout.screen")  -- the containers (and ui/picker.lua)
 
 -- Ctrl+E goes to the end of the input line, as in a shell (Ctrl+A already
 -- goes to the start). Rune binds Ctrl+E to "edit the line in $EDITOR" -
@@ -63,7 +66,7 @@ end)
 -- Sending a command while the main pane is scrolled back jumps it to live
 -- output, as Ctrl+End would (Rune's own binding, 95_ui.lua - run through
 -- binds._dispatch; scroll_to_bottom on the pane as well, in case). The
--- status line shows SCROLLED meanwhile (panes/status.lua). A pane can't take a
+-- status line shows SCROLLED meanwhile (data/layout/status.lua). A pane can't take a
 -- background colour - Rune's layout refuses bg/background/style (tried)
 rune.hooks.on("input", function()
   if rune._state.scroll_mode ~= "scrolled" then return end
@@ -73,46 +76,52 @@ end, { name = "jump_on_input" })
 
 -- The features, by folder. Each requires what it uses, so the order
 -- doesn't matter
-require("core.help")         -- /help: every command, registered by its module
-require("core.debug")        -- debug [topic] [on|off]: the modules' debug output
-require("core.login")        -- answers the login prompts from .env
-require("core.history")      -- command history kept in history.txt across restarts
-require("core.tags")         -- the game's tag lines, hidden or cut out
-require("core.aliases")      -- one-line aliases: su, sq, qs, gh ...
-require("core.copy")         -- /copy <n>: the last n lines of the main pane to the clipboard
-require("core.act")          -- /act, /unact: ad hoc triggers, kept in acts.txt
-require("panes.group")       -- the group pane
-require("panes.chats")       -- the chats pane: channels, tells, remote socials
-require("panes.status")      -- the status bars (TCK, HP/MN/MV, the enemy ...)
-require("panes.info")        -- the info pane: quest, campaign, alerts, account, infomsg
-require("panes.timer")       -- timer
-require("panes.affects")     -- the affects pane, saf, affectsreset
-require("gear.eq")           -- eqwear, eqsave, eqcheck, eqsets
-require("nav.minimap")       -- the minimap pane, from the game's map tag
-require("nav.mapper")        -- map/aard.map, kept current from GMCP room.info
-require("nav.maprec")        -- map record: custom exits from what you do
-require("nav.travel")        -- routes and g, ga, find, label
-require("nav.repop")         -- the POP light, pop
-require("targets.target")    -- the target: target / t, gm
-require("targets.quest")     -- qx
-require("targets.campaign")  -- cn
-require("targets.soh")       -- soh: School of Horror mob keywords
-require("fight.combat")      -- k, kk, aa
-require("fight.autocast")    -- ac, the AC light
-require("fight.heal")        -- h: incomplete healing, held for the gap between kills
-require("fight.hunt")        -- autohunt, hqq
-require("fight.dps")         -- the DPS meter
-require("fight.rheal")       -- rh, sleep, the regen ring on waking
-require("fight.pup")         -- pup: powerup pace
-require("targets.doubles")   -- 2XP / 2QP lights, double (after DPS and PUP: their lights end row 1)
-require("fight.instinct")    -- inst: instinct above 0 on one line, copied
-require("fight.quiet")       -- a fight's xp and gold on one line at its end, tells reminder, skinning hidden
-require("fight.bcc")         -- bcc, bcc find: Black Claw Crag (the fight: areas/blackclaw.lua)
-require("host.spup")         -- spup, spn, spq: hosting spellups
-require("areas.loader")      -- areas/<zone>.lua, only while you're in that zone
+require("lib.help")             -- /help: every command, registered by its module
+require("lib.debug")            -- debug [topic] [on|off]: the modules' debug output
+require("ui.view")              -- the display engine: modules publish data, widgets show it
+require("modules.login")        -- answers the login prompts from .env
+require("modules.history")      -- command history kept in history.txt across restarts
+require("modules.tags")         -- the game's tag lines, hidden or cut out
+require("modules.aliases")      -- one-line aliases: su, sq, qs, gh ...
+require("modules.copy")         -- /copy <n>: the last n lines of the main pane to the clipboard
+require("modules.act")          -- /act, /unact: ad hoc triggers, kept in acts.txt
+require("modules.group")        -- your group, from GMCP group (the group pane shows it)
+require("modules.alerts")       -- alerts: a title and text, crit or warn (the info pane flashes them)
+require("modules.account")      -- gold, points and stats, from GMCP (the info pane shows them)
+require("modules.infomsg")      -- infomsg: your own text on the info pane
+require("data.layout.status")  -- the status bars (TCK, HP/MN/MV, the enemy ...) - before the
+                                -- group pane: its first bar runs the engine's pass (no extra bar)
+require("data.layout.group")    -- the group pane
+require("data.layout.chats")    -- the chats pane: channels, tells, remote socials
+require("data.layout.info")     -- the info pane: bcc, alerts, infomsg, quest, campaign, account; infopane
+require("modules.timer")        -- timer
+require("data.layout.affects")  -- the affects pane, saf, affectsreset
+require("modules.eq")           -- eqwear, eqsave, eqcheck, eqsets
+require("data.layout.minimap")  -- the minimap pane (modules/minimap.lua: the game's map tag)
+require("modules.mapper")       -- map/aard.map, kept current from GMCP room.info
+require("modules.maprec")       -- map record: custom exits from what you do
+require("modules.travel")       -- routes and g, ga, find, label
+require("modules.repop")        -- the POP light, pop
+require("modules.target")       -- the target: target / t, gm
+require("modules.quest")        -- qx
+require("modules.campaign")     -- cn
+require("modules.soh")          -- soh: School of Horror mob keywords
+require("modules.combat")       -- k, kk, aa
+require("modules.autocast")     -- ac, the AC light
+require("modules.heal")         -- h: incomplete healing, held for the gap between kills
+require("modules.hunt")         -- autohunt, hqq
+require("modules.dps")          -- the DPS meter
+require("modules.rheal")        -- rh, sleep, the regen ring on waking
+require("modules.pup")          -- pup: powerup pace
+require("modules.doubles")      -- 2XP / 2QP lights, double
+require("modules.instinct")     -- inst: instinct above 0 on one line, copied
+require("modules.quiet")        -- a fight's xp and gold on one line at its end, tells reminder, skinning hidden
+require("modules.bcc")          -- bcc, bcc find: Black Claw Crag (the fight: modules/zones/blackclaw.lua)
+require("modules.spup")         -- spup, spn, spq: hosting spellups
+require("modules.zones.loader") -- modules/zones/<zone>.lua, only while you're in that zone
 
 -- Per-subclass features: the modules in data/classes/<subclass>.lua's
--- `modules` list (Shaman: nav.moons) load only on that subclass - the ones
+-- `modules` list (Shaman: modules.moons) load only on that subclass - the ones
 -- above load on every one. Last here, so such a module may come from any
 -- folder. The subclass comes in GMCP char.base:
 --   at the first login after Rune starts, its modules load then. From
@@ -121,9 +130,9 @@ require("areas.loader")      -- areas/<zone>.lua, only while you're in that zone
 --   a /reload loads them at once: the subclass is kept in rune.session
 --   a different subclass later (a remort, another character): a /reload
 --     (rune.reload) - Lua can't take a module's triggers and slots back out
-local game = require("core.game")
+local game = require("modules.game")
 
--- Weather messages off at every login (config noweather on). nav/moons (a
+-- Weather messages off at every login (config noweather on). modules/moons (a
 -- Shaman's) turns them back on: its login action comes later in game.lua's
 -- list - registered after this one, at /reload and at the first login
 -- alike - so it wins. Registered here, before any per-subclass module can

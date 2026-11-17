@@ -1,6 +1,6 @@
 -- The Partroxis maze's mobs, by room: entry N is the mob in maze room N
 -- (vnum 5763 + N). From tt++ areas/partroxis.tin (Maze Navigator v5).
--- Read by areas/partroxis.lua (the navigator) and targets/campaign.lua
+-- Read by modules/zones/partroxis.lua (the navigator) and modules/campaign.lua
 -- (cn's order in Partroxis, and the (MAZE) mark) - loaded only when needed.
 return {
   "A Mountain of Rock", "The Rabid Tiger-man", "The man-eating wolfen", "The Buck-Toothed Lizard-Man",
