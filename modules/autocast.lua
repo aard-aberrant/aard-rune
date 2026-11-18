@@ -9,7 +9,10 @@
 --                                 before the attack - if its cooldown
 --                                 (paoe_rec, tracked by modules/affects.lua)
 --                                 is over; none named: no check. Only while
---                                 ac is on; can be set while it's off
+--                                 ac is on; can be set while it's off.
+--                                 Leaving the area it was turned on in
+--                                 (GMCP room.info's zone - recall and
+--                                 portals too) turns it off, ac stays
 -- While on and fighting, a GMCP char.status sends the attack unless one is
 -- still pending. A char.status comes just before each block of damage - the
 -- melee round and the attack's own hit - so pending (set at the send) skips
@@ -40,6 +43,7 @@ local say, warn, trim = util.say, util.warn, util.trim
 
 local on = false
 local aoe = false        -- ac aoe: the opener
+local aoe_zone           -- the area it was turned on in ("" not known yet)
 local in_fight = false   -- fighting at the last char.status
 local cmd, hit        -- ac cast's command and hit word, or nil for pattack's
 local pending = false
@@ -119,6 +123,20 @@ A.set("ac.on", on)
 A.set("ac.aoe", aoe)
 -- AC on the status row: data/layout/status.lua
 
+-- The opener off on leaving its area: an area attack where you didn't
+-- expect it starts on every mob there. A zone not known (empty) is
+-- skipped; the first one known is taken as the opener's. Cost: a compare
+-- per room change
+view.subscribe("room.zone", function(_, z)
+  if not aoe or not z or z == "" then return end
+  if aoe_zone == "" then aoe_zone = z; return end
+  if z == aoe_zone then return end
+  aoe = false
+  A.set("ac.aoe", aoe)
+  A.publish()
+  say("[ac] aoe off - left " .. aoe_zone)
+end)
+
 local function show()
   local c, w = attack()
   local open = ""
@@ -142,6 +160,7 @@ rune.alias.exact("ac", function(args)
     A.publish()
   elseif args == "aoe" then
     aoe = not aoe
+    aoe_zone = aoe and (game.room.zone or "") or nil
     show()
     A.set("ac.aoe", aoe)
     A.publish()
@@ -161,7 +180,7 @@ end)
 -- Help (lib/help.lua): /help
 local help = require("lib.help")
 help.add("ac", "ac", "autocast on/off (a toggle): in a fight, your primary attack (k) once a round, at the melee round")
-help.add("ac aoe", "ac aoe", "toggle: as a fight starts, ac opens with your area attack (aa) if its cooldown is over - the AOE light")
+help.add("ac aoe", "ac aoe", "toggle: as a fight starts, ac opens with your area attack (aa) if its cooldown is over - the AOE light; off when you leave the area")
 help.add("ac cast", "ac cast <command> | <hit> | reset", "autocast something else this session (<hit>: its word after \"Your \" in the damage line); reset: back to k's")
 
 -- For others (modules/bcc.lua's check before the mist)

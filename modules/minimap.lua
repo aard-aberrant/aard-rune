@@ -46,7 +46,7 @@ local minimap = {}
 local H = layout.MINIMAP_H
 
 local V = view.provides("aard.minimap", "the game's map block, and what the minimap shows in its place", {
-  ["map.block"] = { "record", "the last map block: name (rows), map (rows), exits (a row or nil) - raw, the game's colors" },
+  ["map.block"] = { "record", "the last map block: name (rows), map (rows), exits (a row or nil) - raw, the game's colors; room: the vnum room.info last named as it came (its room)" },
   ["map.word"]  = { "text",   "RUNNING, FIGHTING or DARKNESS in place of the map; nil: the map" },
   ["map.note"]  = { "text",   "the shown room's note from the mapper, \"\" for none" },
 })
@@ -94,6 +94,9 @@ local function build_map()
   -- the exits line, if any, is the last non-blank line
   local last = n
   while last >= i and blank(lines[last]) do last = last - 1 end
+  -- its room: the one room.info last named - it comes before the block
+  -- (debug minimap logs, 2026-11-09 to 11: {rname}, room.info, the block)
+  p.room = game.room.num
   if last >= i and lines[last].clean:match("^%s*%[ Exits:") then
     p.exits = lines[last].raw
     last = last - 1

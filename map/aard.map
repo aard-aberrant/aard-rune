@@ -64329,7 +64329,8 @@ X	19831	19830	escape cave
 X	19831	19832	s		
 R	19832	radiance	inside			Farther Into the Cave
 X	19832	19831	n		
-R	19833	radiance	inside			A Hole in the Cave
+R	19833	radiance	inside	2		A Hole in the Cave
+X	19833	19832	wiggle		
 R	19834	radiance	forest			A Trail Through the Woods
 X	19834	19838	e		
 X	19834	19835	n		
@@ -75365,7 +75366,7 @@ X	25445	25439	w
 R	25446	oradrin	underwater			Mermaid Retreat
 X	25446	25439	e		
 X	25446	25440	s		
-R	25447	oradrin	underwater	1		Rokyiel's Gate
+R	25447	oradrin	underwater	3		Rokyiel's Gate
 X	25447	25448	e		
 X	25447	25443	s		
 X	25447	25449	w		
@@ -113205,7 +113206,7 @@ R	39956	winds	bloodyhall			Corridor of the Soulless
 X	39956	39955	s		
 X	39956	39941	w		
 R	39998					
-R	39999	winds	bloodyhall	1		Halls of the Lost
+R	39999	winds	bloodyhall	3		Halls of the Lost
 X	39999	39998	s		
 R	40000	winds	forest	1		A Freshly Planted Grove
 X	40000	40001	n		
