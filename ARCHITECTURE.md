@@ -45,7 +45,7 @@ modules/        game  tags  group  aliases  login  history  copy  act  chats  lo
                 combat  autocast  heal  hunt  dps  rheal  pup  instinct  quiet  bcc
                 eq  invmon  spup
 modules/zones/  loader  + one script per zone (geniewish, knossos, partroxis, blackclaw)
-data/           settings and game data (Lua tables), data/classes/<subclass>.lua
+data/           settings and game data (Lua tables), player.lua (your characters' own things)
 data/layout/    the screen: screen (the containers) + status  group  chats  info  affects  minimap
 map/            aard.map, the room map
 tools/          one-time converters from the tt++ data, rune-api.txt (API dump),
@@ -287,10 +287,10 @@ length) go in its constructor, in the layout file.
 
 ## Per-subclass modules
 
-A module that only one subclass uses goes in that subclass's
-`data/classes/<subclass>.lua` as `modules = { ... }` (Shaman: `modules.moons`),
-not in `init.lua`. Every other module loads on every subclass, so a class
-file lists only its extras. The loader is the last section of `init.lua`:
+A module that only one subclass uses goes in that subclass's section of
+`data/player.lua` as `modules = { ... }` (Shaman: `modules.moons`), not in
+`init.lua`. Every other module loads on every subclass, so a subclass
+section lists only its extras. The loader is the last section of `init.lua`:
 the subclass comes in GMCP `char.base` and is kept in `rune.session`, so a
 `/reload` loads the modules at once. A different subclass later (a remort,
 another character) reloads, because Lua can't take a module's triggers and
@@ -337,8 +337,13 @@ in modules/zones/blackclaw.lua.
   made; a missing one is an error. Rune's `/log` leaves out `rune.echo`; ours
   puts it in (`modules/copy.lua` wraps `rune.echo`), so our messages and debug
   topics' lines are in a log, except a chat-only one.
-- `data/classes/<subclass>.lua` holds the attack commands for `k`, `kk` and
-  `aa`, chosen by GMCP `char.base` subclass.
+- `data/player.lua` holds your characters' own things, a section per
+  character: bags, consumables, worn items, and a section per subclass (the
+  attacks for `k`, `kk`, `aa`, `su`, `heal` ...), chosen by GMCP
+  `char.base` name and subclass. A module declares the keys it needs, with
+  why (`player.needs` in `modules/player.lua`); `/player` lists them and
+  their values, and a missing one is warned about at login. Aliases name a
+  key in braces (`{light}`, `{get heal}`). Not the password: that's `.env`.
 - `map/aard.map` is the room map: TAB-separated `R` (room) and `X` (exit)
   lines, about 34,800 rooms. It was converted from tt++ by
   `tools/convert_ttmap.py`, and `modules/mapper.lua` keeps it current from GMCP as

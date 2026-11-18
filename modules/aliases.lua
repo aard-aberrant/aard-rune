@@ -1,52 +1,60 @@
 -- One-line aliases (tt++ conf/aliases.tin). Each sends its commands to the
 -- game as they are - none goes through another alias. %0 is everything
--- typed after the alias, %1 %2 %3 its words. aa, kk (modules/combat.lua), d1-d6
+-- typed after the alias, %1 %2 %3 its words. {key} is your character's
+-- value from data/player.lua, {get key} "get <item> <medkit>" for a
+-- consumable (modules/player.lua; the keys declared below) - one missing:
+-- a warning, nothing sent. aa, kk (modules/combat.lua), d1-d6
 -- (modules/eq.lua) and sleep (modules/rheal.lua) are elsewhere. modules/travel.lua's speedwalk
 -- hands these over first: su and dd are made of direction letters.
 
 local util = require("lib.util")
+local player = require("modules.player")   -- {key}: your things; su per subclass
 
-local MEDKIT = "medkit"
+player.needs("modules.aliases", {
+  medkit = "qa qs sq qd get the item from it (\"\": from your inventory)",
+  heal = "qa: the verb, then the item (eat fugu)",
+  mana = "qs and sq: the verb, then the item",
+  moves = "qd: the verb, then the item",
+  light = "tend: uncurse, then wear it",
+})
+player.needs("modules.aliases", {
+  su = { "su: this subclass's own spellups, in place of the shared one", optional = true },
+}, { subclass = true })
 
 local A = {
   gh     = "home",
   su     = "spellup luck %0;spellup int %0;spellup %0",   -- autoassist kept as it was: aliases.su below
-  sq     = "spellup;get lotus " .. MEDKIT .. ";quaff lotus",
+  sq     = "spellup;{get mana};{mana}",
   dd     = "c 'dispel magic' %0",
   hh     = "c 'party heal'",
   cc     = "c 'cure blind' %0",
   cv     = "c 57;heighten",          -- night vision, psionic blast
-  qa     = "get fugu " .. MEDKIT .. ";eat fugu",
-  qs     = "get mana " .. MEDKIT .. ";quaff mana",
-  qd     = "get refresh " .. MEDKIT .. ";quaff refresh",
+  qa     = "{get heal};{heal}",
+  qs     = "{get mana};{mana}",
+  qd     = "{get moves};{moves}",
   ll     = "rlook %1 %2 %3;map",
   donate = "gdonate %0",
-  tend   = "uncurse;wear beacon",
+  tend   = "uncurse;wear {light}",
   f      = "finger %0",
 }
 
 local aliases = {}
 
--- A subclass's own version of an alias: a field of the same name in its
--- data/classes file (priest's su). Read once per subclass, when first used
-local game = require("modules.game")
-local class_cache = {}   -- subclass -> its class data (false: no file)
+-- A subclass's own version of an alias: a field of the same name in your
+-- subclass's section of data/player.lua (priest's su)
 local function class_body(name)
-  local sub = game.subclass
-  if not sub then return nil end
-  local C = class_cache[sub]
-  if C == nil then
-    C = util.class_data(sub) or false
-    class_cache[sub] = C
-  end
+  local C = player.class()
   return C and type(C[name]) == "string" and C[name] or nil
 end
 
 -- Alias name's commands with what was typed after it, one per line; nil if
--- name isn't one
+-- name isn't one, false if a {key} is missing (player.fill said which).
+-- A command left empty ({get heal} with no medkit) is dropped
 local function expand(name, args)
   local body = A[name] and (class_body(name) or A[name])
   if not body then return nil end
+  body = player.fill(body)
+  if not body then return false end
   args = (args or ""):match("^%s*(.-)%s*$")
   local w = {}
   for word in args:gmatch("%S+") do w[#w + 1] = word end
@@ -54,7 +62,8 @@ local function expand(name, args)
   for part in body:gmatch("[^;]+") do
     local cmd = part:gsub("%%0", function() return args end)
                     :gsub("%%(%d)", function(n) return w[tonumber(n)] or "" end)
-    cmds[#cmds + 1] = cmd:match("^%s*(.-)%s*$")
+    cmd = cmd:match("^%s*(.-)%s*$")
+    if cmd ~= "" then cmds[#cmds + 1] = cmd end
   end
   return table.concat(cmds, "\n")
 end
@@ -62,8 +71,8 @@ end
 -- Run alias name with what was typed after it. Returns true if name is one
 function aliases.run(name, args)
   local cmds = expand(name, args)
-  if not cmds then return false end
-  rune.send_raw(cmds)
+  if cmds == nil then return false end
+  if cmds then rune.send_raw(cmds) end
   return true
 end
 
@@ -90,7 +99,9 @@ su_wait.add("exact", "Autoassist removed.", function() su_reply(true) end, { nam
 su_wait.add("exact", "You will now assist when needed.", function() su_reply(false) end, { name = "su_assist_was_off" })
 function aliases.su(args, tail)
   if su_pending then util.warn("[su] still waiting for autoassist's reply."); return end
-  su_pending = { cmds = expand("su", args), tail = tail and ("\n" .. tail) or "" }
+  local cmds = expand("su", args)
+  if not cmds then return end
+  su_pending = { cmds = cmds, tail = tail and ("\n" .. tail) or "" }
   su_wait.set(true)
   rune.send_raw("autoassist")
   su_timer = rune.timer.after(SU_WAIT, function()
@@ -134,7 +145,8 @@ for name, body in pairs(A) do
   rune.alias.exact(name, su and function(args) aliases.su(args) end or function(args) aliases.run(name, args) end)
   local usage = name .. (body:find("%%[0-9]") and " [args]" or "")
   help.add(name, usage, "sends: " .. body:gsub("%%0", "<args>"):gsub("%%(%d)", "<arg%1>"):gsub(";", "; ")
-    .. " (unless data/classes/<subclass>.lua has its own " .. name .. ")"
+    .. (body:find("{", 1, true) and " ({...}: yours, from data/player.lua - /player)" or "")
+    .. (su and " (unless your subclass's section of data/player.lua has its own su)" or "")
     .. (su and "; autoassist is toggled first and left as it was" or ""))
 end
 

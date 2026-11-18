@@ -68412,7 +68412,7 @@ X	23644	23643	s
 R	23645	nynewoods	ruins			When You Have To Go
 X	23645	23646	e		
 X	23645	23644	s		
-R	23646	nynewoods	hell4			No Lifeguard On Duty
+R	23646	nynewoods	hell4	2		No Lifeguard On Duty
 X	23646	23647	e		
 X	23646	23648	s		
 X	23646	23645	w		
@@ -68448,7 +68448,7 @@ X	23653	23650	w
 R	23654	nynewoods	bloodyhall			Horror Harbor
 X	23654	23653	n		
 X	23654	23649	w		
-R	23655	nynewoods	hellinside			The Mouth Of The Beast
+R	23655	nynewoods	hellinside	2		The Mouth Of The Beast
 X	23655	23656	d		
 X	23655	23640	u		
 R	23656	nynewoods	bloodyhall			Blood Bath

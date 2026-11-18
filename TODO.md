@@ -107,7 +107,7 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
 - [ ] Status rows rearranged 2026-11-08: row 1 TCK QST POP 3MN DPS PUP 2XP 2QP ... REC; row 2
       HP MN MV ALN LVL TNL | AC an akita warrior of… 100 (name cut/padded to 20, green under
       20%; your state there out of a fight); DPS always shown, dimmed after a reset; "dps" / "dps reset"; DPS resets on a new area
-- [ ] k / kk / aa (modules/combat.lua, offline-tested): attacks from data/classes/<subclass>.lua (shaman,
+- [ ] k / kk / aa (modules/combat.lua, offline-tested): attacks from data/player.lua's subclass sections (shaman,
       bandit, ninja). k <mob>; bare k in a fight = k_fight or pattack; out of one = pattack on
       gm's target by the keyword given to gm. Not ported: autocast's attack.k hook, Ninja spiral
 - [x] (confirmed live by 2026-11-09) Since the last /reload: bare g (fixed), g <area> only, ga, gm, g sendhian (gvozd),
@@ -240,7 +240,7 @@ Port of the tt++ setup (aardwolf-tintin) to Rune, piece by piece. Config: init.l
       hidden up to the {/eqdata} of a hidden eqdata that also refreshes invmon's worn list
       (modules/travel.lua home_routine, eq.check_worn)
 - [x] ac (modules/autocast.lua, working live 2026-11-06): the tt++ autocast - casts pattack at a fighting char.status
-      unless pending; pending clears on the damage line ("Your <pattack_hit> "), a fizzle,
+      unless pending; pending clears on the damage line ("Your <pattack's hit word> "), a fizzle,
       "on whom?" (game text, like dps - GMCP can't tell which spell landed), or after 6 s.
       AC light on status row 2. (ac trace removed 2026-11-06 - a general logging mechanism comes later)
 - [x] qc (modules/quest.lua): home, quest complete, gulp - gulp hidden between two eqdata tags. Confirmed live 2026-11-06

@@ -3,7 +3,7 @@
 -- data, with each module's processors and formatters (process/<module>.lua,
 -- format/<module>.lua).
 --   row 1: TCK QST POP 3MN DPS PUP 2XP 2QP; REC at the right end
---   row 2: HP MN MV ALN LVL TNL | AC AOE, the enemy or your state; WLK SCR right
+--   row 2: HP MN MV ALN LVL TNL | AC1 AOE, the enemy or your state; WLK SCR right
 -- A segment whose module isn't loaded shows nothing, its space with it (a
 -- widget puts the space before its label).
 local theme = require("ui.theme")
@@ -14,7 +14,7 @@ local screen = require("ui.screen")
 require("ui.widgets.tenths")      -- panel:tenths (HP MN MV)
 require("ui.widgets.countdown")   -- panel:countdown (TCK 2XP 2QP)
 require("ui.widgets.value")       -- panel:value (QST POP 3MN ALN LVL TNL, the enemy)
-require("ui.widgets.indicator")   -- panel:indicator (REC AC AOE)
+require("ui.widgets.indicator")   -- panel:indicator (REC AOE)
 require("modules.arrows")         -- walk.on, theme.walk (WLK)
 require("ui.widgets.timer")       -- panel:timer (DPS's time)
 local containers = screen.containers
@@ -25,6 +25,7 @@ local PR, FR = require("process.repop"), require("format.repop")
 local PM, FM = require("process.moons"), require("format.moons")
 local PG, FG = require("process.game"), require("format.game")
 local PUP = require("format.pup")
+local PA, FA = require("process.autocast"), require("format.autocast")
 local REC = require("format.log")
 
 -- Row 1 ---------------------------------------------------------------------
@@ -115,8 +116,9 @@ row2:value { source = "level", label = " LVL ", missing = "", process = P.below(
 row2:value { source = "tnl", label = " TNL ", w = 4, missing = " TNL " .. paint(theme.unavailable, "--  "),
   color = F.rule({ 300 }, { "danger", "value" }) }
 row2:widget { text = paint(theme.muted, " | ") }
--- AC: autocast on, dim off
-row2:indicator { source = "ac.on", text = "AC", colors = { [true] = theme.on, [false] = theme.off, ["nil"] = theme.off } }
+-- AC1 / AC2 / AC*: autocast on (green) or off (dim), and what it casts -
+-- the primary attack, the secondary, a command of your own
+row2:widget { source = { "ac.on", "ac.attack" }, process = PA.light, format = FA.light }
 row2:widget { text = " " }
 -- AOE: ac aoe, the AoE opener (it casts only while AC is on too), dim off
 row2:indicator { source = "ac.aoe", text = "AOE", colors = { [true] = theme.on, [false] = theme.off, ["nil"] = theme.off } }

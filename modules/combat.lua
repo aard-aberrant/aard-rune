@@ -6,31 +6,47 @@
 --             from its name, as the target's check tries first. No target: a message
 --   kk [mob]  your secondary attack (sattack)
 --   aa        your area attack (paoe)
--- The commands are in data/classes/<subclass>.lua - the subclass as GMCP
--- char.base spells it, lowercased - read again whenever it changes. No
--- file for your subclass: these say so and send nothing.
+-- The commands are in data/player.lua, your character's section for the
+-- subclass playing now (modules/player.lua; the keys declared below) -
+-- looked up again whenever the subclass changes. None for your subclass:
+-- these say so and send nothing.
 
 local util = require("lib.util")
 local theme = require("ui.theme")
 local game = require("modules.game")       -- the subclass (its attacks), fighting or not
 local target = require("modules.target")   -- a bare k attacks it
+local player = require("modules.player")   -- your attacks, per subclass
+
+-- data/player.lua's keys for each subclass (/player lists them)
+player.needs("modules.combat", {
+  pattack = "k: your primary single-target attack - its command, then hit = its word in its damage line, after \"Your \" (ac waits for it; none: only ac's 6 s timeout): { \"c 'gaias fury'\", hit = \"fury\" }, or the command alone",
+  sattack = "kk: your secondary attack (ac2) - its command, then hit = its damage line's word, as pattack's",
+  paoe = "aa: your area attack, ac aoe opens a fight with it - its command, then cooldown = its recovery as data/affects.lua names it (ac aoe waits for it; none: no check): { \"c 'heavenly smiting'\", cooldown = \"smiting\" }, or the command alone",
+  k_fight = { "what a bare k sends in a fight (default: pattack, no target)", optional = true },
+  heal = { "your heal spell, for h and rh (default: incomplete healing)", optional = true },
+}, { subclass = true })
 
 local say, warn, trim = util.say, util.warn, util.trim
 
 local combat = {}
--- Set by modules/autocast.lua: called with k's mob ("" for a bare k) before k sends
--- its attack; true means don't send
+-- Set by modules/autocast.lua: called with the mob ("" for a bare one) and
+-- which attack ("pri" for k, "sec" for kk) before it's sent; true means
+-- don't send
 combat.k_hook = nil
 
 local C           -- this subclass's attacks
 local subclass    -- the subclass they're for
 
--- A new subclass (modules/game.lua has stored char.base already): read its file
+-- A new subclass or character (modules/game.lua has stored char.base
+-- already): its section of data/player.lua
+local for_who
 rune.gmcp.on("char.base", function()
-  if not game.subclass or game.subclass == subclass then return end
-  subclass = game.subclass
-  C = util.class_data(subclass)
-  if not C then warn("[combat] no attacks for " .. subclass .. " - k, kk and aa need that file.") end
+  if not game.subclass then return end
+  local who = tostring(player.name()) .. "/" .. game.subclass
+  if who == for_who then return end
+  for_who, subclass = who, game.subclass
+  C = player.class(subclass)
+  if not C then warn("[combat] no " .. subclass:lower() .. " section for " .. tostring(player.name()) .. " in data/player.lua - k, kk and aa need it.") end
 end, { name = "combat_base" })
 
 -- This subclass's command `key`, or nil after a message
@@ -39,8 +55,10 @@ local function attack(key)
     warn("[combat] your subclass's attacks aren't loaded" .. (subclass and (" (" .. subclass .. ")") or " yet") .. ".")
     return nil
   end
-  if not C[key] then warn("[combat] no " .. key .. " for " .. subclass .. ".") end
-  return C[key]
+  local v = C[key]
+  local cmd = type(v) == "table" and v[1] or v
+  if type(cmd) ~= "string" then warn("[combat] no " .. key .. " for " .. subclass .. " in data/player.lua."); return nil end
+  return cmd, type(v) == "table" and v or nil
 end
 
 -- (Aliases: send, then return nothing - a returned value is run as a command)
@@ -48,7 +66,7 @@ rune.alias.exact("k", function(args)
   local mob = trim(args)
   local pattack = attack("pattack")
   if not pattack then return end
-  if combat.k_hook and combat.k_hook(mob) then return end
+  if combat.k_hook and combat.k_hook(mob, "pri") then return end
   if mob ~= "" then
     rune.send_raw(pattack .. " " .. mob)
   elseif game.state == 8 then   -- fighting
@@ -84,6 +102,7 @@ rune.alias.exact("kk", function(args)
   local cmd = attack("sattack")
   if not cmd then return end
   local mob = trim(args)
+  if combat.k_hook and combat.k_hook(mob, "sec") then return end
   rune.send_raw(mob ~= "" and (cmd .. " " .. mob) or cmd)
 end)
 
@@ -93,22 +112,31 @@ rune.alias.exact("aa", function()
   rune.send_raw(cmd)
 end)
 
--- The primary attack (pattack), or nil after a message, and its hit word
--- (pattack_hit, or nil) - for modules/autocast.lua
+-- The primary attack (pattack's command), or nil after a message, and its
+-- hit word (pattack's hit, or nil) - for modules/autocast.lua
 function combat.pattack()
-  local c = attack("pattack")
-  return c, c and C.pattack_hit
+  local c, pair = attack("pattack")
+  return c, pair and pair.hit
 end
 
--- The area attack and its cooldown's name (paoe, paoe_rec), for ac aoe
+-- The secondary attack (sattack's command), or nil after a message, and its
+-- hit word - for ac2
+function combat.sattack()
+  local c, pair = attack("sattack")
+  return c, pair and pair.hit
+end
+
+-- The area attack and its cooldown's name (paoe's command and cooldown), for ac aoe
 -- (modules/autocast.lua); quiet - nil when there's none, no warning
 function combat.paoe()
   if not C then return nil end
-  return C.paoe, C.paoe_rec
+  local v = C.paoe
+  if type(v) == "table" then return v[1], v.cooldown end
+  return v, nil
 end
 
--- Your heal spell, for h and rh (modules/heal.lua, modules/rheal.lua): the class
--- file's heal, else incomplete healing (a subclass not known yet, too)
+-- Your heal spell, for h and rh (modules/heal.lua, modules/rheal.lua): the
+-- subclass section's heal, else incomplete healing (a subclass not known yet, too)
 function combat.heal()
   return C and C.heal or "incomplete healing"
 end

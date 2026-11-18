@@ -11,7 +11,10 @@
 -- In <commands>: ";" separates commands, %0 is everything typed after the
 -- word, %1 %2 ... its words. With no %0-%9 in them, what's typed after the
 -- word goes on the end (as Rune's own string aliases do): with
--- "bs = backstab", "bs orc" sends "backstab orc".
+-- "bs = backstab", "bs orc" sends "backstab orc". {key} is your
+-- character's value from data/player.lua, {get key} "get <item> <medkit>"
+-- (modules/player.lua): "/alias lt = wear {light}". One missing: a
+-- warning, nothing sent.
 -- The commands go as if typed: returned to Rune, which splits them at ";",
 -- runs them through aliases (so one can use another) and stops a loop.
 -- Only these: an alias made in the config (modules/aliases.lua, combat's
@@ -21,6 +24,7 @@
 -- you type a command; nothing per line.
 
 local util = require("lib.util")
+local player = require("modules.player")   -- {key} in the commands
 local say, warn = util.say, util.warn
 
 local list = {}   -- { word, cmds, handle }, in the order made
@@ -52,7 +56,12 @@ local function add(word, cmds)
   if not i and rune.alias.get(word) then
     return nil, "\"" .. word .. "\" is an alias of the config already"
   end
-  local h = rune.alias.exact(word, function(args) return expand(cmds, args) end, { group = "alias" })
+  -- {key} filled before what's typed goes in (braces typed stay as typed)
+  local h = rune.alias.exact(word, function(args)
+    local filled = player.fill(cmds)
+    if not filled then return end   -- it said which; nothing sent
+    return expand(filled, args)
+  end, { group = "alias" })
   local a = { word = word, cmds = cmds, handle = h }
   if i then list[i] = a else list[#list + 1] = a end   -- Rune replaced the old one (same word)
   return a

@@ -24,7 +24,7 @@ end
 --   modules/zones/  loader (modules/zones/<zone>.lua while you're in the
 --              zone: geniewish, knossos, blackclaw ...) - a script may
 --              require anything
--- Then the per-subclass ones (data/classes/<subclass>.lua's modules), below
+-- Then the per-subclass ones (data/player.lua's modules, per subclass), below
 -- data/ is settings, game data and the layout, map/ the map, tools/ the
 -- converters and benchmarks.
 -- This file only sets Rune up and lists the features
@@ -123,8 +123,8 @@ require("modules.alias")        -- /alias, /unalias: your own aliases, kept in a
                                 -- config's aliases, so a clash leaves the config's in place
 require("modules.zones.loader") -- modules/zones/<zone>.lua, only while you're in that zone
 
--- Per-subclass features: the modules in data/classes/<subclass>.lua's
--- `modules` list (Shaman: modules.moons) load only on that subclass - the ones
+-- Per-subclass features: the modules in your subclass's section of
+-- data/player.lua, its `modules` list (Shaman: modules.moons) load only on that subclass - the ones
 -- above load on every one. Last here, so such a module may come from any
 -- folder. The subclass comes in GMCP char.base:
 --   at the first login after Rune starts, its modules load then. From
@@ -134,6 +134,10 @@ require("modules.zones.loader") -- modules/zones/<zone>.lua, only while you're i
 --   a different subclass later (a remort, another character): a /reload
 --     (rune.reload) - Lua can't take a module's triggers and slots back out
 local game = require("modules.game")
+local player = require("modules.player")
+player.needs("init", {
+  modules = { "features loaded only on this subclass (Shaman: modules.moons) - every other module loads on every one", optional = true },
+}, { subclass = true })
 
 -- Weather messages off at every login (config noweather on). modules/moons (a
 -- Shaman's) turns them back on: its login action comes later in game.lua's
@@ -150,7 +154,7 @@ end)
 
 local class_for = rune.session.get("class_modules")
 local function load_class(sub)
-  local C = util.class_data(sub)
+  local C = player.class(sub)
   for _, m in ipairs(C and C.modules or {}) do
     local ok, err = pcall(require, m)
     if not ok then util.err("[init] " .. sub .. "'s " .. m .. " didn't load: " .. tostring(err)) end

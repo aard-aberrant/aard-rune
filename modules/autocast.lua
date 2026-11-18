@@ -1,13 +1,18 @@
--- ac - cast your primary attack once a round (tt++ modules/autocast.tin)
+-- ac - cast your attack once a round (tt++ modules/autocast.tin)
 --   ac                            toggle it on or off (it says which, and what it sends)
+--   ac1                           cast your primary attack (k's: pattack and
+--                                 its hit word) - the one at every load
+--   ac2                           cast your secondary (kk's: sattack)
 --   ac cast <command> | <hit>     send that instead, for this session - <hit>
 --                                 is its word after "Your " in its damage line
---   ac cast reset                 back to k's attack (pattack, pattack_hit)
+-- ac1 and ac2 turn ac on too (already on: the next round casts the
+-- new one; the same one: nothing). ac cast only changes what's cast. They
+-- replace each other.
 --   ac aoe                        toggle the AoE opener: as a fight starts
 --                                 (not fighting -> fighting), your area
---                                 attack (aa: the class file's paoe) once,
+--                                 attack (aa: data/player.lua's paoe) once,
 --                                 before the attack - if its cooldown
---                                 (paoe_rec, tracked by modules/affects.lua)
+--                                 (paoe's cooldown, tracked by modules/affects.lua)
 --                                 is over; none named: no check. Only while
 --                                 ac is on; can be set while it's off.
 --                                 Leaving the area it was turned on in
@@ -29,10 +34,12 @@
 -- cast is still in the game's queue (two "on whom?" lines, seen live in
 -- tt++ 2026-11-06). No result 6 s after the send
 -- (a cast refused while stunned): it clears, and the next char.status casts.
--- Your k counts: a bare k in a fight is skipped (ac is attacking already),
--- any other k is a cast pending.
+-- Your k (on pri; kk on sec) counts: a bare one in a fight is skipped (ac
+-- is attacking already), any other is a cast pending. The other one, or
+-- either with ac cast <command>, is just sent.
 -- Off at every load, the opener too. The AC light on status row 2, after
--- "|": green on, gray off; AOE after it, the opener, the same.
+-- "|": AC1 pri, AC2 sec, AC* a command - green on, gray off; AOE after it,
+-- the opener, the same.
 
 local util = require("lib.util")
 local game = require("modules.game")
@@ -45,13 +52,15 @@ local on = false
 local aoe = false        -- ac aoe: the opener
 local aoe_zone           -- the area it was turned on in ("" not known yet)
 local in_fight = false   -- fighting at the last char.status
-local cmd, hit        -- ac cast's command and hit word, or nil for pattack's
+local cmd, hit        -- ac cast's command and hit word, or nil for pri's or sec's
+local pick = "pri"    -- ac1: pri, ac2: sec
 local pending = false
 local timeout = util.slot()   -- 6 s after a send: give up waiting for its line
 
 -- The command and hit word in use
 local function attack()
   if cmd then return cmd, hit end
+  if pick == "sec" then return combat.sattack() end
   return combat.pattack()
 end
 
@@ -106,8 +115,8 @@ rune.gmcp.on("char.status", function()
   rune.send_raw(c)
 end, { name = "autocast_status" })
 
-combat.k_hook = function(mob)
-  if not on then return false end
+combat.k_hook = function(mob, which)
+  if not on or cmd or which ~= pick then return false end
   if mob == "" and game.state == 8 then return true end
   mark()
   return false
@@ -118,9 +127,15 @@ local view = require("ui.view")
 local A = view.provides("aard.autocast", "autocast (ac)", {
   ["ac.on"]  = { "boolean", "ac is on" },
   ["ac.aoe"] = { "boolean", "ac aoe: ac opens a fight with the area attack" },
+  ["ac.attack"] = { "text", "what ac casts: pri, sec, or cast (ac cast <command>)" },
 })
 A.set("ac.on", on)
 A.set("ac.aoe", aoe)
+A.set("ac.attack", pick)
+local function set_attack()
+  A.set("ac.attack", cmd and "cast" or pick)
+  A.publish()
+end
 -- AC on the status row: data/layout/status.lua
 
 -- The opener off on leaving its area: an area attack where you didn't
@@ -146,7 +161,7 @@ local function show()
       or " + aoe (no area attack for this class) -"
   end
   say(string.format("[ac] %s%s sends %s, hit word %s%s", on and "on" or "off", open ~= "" and open or " -",
-    c or "?", w or "(none - only the 6 s timeout)", cmd and " (ac cast reset for k's)" or ""))
+    c or "?", w or "(none - only the 6 s timeout)", cmd and " (ac1 / ac2: back to yours)" or (" (" .. pick .. ")")))
 end
 
 rune.alias.exact("ac", function(args)
@@ -164,24 +179,41 @@ rune.alias.exact("ac", function(args)
     show()
     A.set("ac.aoe", aoe)
     A.publish()
-  elseif args == "cast reset" then
-    cmd, hit = nil, nil
-    show()
   elseif args:match("^cast ") then
     local c, w = args:match("^cast (.-)%s*|%s*(.+)$")
-    if not c or c == "" then warn("[ac] ac cast <command> | <hit word>, or ac cast reset"); return end
+    if not c or c == "" then warn("[ac] ac cast <command> | <hit word>"); return end
     cmd, hit = c, w
+    clear()
     show()
+    set_attack()
   else
-    warn("[ac] ac (toggle), ac aoe (toggle the opener), ac cast <command> | <hit word>, ac cast reset")
+    warn("[ac] ac (toggle), ac1, ac2, ac aoe (toggle the opener), ac cast <command> | <hit word>")
   end
 end)
 
+-- ac1 / ac2: your primary / secondary attack, ac on (already on: switched;
+-- already so: nothing)
+local function use(want)
+  if on and not cmd and pick == want then return end
+  local was_cmd, was_pick = cmd, pick
+  cmd, hit, pick = nil, nil, want
+  if not attack() then cmd, pick = was_cmd, was_pick; return end   -- it said why
+  on = true
+  clear()
+  show()
+  A.set("ac.on", on)
+  set_attack()
+end
+rune.alias.exact("ac1", function() use("pri") end)
+rune.alias.exact("ac2", function() use("sec") end)
+
 -- Help (lib/help.lua): /help
 local help = require("lib.help")
-help.add("ac", "ac", "autocast on/off (a toggle): in a fight, your primary attack (k) once a round, at the melee round")
+help.add("ac", "ac", "autocast on/off (a toggle): in a fight, the attack set by ac1 / ac2 / ac cast (primary at load) once a round, at the melee round - the AC1 / AC2 / AC* light")
 help.add("ac aoe", "ac aoe", "toggle: as a fight starts, ac opens with your area attack (aa) if its cooldown is over - the AOE light; off when you leave the area")
-help.add("ac cast", "ac cast <command> | <hit> | reset", "autocast something else this session (<hit>: its word after \"Your \" in the damage line); reset: back to k's")
+help.add("ac1", "ac1", "ac casts your primary attack (k), turning ac on if it's off - the AC1 light")
+help.add("ac2", "ac2", "ac casts your secondary attack (kk), turning ac on if it's off - the AC2 light")
+help.add("ac cast", "ac cast <command> | <hit>", "ac casts a command of your own this session (<hit>: its word after \"Your \" in the damage line) - the AC* light; ac1 / ac2 go back")
 
 -- For others (modules/bcc.lua's check before the mist)
 return { on = function() return on end }

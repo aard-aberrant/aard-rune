@@ -2,12 +2,19 @@
 -- char.stats (tt++ account.tin) - data only: the info pane (data/layout/info.lua)
 -- shows it.
 -- The minimums below which the pane shows red: the defaults
--- (conf/equipment.tin); a subclass's file (data/classes/<subclass>.lua)
--- may set its own: hr_min, dr_min, stat_min. Read again when the subclass
--- changes.
+-- (conf/equipment.tin); your subclass's section of data/player.lua
+-- (modules/player.lua) may set its own: hr_min, dr_min, stat_min. Read
+-- again when the subclass changes.
 local util = require("lib.util")
 local game = require("modules.game")   -- char.worth, char.stats, the subclass
 local view = require("ui.view")
+local player = require("modules.player")   -- the subclass's minimums
+
+player.needs("modules.account", {
+  hr_min = { "the info pane's account view shows HR in red below this (default 1600)", optional = true },
+  dr_min = { "the info pane's account view shows DR in red below this (default 2000)", optional = true },
+  stat_min = { "the info pane's account view shows a stat in red below this (default 600)", optional = true },
+}, { subclass = true })
 
 local DEF_HR, DEF_DR, DEF_STAT = 1600, 2000, 600
 local mins_for   -- the subclass they were read for
@@ -56,7 +63,7 @@ rune.gmcp.on("char.base", function()
   local sub = game.subclass
   if not sub or sub == mins_for then return end
   mins_for = sub
-  local C = util.class_data(sub) or {}
+  local C = player.class(sub) or {}
   A.set("acct.hr_min", C.hr_min or DEF_HR)
   A.set("acct.dr_min", C.dr_min or DEF_DR)
   A.set("acct.stat_min", C.stat_min or DEF_STAT)

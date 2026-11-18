@@ -263,12 +263,6 @@ function util.load_data(path)
   return nil
 end
 
--- A subclass's file, data/classes/<subclass>.lua (init.lua's modules,
--- combat's attacks, info's minimums), or nil after an error
-function util.class_data(sub)
-  return util.load_data(rune.config_dir .. "/data/classes/" .. sub:lower() .. ".lua")
-end
-
 -- A mob's likely keywords from its full name, best first, for where, k and
 -- the like (tt++ campaign.tin). The article and small words go, commas too
 -- ("a hatchling of the wyrm" -> "hatchling wyrm"); then come its leading

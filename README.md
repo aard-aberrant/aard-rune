@@ -20,6 +20,9 @@ game's own tags wherever it can, and through its text only where those can't tel
 3. **Login.** Copy `.env.example` to `.env` and `chmod 600` it. `modules/login.lua`
    answers the name and password prompts from it. Leave out `PASSWORD` to type
    it yourself. `.env` is never committed.
+   **Your things.** Copy `data/player.example.lua` to `data/player.lua` and
+   put in your character's bags, potions, rings and attacks. `/player` lists
+   what each module needs and why, and what you have set.
 4. **Logs and history** go in `~/.local/state/rune` (or `$XDG_STATE_HOME/rune`).
    Nothing creates folders, so make them once:
    `mkdir -p ~/.local/state/rune/userlogs`.
@@ -106,7 +109,7 @@ format/     formatters - that value to the text shown: the same files
 modules/    everything that does something in the game: GMCP state, tags, the map
             and travel, targets, quest, campaign, fights, gear, hosting ...
 modules/zones/  one script per zone, loaded only while you're in it
-data/       settings and game data (portals, areas, labels, gear sets, classes),
+data/       settings and game data (portals, areas, labels, gear sets, player),
             and the layout (data/layout/)
 map/        aard.map, the room map (saved as you explore)
 tools/      converters from the tt++ data, Rune's API dump, a trigger benchmark,

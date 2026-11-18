@@ -1,7 +1,7 @@
 -- Portals and the home routine. Hand-edited; converted once from tt++ conf/portals.tin.
 return {
   home_vnum = 55213,
-  bag = "portalbag",
+  -- the bag portals come from: portalbag in data/player.lua
   default_portal = "3228723590",
 
   -- Route costs, counted in rooms walked: a portal from the bag is used only

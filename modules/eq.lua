@@ -1,5 +1,5 @@
 -- eqwear (tt++ modules/eqsets.tin): puts on the pieces of an equipment set
--- you aren't wearing, from EQBAG, and puts what they replace back in it.
+-- you aren't wearing, from the eq bag, and puts what they replace back in it.
 --   eqwear          the set for your level: the highest saved level at or
 --                   below it (named sets are never picked this way)
 --   eqwear <level>  the set for that level
@@ -15,7 +15,7 @@
 -- What you wear comes from a hidden eqdata, asked for each time - the
 -- reply is {eqdata}, one row per item (id,flags,name,level,type,unique,
 -- wearloc,...), {/eqdata}. For 5 s after the commands go, every item the
--- game's invmon tag says came off (modules/invmon.lua) goes into EQBAG - that
+-- game's invmon tag says came off (modules/invmon.lua) goes into the eq bag - that
 -- includes anything a two-handed weapon pushed off. At load a hidden
 -- eqdata seeds modules/invmon.lua's list of what's worn.
 
@@ -28,7 +28,11 @@ local tags = require("modules.tags")       -- the eqdata reply's tags
 
 local say, warn = util.say, util.warn
 
-local EQBAG = "eqbag"
+local player = require("modules.player")   -- the eq bag
+local need = player.needs("modules.eq", {
+  eqbag = "your eq bag: eqwear and dt take from it, what comes off goes in; rh's regen ring too",
+})
+local function bag() return need("eqbag") end
 -- Paired slots need the slot named, or the game may replace the other one
 -- (tt++: confirmed for ears; the others assumed to follow)
 local SLOT_KW = { [3] = "lear", [4] = "rear", [5] = "neck1", [6] = "neck2",
@@ -107,10 +111,10 @@ end
 
 local bag_until = 0
 invmon.on(function(action, id)
-  if action == 1 and os.time() <= bag_until then rune.send_raw("put " .. id .. " " .. EQBAG) end
+  if action == 1 and os.time() <= bag_until and bag() then rune.send_raw("put " .. id .. " " .. bag()) end
 end)
 
--- For 5 s from now, everything that comes off goes into EQBAG
+-- For 5 s from now, everything that comes off goes into the eq bag
 local function bag_removed() bag_until = os.time() + 5 end
 
 -- The set's wear locations whose item isn't worn, in order
@@ -133,13 +137,14 @@ rune.alias.exact("eqwear", function(args)
   local want = util.trim(args):lower()
   local set, key = pick(want)
   if not set then no_set("eqwear", want); return end
+  if not bag() then return end   -- it said why
   eqdata(function(now)
     local locs = missing(set, now)
     if #locs == 0 then say("[eq] eqwear: already wearing the whole " .. key .. " set."); return end
     local cmds = {}
     for _, loc in ipairs(locs) do
       local id = tostring(set[loc].id)
-      cmds[#cmds + 1] = "get " .. id .. " " .. EQBAG
+      cmds[#cmds + 1] = "get " .. id .. " " .. bag()
       if loc == OFFHAND then cmds[#cmds + 1] = "dual " .. id
       else cmds[#cmds + 1] = "wear " .. id .. (SLOT_KW[loc] and (" " .. SLOT_KW[loc]) or "") end
     end
@@ -264,7 +269,7 @@ rune.alias.exact("eqsets", function(args)
 end)
 
 -- dt ---------------------------------------------------------------------
--- dt <type>  wield that damage type's weapon from EQBAG (a unique start of
+-- dt <type>  wield that damage type's weapon from the eq bag (a unique start of
 --            the name works: dt elec); the one it replaces goes back in
 -- dt n(ext)  the next type, alphabetically, wrapping; from the primary
 --            weapon, the first
@@ -299,10 +304,11 @@ end
 local function wield(id, what)
   id = tostring(id)
   if wielded() == id then say("[eq] dt: " .. what .. " is already wielded."); return end
+  if not bag() then return end   -- it said why
   say("[eq] dt: " .. what .. " -> " .. id)
   bag_removed()
   last_dt = id
-  rune.send_raw("get " .. id .. " " .. EQBAG .. "\nwield " .. id)
+  rune.send_raw("get " .. id .. " " .. bag() .. "\nwield " .. id)
 end
 
 local function dt(arg)
@@ -374,4 +380,4 @@ help.add("eqsets", "eqsets [set | del <set>]", "the saved sets (yours marked), o
 help.add("dt", "dt <type> | next | reset", "wield the damage-type weapon for <type> (a unique start works), the next type, or back to your primary")
 help.add("d1", "d1 .. d6", "dt for the damage types in data's order")
 
-return { bag = EQBAG, check_worn = check_worn }
+return { bag = bag, check_worn = check_worn }

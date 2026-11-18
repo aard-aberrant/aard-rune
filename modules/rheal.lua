@@ -10,7 +10,8 @@
 --   sleep     the regen ring on, then sleep
 -- Waking however you do (GMCP state leaving 9, asleep) with the regen ring
 -- on and rh not running: it comes off, what it replaced goes back on (else
--- WAKE_RING), and it goes back in the bag.
+-- the wake ring), and it goes back in the bag. The rings are your
+-- character's, in data/player.lua (modules/player.lua).
 -- Driven by GMCP and invmon, no game text: a cast worked when char.vitals
 -- shows HP going up within 5 s (HP only rises on a tick or a heal, and rh
 -- never casts near a tick); mana down but HP not is a fizzle - cast again;
@@ -26,8 +27,11 @@ local combat = require("modules.combat")   -- the heal spell
 
 local say, warn = util.say, util.warn
 
-local REGEN = "3194918450"   -- the regen ring
-local WAKE_RING = "flux"     -- put on when what it replaced isn't known
+local player = require("modules.player")   -- the rings
+local need = player.needs("modules.rheal", {
+  regen_ring = "rh and sleep: worn for regeneration, then back in the eq bag",
+  wake_ring = "rh: put on if what the regen ring replaced isn't known",
+})
 local KEY = "rheal_removed"
 
 local state = "idle"         -- idle, ring, heal, sleep
@@ -54,6 +58,7 @@ local function keep() pcall(rune.store.set, KEY, replaced) end
 local wearing_cb             -- waiting for the regen ring to go on
 
 invmon.on(function(action, id)
+  local REGEN = need("regen_ring", true)
   if action == 1 and capture and id ~= REGEN then
     replaced[#replaced + 1] = id
     keep()
@@ -66,21 +71,28 @@ end)
 
 -- The regen ring on, then cb(ok). Already on: what it replaced is kept
 local function regen_on(cb)
+  local REGEN, bag = need("regen_ring"), eq.bag()
+  if not (REGEN and bag) then cb(false); return end   -- it said why
   if invmon.where(REGEN) then cb(true); return end
   replaced, capture, wearing_cb = {}, true, cb
   keep()
   rune.timer.after(3, function()
     if wearing_cb == cb then wearing_cb, capture = nil, false; cb(false) end
   end)
-  rune.send_raw("get " .. REGEN .. " " .. eq.bag .. "\nwear " .. REGEN)
+  rune.send_raw("get " .. REGEN .. " " .. bag .. "\nwear " .. REGEN)
 end
 
 -- The regen ring off and in the bag, what it replaced back on
 local function regen_off()
+  local REGEN, bag = need("regen_ring"), eq.bag()
+  if not (REGEN and bag) then return end   -- it said why
   local cmds = { "remove " .. REGEN }
-  if #replaced == 0 then cmds[#cmds + 1] = "wear " .. WAKE_RING end
+  if #replaced == 0 then
+    local wake = need("wake_ring")
+    if wake then cmds[#cmds + 1] = "wear " .. wake end
+  end
   for _, id in ipairs(replaced) do cmds[#cmds + 1] = "wear " .. id end
-  cmds[#cmds + 1] = "put " .. REGEN .. " " .. eq.bag
+  cmds[#cmds + 1] = "put " .. REGEN .. " " .. bag
   replaced = {}
   keep()
   rune.send_raw(table.concat(cmds, "\n"))
@@ -168,7 +180,9 @@ end, { name = "rheal_tick" })
 -- Woke up with the regen ring on, rh not running
 rune.gmcp.on("char.status", function()
   local s = game.state
-  if last_state == 9 and s ~= 9 and state == "idle" and invmon.where(REGEN) then
+  if last_state == 9 and s ~= 9 and state == "idle" then
+    local REGEN = need("regen_ring", true)
+    if not (REGEN and invmon.where(REGEN)) then last_state = s; return end
     regen_off()
     say("[rh] awake - regen ring off.")
   end

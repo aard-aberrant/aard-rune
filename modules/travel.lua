@@ -59,6 +59,10 @@ T.dir = rune.config_dir .. "/data"
 local function load_data(name) return util.load_data(T.dir .. "/" .. name .. ".lua") or {} end
 
 T.cfg = load_data("portals")
+local player = require("modules.player")   -- the portal bag
+local need = player.needs("modules.travel", {
+  portalbag = "routes take portals from it (and put them back); none: only the held default portal",
+})
 T.cfg.portals = T.cfg.portals or {}
 T.cfg.home_cmds = T.cfg.home_cmds or { "home" }
 
@@ -70,9 +74,11 @@ local function tier_level() return (game.tier or 0) * 10 + (game.level or 0) end
 
 -- The search -------------------------------------------------------------
 
+-- (nil: no portal bag in data/player.lua - warned about at login)
 local function portal_cmds(obj)
   if obj == T.cfg.default_portal then return { "enter" } end
-  local bag = T.cfg.bag or "portalbag"
+  local bag = need("portalbag", true)
+  if not bag then return nil end
   return { "get " .. obj .. " " .. bag, "hold " .. obj, "enter", "rem " .. obj,
            "put " .. obj .. " " .. bag, "hold " .. T.cfg.default_portal }
 end
@@ -85,10 +91,11 @@ local function portal_steps()
   table.sort(names)
   for _, name in ipairs(names) do
     local p = T.cfg.portals[name]
-    if p.vnum and not seen[p.obj] and tl >= (p.lvl or 0) then
+    local cmds = p.vnum and not seen[p.obj] and tl >= (p.lvl or 0) and portal_cmds(p.obj)
+    if cmds then
       seen[p.obj] = true
       local cost = p.obj == T.cfg.default_portal and 1 or (T.cfg.portal_cost or 6)
-      steps[#steps + 1] = { to = p.vnum, name = "portal " .. name, cmds = portal_cmds(p.obj), cost = cost }
+      steps[#steps + 1] = { to = p.vnum, name = "portal " .. name, cmds = cmds, cost = cost }
     end
   end
   return steps
@@ -828,6 +835,7 @@ local function try_limited(zone, fallback)
     return
   end
   local cmds, done = portal_cmds(p.obj), false
+  if not cmds then fallback(); return end
   local got = rune.trigger.regex("^You get .* from ", function()
     if done then return end
     done = true
