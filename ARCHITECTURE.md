@@ -344,6 +344,11 @@ in modules/zones/blackclaw.lua.
   why (`player.needs` in `modules/player.lua`); `/player` lists them and
   their values, and a missing one is warned about at login. Aliases name a
   key in braces (`{light}`, `{get heal}`). Not the password: that's `.env`.
+  `/player set <key> <value>` changes one for now (kept over a `/reload`,
+  gone at a restart), `/player unset` drops it, `/player save` writes it
+  into the file - only the value on its line is rewritten
+  (`lib/luaedit.lua`), and nothing is written unless the file reads back
+  with exactly the new values.
 - `map/aard.map` is the room map: TAB-separated `R` (room) and `X` (exit)
   lines, about 34,800 rooms. It was converted from tt++ by
   `tools/convert_ttmap.py`, and `modules/mapper.lua` keeps it current from GMCP as

@@ -58,17 +58,20 @@ end
 rune.gmcp.on("char.worth", worth, { name = "account_char.worth" })
 rune.gmcp.on("char.stats", stats, { name = "account_char.stats" })
 
--- A new subclass (modules/game.lua has stored char.base already): its minimums
-rune.gmcp.on("char.base", function()
+-- A new subclass (modules/game.lua has stored char.base already): its
+-- minimums; /player set, unset or save: read again
+local function mins(force)
   local sub = game.subclass
-  if not sub or sub == mins_for then return end
+  if not sub or (sub == mins_for and not force) then return end
   mins_for = sub
   local C = player.class(sub) or {}
   A.set("acct.hr_min", C.hr_min or DEF_HR)
   A.set("acct.dr_min", C.dr_min or DEF_DR)
   A.set("acct.stat_min", C.stat_min or DEF_STAT)
   A.publish()
-end, { name = "account_class_mins" })
+end
+rune.gmcp.on("char.base", function() mins() end, { name = "account_class_mins" })
+player.on_change(function() mins(true) end)
 
 worth(); stats()   -- what game has already (a /reload)
 

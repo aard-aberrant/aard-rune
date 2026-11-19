@@ -23,7 +23,22 @@
 --                                 -> "get <item> <medkit>" for a consumable
 --                                 ("eat fugu": the item is after the verb;
 --                                 medkit "": nothing). nil, key if one's missing
---   /player                    the declared keys: module, why, value now
+--   player.on_change(fn)       fn() after /player set, unset or save (a
+--                                 module that keeps a value it read)
+-- /player                        the declared keys: module, why, value now
+-- /player set <key> <value>      a temporary value: kept over a /reload,
+--                                gone at a restart. <key>: one of yours
+--                                (light), your subclass's (pattack), another
+--                                subclass's (shaman.pattack), or a part of a
+--                                pair (pattack.hit, paoe.cooldown, pattack.1
+--                                the command). A whole key set replaces it
+--                                whole (a pair's hit goes too)
+-- /player unset [key]            back to the file's value (none: all)
+-- /player save [key]             the temporary values into data/player.lua
+--                                (none: all) - only each value is rewritten
+--                                on its line (lib/luaedit.lua), and the file
+--                                is written only if it reads back with
+--                                exactly the new values and nothing else changed
 -- Cost: nothing per line; a check at each char.base that changes the
 -- character or subclass.
 
@@ -34,10 +49,11 @@ local say, warn = util.say, util.warn
 
 local P = {}
 local FILE = "data/player.lua"
-local data = util.load_data(rune.config_dir .. "/" .. FILE) or {}
+local PATH = rune.config_dir .. "/" .. FILE
+local data = util.load_data(PATH) or {}
 
--- key -> { module, desc, optional }, for the character's own keys (top)
--- and its subclass sections' (sub)
+-- key -> { module, desc, optional, parts }, for the character's own keys
+-- (top) and its subclass sections' (sub)
 local top, sub = {}, {}
 
 -- The character: game's name once char.base came, else the one kept over
@@ -46,11 +62,71 @@ local NAME_KEY = "player_name"
 local function name() return game.name or rune.session.get(NAME_KEY) end
 P.name = name
 
+local function copy(v)
+  if type(v) ~= "table" then return v end
+  local t = {}
+  for k, x in pairs(v) do t[k] = copy(x) end
+  return t
+end
+
+-- Temporary values (/player set): { { path = "light" | "priest.pattack" |
+-- "priest.pattack.hit", value } ... } in the order set, per character, kept
+-- in rune.session as "path\tvalue" lines
+local function over_key(n) return "player_over." .. n end
+local function overrides(n)
+  local list = {}
+  for line in (rune.session.get(over_key(n)) or ""):gmatch("[^\n]+") do
+    local path, v = line:match("^([^\t]+)\t(.*)$")
+    if path then list[#list + 1] = { path = path, value = v } end
+  end
+  return list
+end
+local function keep_overrides(n, list)
+  local out = {}
+  for _, o in ipairs(list) do out[#out + 1] = o.path .. "\t" .. o.value end
+  if #out == 0 then rune.session.delete(over_key(n)) else rune.session.set(over_key(n), table.concat(out, "\n")) end
+end
+
+-- One temporary value put into a section (a copy of the file's)
+local function apply(s, path, v)
+  local segs = {}
+  for seg in path:gmatch("[^.]+") do segs[#segs + 1] = seg end
+  local t, key, part = s, segs[1], segs[2]
+  if sub[segs[2] or ""] and not top[segs[1]] then   -- subclass.key[.part]
+    if type(s[segs[1]]) ~= "table" then s[segs[1]] = {} end
+    t, key, part = s[segs[1]], segs[2], segs[3]
+  end
+  if not part then t[key] = v; return end
+  local cur = t[key]
+  if part == "1" then
+    if type(cur) == "table" then cur = copy(cur); cur[1] = v; t[key] = cur else t[key] = v end
+  elseif type(cur) == "table" then cur = copy(cur); cur[part] = v; t[key] = cur
+  else t[key] = { cur, [part] = v } end
+end
+
+-- The section in use: the file's, with the temporary values over it -
+-- built when the character or the temporary values change
+local built, built_for
+local function rebuild() built_for = nil end
 local function section()
   local n = name()
-  local s = n and data[n]
-  return type(s) == "table" and s or nil
+  if not n then return nil end
+  if built_for ~= n then
+    built_for = n
+    local base = type(data[n]) == "table" and data[n] or nil
+    local list = overrides(n)
+    if not base and #list == 0 then built = nil
+    else
+      built = copy(base or {})
+      for _, o in ipairs(list) do apply(built, o.path, o.value) end
+    end
+  end
+  return built
 end
+
+local changed = {}
+function P.on_change(fn) changed[#changed + 1] = fn end
+local function tell() rebuild(); for _, fn in ipairs(changed) do pcall(fn) end end
 
 -- The subclass playing now's table in the character's section, or nil
 function P.class(subclass)
@@ -75,7 +151,7 @@ function P.needs(module, decls, opts)
   local into = is_sub and sub or top
   for key, d in pairs(decls) do
     if into[key] then error("[player] " .. key .. " is declared by both " .. into[key].module .. " and " .. module, 2) end
-    if type(d) == "table" then into[key] = { module = module, desc = d[1] or "", optional = d.optional }
+    if type(d) == "table" then into[key] = { module = module, desc = d[1] or "", optional = d.optional, parts = d.parts }
     else into[key] = { module = module, desc = d } end
   end
   return function(key, quiet)
@@ -170,25 +246,199 @@ local function show(v, optional)
   end
   return v == "" and '""' or tostring(v)
 end
-rune.command.add("player", function()
+-- What a typed key names: { path, base, decl } - path as kept ("light",
+-- "priest.pattack.hit"), base the whole key it's part of ("priest.pattack"),
+-- or nil and why
+local function close_names(word)
+  local out = {}
+  for _, decl in ipairs({ top, sub }) do
+    for k in pairs(decl) do
+      if k:find(word:sub(1, 2), 1, true) or word:find(k, 1, true) then out[#out + 1] = k end
+    end
+  end
+  table.sort(out)
+  return #out > 0 and (" - did you mean " .. table.concat(out, ", ") .. "?") or " - /player lists them"
+end
+local function resolve(spec)
+  local segs = {}
+  for seg in spec:lower():gmatch("[^.]+") do segs[#segs + 1] = seg end
+  local cls, key, part
+  if top[segs[1]] then key, part = segs[1], segs[2]
+  elseif sub[segs[1]] then
+    if not game.subclass then return nil, "your subclass isn't known yet - name it: <subclass>." .. segs[1] end
+    cls, key, part = game.subclass:lower(), segs[1], segs[2]
+  elseif segs[2] and sub[segs[2]] then cls, key, part = segs[1], segs[2], segs[3]
+  else return nil, "no key " .. spec .. close_names(segs[1] or "") end
+  local d = cls and sub[key] or top[key]
+  if part and part ~= "1" then
+    local ok = false
+    for _, x in ipairs(d.parts or {}) do if x == part then ok = true end end
+    if not ok then
+      return nil, key .. " has no part " .. part .. (d.parts and (" - its parts: 1 (the command), " .. table.concat(d.parts, ", ")) or " - it's one value")
+    end
+  end
+  if (#segs > (cls and not sub[segs[1]] and 3 or 2)) then return nil, "too many parts in " .. spec end
+  local base = (cls and (cls .. ".") or "") .. key
+  return { path = base .. (part and ("." .. part) or ""), base = base, cls = cls, key = key, decl = d }
+end
+
+-- /player set / unset / save ---------------------------------------------
+
+local function set_cmd(rest)
+  local spec, v = rest:match("^(%S+)%s+(.-)%s*$")
+  if not spec or v == "" then warn("[player] /player set <key> <value> (\"\" for empty)"); return end
+  if v == '""' or v == "''" then v = "" end
+  local r, why = resolve(spec)
+  if not r then warn("[player] " .. why); return end
+  local n = name()
+  local list, keep = overrides(n), {}
+  for _, o in ipairs(list) do
+    -- the same path again, or a whole key over its parts: the old ones go
+    if o.path ~= r.path and not (r.path == r.base and o.path:sub(1, #r.base + 1) == r.base .. ".") then keep[#keep + 1] = o end
+  end
+  keep[#keep + 1] = { path = r.path, value = v }
+  keep_overrides(n, keep)
+  tell()
+  local t = r.cls and P.class(r.cls) or section()
+  say("[player] " .. r.base .. " = " .. show(t and t[r.key]) .. " (temporary - /player save keeps it, /player unset drops it)")
+end
+
+local function unset_cmd(spec)
+  local n = name()
+  local list = overrides(n)
+  if spec == "" then
+    keep_overrides(n, {})
+    tell()
+    say("[player] " .. (#list == 0 and "no temporary values." or ("back to " .. FILE .. ": " .. #list .. " temporary value" .. (#list == 1 and "" or "s") .. " dropped.")))
+    return
+  end
+  local r, why = resolve(spec)
+  if not r then warn("[player] " .. why); return end
+  local keep, gone = {}, 0
+  for _, o in ipairs(list) do
+    if o.path == r.path or (r.path == r.base and o.path:sub(1, #r.base + 1) == r.base .. ".") then gone = gone + 1
+    else keep[#keep + 1] = o end
+  end
+  if gone == 0 then say("[player] " .. r.path .. " has no temporary value."); return end
+  keep_overrides(n, keep)
+  tell()
+  say("[player] " .. r.path .. " back to " .. FILE .. "'s.")
+end
+
+local function equal(a, b)
+  if type(a) ~= "table" or type(b) ~= "table" then return a == b end
+  for k, v in pairs(a) do if not equal(v, b[k]) then return false end end
+  for k in pairs(b) do if a[k] == nil then return false end end
+  return true
+end
+
+local function read_file()
+  local fh = io.open(PATH, "r")
+  if not fh then return nil end
+  local text = fh:read("*a")
+  fh:close()
+  return text
+end
+local function load_text(text)
+  local f = (loadstring or load)(text, "=" .. FILE)
+  if not f then return nil end
+  if setfenv then setfenv(f, {}) end
+  local ok, t = pcall(f)
+  return ok and type(t) == "table" and t or nil
+end
+
+local luaedit = require("lib.luaedit")
+local function save_cmd(spec)
+  local n = name()
+  local list = overrides(n)
+  local bases, seen = {}, {}
+  local only
+  if spec ~= "" then
+    local r, why = resolve(spec)
+    if not r then warn("[player] " .. why); return end
+    only = r.base
+  end
+  for _, o in ipairs(list) do
+    local r = resolve(o.path)
+    if r and (not only or r.base == only) and not seen[r.base] then seen[r.base] = true; bases[#bases + 1] = r end
+  end
+  if #bases == 0 then say("[player] nothing to save" .. (only and (" for " .. only) or "") .. " - /player set makes a temporary value."); return end
+  local text = read_file()
+  if not text then warn("[player] can't read " .. FILE .. "."); return end
+  local now = section()
+  local expect = copy(data)
+  expect[n] = type(expect[n]) == "table" and expect[n] or {}
+  for _, r in ipairs(bases) do
+    local t = r.cls and (now[r.cls] or {}) or now
+    local v = t[r.key]
+    local path = { n }
+    local into = expect[n]
+    if r.cls then
+      path[2] = r.cls
+      if type(into[r.cls]) ~= "table" then into[r.cls] = {} end
+      into = into[r.cls]
+    end
+    local out, why = luaedit.set(text, path, r.key, luaedit.literal(v), r.decl.module .. ": " .. (r.decl.desc:match("^(.-) %- ") or r.decl.desc))
+    if not out then warn("[player] can't save " .. r.base .. ": " .. why .. " - nothing written; edit " .. FILE .. " by hand"); return end
+    text = out
+    into[r.key] = copy(v)
+  end
+  -- written only if it reads back exactly as expected: the new values, the rest as it was
+  local back = load_text(text)
+  if not back or not equal(back, expect) then
+    warn("[player] save stopped: " .. FILE .. " wouldn't read back as expected - nothing written; edit it by hand")
+    return
+  end
+  if not util.write_file(PATH, function(fh) fh:write(text) end, "[player]") then return end
+  data = back
+  local keep = {}
+  for _, o in ipairs(list) do
+    local r = resolve(o.path)
+    if not (r and seen[r.base]) then keep[#keep + 1] = o end
+  end
+  keep_overrides(n, keep)
+  tell()
+  local names = {}
+  for _, r in ipairs(bases) do names[#names + 1] = r.base end
+  say("[player] saved to " .. FILE .. ": " .. table.concat(names, ", "))
+end
+
+-- /player [set | unset | save]: the list, or a change
+rune.command.add("player", function(args)
   local n = name()
   if not n then warn("[player] the character isn't known yet - after login."); return end
+  args = util.trim(args or "")
+  local verb, rest = args:match("^(%S+)%s*(.-)%s*$")
+  if verb == "set" then set_cmd(rest); return
+  elseif verb == "unset" then unset_cmd(rest); return
+  elseif verb == "save" then save_cmd(rest); return
+  elseif verb then warn("[player] /player, /player set <key> <value>, /player unset [key], /player save [key]"); return end
   local gone = check()
   if #gone > 0 then warn("[player] missing: " .. table.concat(gone, ", ")) end
-  local function list(head, decl, t)
+  -- the temporary values' whole keys, and what the file has for them
+  local temp = {}
+  for _, o in ipairs(overrides(n)) do
+    local r = resolve(o.path)
+    if r then temp[r.base] = true end
+  end
+  local file = type(data[n]) == "table" and data[n] or {}
+  local function list(head, decl, t, cls)
     local keys = {}
     for k in pairs(decl) do keys[#keys + 1] = k end
     table.sort(keys)
     rune.echo(head)
     for _, k in ipairs(keys) do
       local d = decl[k]
-      rune.echo("  " .. k .. " = " .. show(t and t[k], d.optional) .. (d.optional and "  (optional)" or ""))
+      local base = (cls and (cls .. ".") or "") .. k
+      local was = cls and (type(file[cls]) == "table" and file[cls][k]) or (not cls and file[k]) or nil
+      local mark = temp[base] and ("  (temporary; file: " .. show(was, d.optional) .. ")") or (d.optional and "  (optional)" or "")
+      rune.echo("  " .. k .. " = " .. show(t and t[k], d.optional) .. mark)
       rune.echo("      " .. d.module .. ": " .. d.desc)
     end
   end
   local s = section()
   list(n .. " (" .. FILE .. ")", top, s)
-  if game.subclass then list(n .. "." .. game.subclass:lower(), sub, P.class()) end
+  if game.subclass then list(n .. "." .. game.subclass:lower(), sub, P.class(), game.subclass:lower()) end
   -- in the section but declared by nothing: {key} for your own /alias
   local extra = {}
   for k, v in pairs(s or {}) do
@@ -196,6 +446,6 @@ rune.command.add("player", function()
   end
   table.sort(extra)
   if #extra > 0 then rune.echo("  no module needs (yours for {key} in /alias): " .. table.concat(extra, ", ")) end
-end, "your character's things in data/player.lua: each key, the module that needs it and why, its value")
+end, "your character's things in data/player.lua: /player lists each key (the module that needs it, why, its value); set <key> <value> (temporary), unset [key], save [key] (into the file)")
 
 return P

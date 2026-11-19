@@ -54037,6 +54037,7 @@ R	16974	imperial	inside	1		Commando training room
 X	16974	16975	n		
 X	16974	16973	s		
 R	16975	imperial	inside			Before the Imperial Castle
+X	16975	16982	enter gates		
 X	16975	16974	s		
 R	16976	imperial	inside			Rebel nest
 X	16976	16967	u		
@@ -54047,6 +54048,7 @@ R	16978	imperial	city			Finian Lane
 X	16978	16979	n		
 X	16978	16977	s		
 R	16979	imperial	city			Finian Lane
+X	16979	17001	n		
 X	16979	16978	s		
 R	16980	imperial	inside			Packaging Center
 X	16980	16959	w		
@@ -54054,6 +54056,7 @@ R	16981	imperial	shop			Trader's Bazaar
 X	16981	16968	n		
 R	16982	imperial	inside			The Imperial Castle
 X	16982	16985	e		open e;east
+X	16982	16979	enter portal		
 X	16982	16988	s		
 X	16982	16984	w		open w;west
 R	16983	imperial	inside	1		A Wizard's Laboratory
@@ -54125,6 +54128,7 @@ X	17006	17005	d
 X	17006	17007	u		
 R	17007	imperial	mountain			The Landing
 X	17007	17006	d		
+X	17007	17008	enter entrance		
 R	17008	imperial	inside			A Large Workshop
 X	17008	17009	n		
 R	17009	imperial	inside			A Large Workshop
@@ -54147,8 +54151,8 @@ R	17014	imperial	icemount			Torture Chamber
 X	17014	17013	e		
 R	17015	imperial	icemount			Solitary Cell
 X	17015	17016	w		
-R	17016	imperial	icemount	1		The Dungeon Tower
-X	17016	17015	e		
+R	17016	imperial	icemount	3		The Dungeon Tower
+X	17016	17015	e		close e;open e;e
 X	17016	17017	n		
 X	17016	17013	s		
 R	17017	imperial	icemount			The Dungeon Tower
@@ -77080,6 +77084,11 @@ R	26015	gwillim	flowers2	1		The Botanical Gardens
 X	26015	26016	n		
 X	26015	26007	s		open s;south
 R	26016	gwillim	flowers1	3		The Botanical Gardens
+R	26018	gwillim	flowers2			The Botanical Gardens
+R	26020	gwillim	flowers2			The Botanical Gardens
+R	26021	gwillim	flowers1			The Botanical Gardens
+R	26022	gwillim	flowers1			The Botanical Gardens
+R	26023	gwillim	flowers2			The Botanical Gardens
 R	26025	gwillim	city			Faerie Path
 X	26025	26003	w		
 R	26035	gwillim	inside			The Unseelie Court
@@ -119938,7 +119947,7 @@ X	45730	45729	e
 X	45730	45731	n		
 X	45730	45731	s		
 X	45730	45729	w		
-R	45731	fury	dark			Floating Down the Spiral
+R	45731	fury	dark	2		Floating Down the Spiral
 X	45731	45732	e		
 X	45731	45730	n		
 X	45731	45730	s		
@@ -125201,7 +125210,7 @@ X	55210	34395	w
 R	55212	manorville	inside		my porch	A subterranean cavern
 X	55212	55213	n		
 X	55212	44390	u		
-R	55213	manorville	inside		bcc runs 133 08-Nov 1352	An elegant underground home
+R	55213	manorville	inside		bcc runs 134 18-Nov 2015	An elegant underground home
 X	55213	32418	d		
 X	55213	55212	s		
 R	55225	manorville	inside			Before the TARDIS

@@ -19,9 +19,9 @@ local player = require("modules.player")   -- your attacks, per subclass
 
 -- data/player.lua's keys for each subclass (/player lists them)
 player.needs("modules.combat", {
-  pattack = "k: your primary single-target attack - its command, then hit = its word in its damage line, after \"Your \" (ac waits for it; none: only ac's 6 s timeout): { \"c 'gaias fury'\", hit = \"fury\" }, or the command alone",
-  sattack = "kk: your secondary attack (ac2) - its command, then hit = its damage line's word, as pattack's",
-  paoe = "aa: your area attack, ac aoe opens a fight with it - its command, then cooldown = its recovery as data/affects.lua names it (ac aoe waits for it; none: no check): { \"c 'heavenly smiting'\", cooldown = \"smiting\" }, or the command alone",
+  pattack = { "k: your primary single-target attack - its command, then hit = its word in its damage line, after \"Your \" (ac waits for it; none: only ac's 6 s timeout): { \"c 'gaias fury'\", hit = \"fury\" }, or the command alone", parts = { "hit" } },
+  sattack = { "kk: your secondary attack (ac2) - its command, then hit = its damage line's word, as pattack's", parts = { "hit" } },
+  paoe = { "aa: your area attack, ac aoe opens a fight with it - its command, then cooldown = its recovery as data/affects.lua names it (ac aoe waits for it; none: no check): { \"c 'heavenly smiting'\", cooldown = \"smiting\" }, or the command alone", parts = { "cooldown" } },
   k_fight = { "what a bare k sends in a fight (default: pattack, no target)", optional = true },
   heal = { "your heal spell, for h and rh (default: incomplete healing)", optional = true },
 }, { subclass = true })
@@ -48,6 +48,8 @@ rune.gmcp.on("char.base", function()
   C = player.class(subclass)
   if not C then warn("[combat] no " .. subclass:lower() .. " section for " .. tostring(player.name()) .. " in data/player.lua - k, kk and aa need it.") end
 end, { name = "combat_base" })
+-- /player set, unset or save: read again
+player.on_change(function() if subclass then C = player.class(subclass) end end)
 
 -- This subclass's command `key`, or nil after a message
 local function attack(key)
