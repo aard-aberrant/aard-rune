@@ -14,11 +14,21 @@ return {
     eqbag     = "eqbag",
     portalbag = "portalbag",
     medkit    = "medkit",
+    medkit_id = "3203683980",   -- ident medkit: its Id (invdata needs it)
+
+    -- restock (at home): each item keyword, its name in the medkit, its
+    -- shop's vnum, the count to keep
+    restock = {
+      { item = "201heal",       name = "Better Heal Potion", vnum = 52871, want = 60 },
+      { item = "201mana",       name = "Better Mana Potion", vnum = 52871, want = 60 },
+      { item = "80refresh",     name = "Refresh Potion",     vnum = 52871, want = 20 },
+      { item = "201healscroll", name = "Heal Scroll",        vnum = 52871, want = 10 },
+    },
 
     -- consumables: the verb, then the item
-    heal  = "eat fugu",
-    mana  = "quaff lotus",
-    moves = "quaff refresh",
+    heal  = "quaff '201heal potion'",   -- 201heal alone also matches 201healscroll
+    mana  = "quaff 201mana",
+    moves = "quaff 80refresh",
 
     -- worn items
     light      = "beacon",

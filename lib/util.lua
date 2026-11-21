@@ -234,8 +234,10 @@ function util.await(kind, pattern, fn, name, secs)
 end
 
 -- Plain text word-wrapped to lines of at most w characters; a word longer
--- than w is cut
+-- than w is cut. A width under 1 (or none): no lines - the cutting loop
+-- below would never end, and under LuaJIT the watchdog can't stop it
 function util.wrap(text, w)
+  if not w or w < 1 then return {} end
   local lines, cur = {}, ""
   for word in text:gmatch("%S+") do
     if cur == "" then

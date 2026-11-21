@@ -55,9 +55,11 @@ V.set("walk.on", on)
 -- A move that way. Toward a closed door: "open <dir>" alone, and the move
 -- only once the game says it opened ("You open the door." - or the
 -- grating, the stable doors ...: a line starting "You open "; a keyring's
--- "You unlock ..." comes first). "You do not have a key for the door.":
--- no move. Both from the user's logs (2026-11-17). Any other reply leaves
--- it waiting until the next arrow, which drops it - no timer. Cost: two
+-- "You unlock ..." comes first), or that it was open all along ("The door
+-- is already open." - the map block was out of date; the user,
+-- 2026-11-20). "You do not have a key for the door.": no move. The first
+-- and last from the user's logs (2026-11-17). Any other reply leaves it
+-- waiting until the next arrow, which drops it - no timer. Cost: three
 -- triggers, on only while a door is waiting
 local door_wait = util.group()
 local door_dir   -- the move waiting for its door
@@ -68,6 +70,7 @@ local function door_done(go)
   if go and dir then rune.send(dir) end
 end
 door_wait.add("starts", "You open ", function() door_done(true) end, { name = "arrows_door_opened" })
+door_wait.add("exact", "The door is already open.", function() door_done(true) end, { name = "arrows_door_was_open" })
 door_wait.add("exact", "You do not have a key for the door.", function() door_done(false) end, { name = "arrows_door_no_key" })
 
 -- A closed door that way? From the minimap's last map block, if it's this

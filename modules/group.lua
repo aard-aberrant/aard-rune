@@ -64,6 +64,7 @@ end
 -- the marks. Names lowercased once each
 local lower = setmetatable({}, { __index = function(t, k) local v = k:lower(); t[k] = v; return v end })
 local leader
+local title_raw, title_plain   -- the group name as last sent, and without its colors
 local function member(name, lvl, hp, mhp, here, follow)
   local lname = lower[name]
   return { name = name, lvl = lvl, hp = hp, mhp = mhp, here = here, me = lname == game.name,
@@ -76,11 +77,13 @@ end
 
 -- GMCP group: a new member list only when something in it differs from the
 -- published one (most group messages repeat it: nothing to redraw); the
--- title from the game's @-codes to ANSI
+-- title as sent - GMCP's groupname already carries terminal colors, no
+-- @-codes (logs gmcpgroup.log 2026-11-16, gmcpcolor .log 2026-11-20) -
+-- redrawn only when its text changes, not its colors
 rune.gmcp.on("group", function(d)
   if dbg.on and type(d) == "table" then dump(d) end
   if type(d) ~= "table" or type(d.members) ~= "table" then
-    leader = nil
+    leader, title_raw, title_plain = nil, nil, nil
     G.set("group.in", false); G.set("group.members", nil); G.set("group.leader", nil); G.set("group.title", nil)
     G.publish()
     return
@@ -99,8 +102,17 @@ rune.gmcp.on("group", function(d)
   G.set("group.in", true)
   if not same then G.set("group.members", list) end
   G.set("group.leader", leader)
-  local title = type(d.groupname) == "string" and util.trim(d.groupname) or ""
-  G.set("group.title", title ~= "" and colors.aard_ansi(title) or nil)
+  -- the name: as sent last time, nothing to do; only its colors changed,
+  -- what's shown stays (the user, 2026-11-20: no redraw for a color change)
+  local raw = type(d.groupname) == "string" and util.trim(d.groupname) or ""
+  if raw ~= title_raw then
+    title_raw = raw
+    local plain = colors.strip(raw)
+    if plain ~= title_plain then
+      title_plain = plain
+      G.set("group.title", raw ~= "" and raw or nil)
+    end
+  end
   G.publish()
 end, { name = "aard_group" })
 

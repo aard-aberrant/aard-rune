@@ -4430,7 +4430,7 @@ X	1879	1876	s
 X	1879	1880	w		
 R	1880	mayhem	inside			Northern Part of the Balcony
 X	1880	1879	e		
-X	1880	1881	n		open n;north
+X	1880	1881	n		north;hunt lekoridr;north;hunt lekoridr;north;hunt lekoridr;open n;n
 X	1880	1878	w		
 R	1881	mayhem	inside			Hidden Passage
 X	1881	1883	e		
@@ -33648,7 +33648,7 @@ R	10359	rebellion	air	1		The Battlegrounds of the Nix
 R	10360	rebellion	air			The Battlegrounds of the Nix
 R	10361	rebellion	air			The Battlegrounds of the Nix
 R	10364	rebellion	air	1		The Battlegrounds of the Nix
-R	10365	rebellion	inside	1		A Swirling Vortex of Energy 
+R	10365	rebellion	inside	1		A Swirling Vortex of Energy
 X	10365	10379	d		
 X	10365	10364	u		
 R	10366	rebellion	field	1		The Shore of a Rocky Island
@@ -49571,7 +49571,7 @@ R	15341	sanctum	city			The Grand City of Aylor
 X	15341	15349	e		
 X	15341	15342	n		
 X	15341	15351	s		
-R	15342	sanctum	temple			The Aylorian Temple of Ivar 
+R	15342	sanctum	temple			The Aylorian Temple of Ivar
 X	15342	15343	n		
 X	15342	15341	s		
 R	15343	sanctum	temple			In the Back of the Aylorian Temple
@@ -51556,11 +51556,11 @@ X	16110	16114	e
 R	16111	qong	inside			Ice Box
 X	16111	16139	enter bucket		
 X	16111	16114	n		
-R	16112	qong	inside	1		Ice Box
+R	16112	qong	inside	3		Ice Box
 X	16112	16114	w		
 R	16113	qong	inside	1		Ice Box
 X	16113	16114	s		
-R	16114	qong	inside	1		Ice Box
+R	16114	qong	inside	3		Ice Box
 X	16114	16112	e		
 X	16114	16113	n		
 X	16114	16111	s		
@@ -52890,7 +52890,7 @@ X	16542	16541	w
 R	16543	fens	dead_forest			A Quiet Section of the Swamp
 X	16543	16542	s		
 X	16543	16544	w		
-R	16544	fens	quicksand	1		Mire and Muck
+R	16544	fens	quicksand	3		Mire and Muck
 X	16544	16543	e		
 R	16545	fens	forest			A Quiet Section of the Swamp
 X	16545	16546	e		
@@ -64037,7 +64037,7 @@ X	19716	19716	n
 X	19716	19681	s		
 X	19716	19716	u		
 X	19716	19719	w		
-R	19717	terra	rocks			Deathly silence 
+R	19717	terra	rocks			Deathly silence
 X	19717	19717	d		
 X	19717	19717	e		
 X	19717	19717	n		
@@ -64072,7 +64072,7 @@ X	19721	19721	n
 X	19721	19722	s		
 X	19721	19720	u		
 X	19721	19721	w		
-R	19722	terra	rocks			A putrid path 
+R	19722	terra	rocks			A putrid path
 X	19722	19722	d		
 X	19722	19722	e		
 X	19722	19721	n		
@@ -64107,14 +64107,14 @@ X	19726	19726	n
 X	19726	19726	s		
 X	19726	19727	u		
 X	19726	19725	w		
-R	19727	terra	rocks			A red room 
+R	19727	terra	rocks			A red room
 X	19727	19726	d		
 X	19727	19727	e		
 X	19727	19728	n		
 X	19727	19727	s		
 X	19727	19727	u		
 X	19727	19727	w		
-R	19728	terra	rocks			Delving into the shadows 
+R	19728	terra	rocks			Delving into the shadows
 X	19728	19729	d		
 X	19728	19728	e		
 X	19728	19731	n		
@@ -69971,7 +69971,7 @@ X	24191	24187	w
 R	24192	ygg	air	2		On the Rainbow Bridge
 X	24192	24187	d		
 X	24192	24223	enter bridge		
-R	24193	ygg	air			On the Rainbow Bridge
+R	24193	ygg	air	2		On the Rainbow Bridge
 X	24193	24196	d		
 X	24193	24187	u		
 R	24194	ygg	mountain			Overlooking the Mists
@@ -69997,8 +69997,8 @@ X	24202	24203	u
 R	24203	ygg	inside			Mountainside
 X	24203	24202	d		
 R	24204	ygg	air	1		The Lake of Fire
-R	24205	ygg	air			The Lake of Fire
-R	24208	ygg	inside			A cavern beneath the lake
+R	24205	ygg	air	2		The Lake of Fire
+R	24208	ygg	inside	2		A cavern beneath the lake
 X	24208	24205	u		
 R	24209	ygg	field	3		Aboard the Viking Longboat
 X	24209	24210	w		
@@ -104726,7 +104726,7 @@ X	36634	36635	s		open s;south
 R	36635	umari	inside			The West End of the Castle Kitchen
 X	36635	36637	e		
 X	36635	36634	n		
-X	36635	36649	s		
+X	36635	36649	s		open s;s
 X	36635	36636	w		
 R	36636	umari	stairs			The Top of the Back Stairway
 X	36636	36653	d		
@@ -104770,6 +104770,7 @@ R	36648	umari	inside			A Castle Cache
 X	36648	36647	s		
 R	36649	umari	inside			Another Turn in the Castle Hallways
 X	36649	36647	e		
+X	36649	36635	n		
 X	36649	36650	s		
 X	36649	36698	w		open w;west
 R	36650	umari	inside			Wandering in the Darkness of the Castle
@@ -104906,7 +104907,7 @@ X	36690	36687	e		open e;east
 X	36690	36692	n		
 X	36690	36691	s		open s;south
 R	36691	umari	crypt			The Half-Griffon Memorial Burial Crypt
-X	36691	36685	e		
+X	36691	36685	e		open e;e
 X	36691	36690	n		
 R	36692	umari	underground			A Choice of Paths in the Dark Underground
 X	36692	36693	e		
@@ -119892,7 +119893,7 @@ X	45720	45719	e
 X	45720	45717	n		
 X	45720	45717	s		
 X	45720	45719	w		
-R	45721	fury	dark			Floating Down the Spiral
+R	45721	fury	dark	2		Floating Down the Spiral
 X	45721	45722	e		
 X	45721	45724	n		
 X	45721	45724	s		
@@ -119958,23 +119959,23 @@ X	45732	45731	e
 X	45732	45729	n		
 X	45732	45729	s		
 X	45732	45731	w		
-R	45733	fury	dark			Floating Down the Spiral
+R	45733	fury	dark		LAST FLOOR	Floating Down the Spiral
 X	45733	45734	e		
 X	45733	45736	n		
 X	45733	45736	s		
 X	45733	45732	u		
 X	45733	45734	w		
-R	45734	fury	dark			Floating Down the Spiral
+R	45734	fury	dark		LAST FLOOR	Floating Down the Spiral
 X	45734	45733	e		
 X	45734	45735	n		
 X	45734	45735	s		
 X	45734	45733	w		
-R	45735	fury	dark			Floating Down the Spiral
+R	45735	fury	dark		LAST FLOOR	Floating Down the Spiral
 X	45735	45736	e		
 X	45735	45734	n		
 X	45735	45734	s		
 X	45735	45736	w		
-R	45736	fury	dark			Floating Down the Spiral
+R	45736	fury	dark		LAST FLOOR	Floating Down the Spiral
 X	45736	45737	d		
 X	45736	45735	e		
 X	45736	45733	n		
@@ -124517,7 +124518,7 @@ X	50101	50100	n
 X	50101	55765	s		
 X	50101	50103	u		
 X	50101	50100	w		
-R	50102	bootcamp	shop			Military Surplus Store
+R	50102	bootcamp	shop			Barely Managing
 X	50102	49391	s		
 X	50102	49256	w		
 R	50103	bootcamp	shop			Sharp Pointy Things

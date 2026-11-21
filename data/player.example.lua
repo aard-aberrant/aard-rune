@@ -8,6 +8,12 @@ return {
     eqbag     = "eqbag",          -- your eq bag: eqwear, dt, rh
     portalbag = "portalbag",      -- portals taken from it on routes
     medkit    = "medkit",         -- qa qs sq qd get from it ("": from inventory)
+    medkit_id = "1234567890",     -- restock: ident medkit's Id (invdata needs it)
+
+    -- restock (at home): each item word, its shop's vnum, the count to keep
+    restock = {
+      { item = "fugu", vnum = 15855, want = 60 },
+    },
 
     heal  = "quaff heal",         -- qa: the verb, then the item
     mana  = "quaff lotus",        -- qs, sq

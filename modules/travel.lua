@@ -972,6 +972,7 @@ local function home_routine()
   quiet_line.set(true)
   rune.send_raw(T.cfg.home_cmds[1])
 end
+T.home = home_routine   -- g, for other modules (restock's way back)
 
 -- To one of `zones`, the nearest (a picker if several reach): one zone's
 -- limited portal first; no route on the map: home and the game's runto
